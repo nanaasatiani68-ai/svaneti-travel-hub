@@ -1,22 +1,44 @@
 export default function Home() {
   return (
-    <main style={{ textAlign: "center", padding: "50px" }}>
-      <h1 style={{ fontSize: "48px" }}>
-        🏔️ Svaneti Travel Hub
-      </h1>
+    <main
+      style={{
+        minHeight: "100vh",
+        backgroundImage: "url('/background.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div
+        style={{
+          background: "rgba(0,0,0,0.5)",
+          padding: "40px",
+          borderRadius: "16px",
+          textAlign: "center",
+          color: "white",
+        }}
+      >
+        <h1>Svaneti Travel Hub</h1>
 
-      <p style={{ fontSize: "20px" }}>
-        დაჯავშნეთ ტურები, ტრანსფერები და ადგილობრივი გიდები სვანეთში.
-      </p>
+        <p>აღმოაჩინე სვანეთის ულამაზესი ტურები</p>
 
-      <div style={{ marginTop: "30px" }}>
-        <button style={{ padding: "12px 24px", marginRight: "10px" }}>
-          ტურები
-        </button>
-
-        <button style={{ padding: "12px 24px" }}>
-          ტრანსფერები
-        </button>
+        <a
+          href="/bookings"
+          style={{
+            display: "inline-block",
+            marginTop: "20px",
+            padding: "12px 24px",
+            backgroundColor: "#2563eb",
+            color: "white",
+            textDecoration: "none",
+            borderRadius: "8px",
+            fontWeight: "bold",
+          }}
+        >
+          Book Now
+        </a>
       </div>
     </main>
   );
