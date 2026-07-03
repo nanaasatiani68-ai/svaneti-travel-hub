@@ -20,29 +20,71 @@ export default function LoginPage() {
 
     if (error) {
       alert(error.message);
-    } else {
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("User not found");
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      alert("პროფილი ვერ მოიძებნა");
+      return;
+    }
+
+    if (profile?.role === "Director") {
       router.push("/admin");
+    } else if (profile?.role === "Staff") {
+      router.push("/staff");
+    } else {
+      alert("თქვენ არ გაქვთ ადმინისტრატორის უფლება");
+      await supabase.auth.signOut();
     }
   };
 
   return (
-    <main style={{ padding: "40px" }}>
-      <h1>🔐 Admin Login</h1>
-
+    <main
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: "#f5f5f5",
+      }}
+    >
       <form
         onSubmit={login}
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: "10px",
-          maxWidth: "300px",
+          gap: "15px",
+          width: "350px",
+          padding: "30px",
+          background: "white",
+          borderRadius: "10px",
+          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
         }}
       >
+        <h2 style={{ textAlign: "center" }}>🔐 Admin Login</h2>
+
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
+          style={{ padding: "10px" }}
         />
 
         <input
@@ -50,9 +92,21 @@ export default function LoginPage() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
+          style={{ padding: "10px" }}
         />
 
-        <button type="submit">
+        <button
+          type="submit"
+          style={{
+            padding: "10px",
+            background: "#0ea5e9",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+        >
           Login
         </button>
       </form>
