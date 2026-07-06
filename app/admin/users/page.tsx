@@ -5,7 +5,7 @@ import { useState } from "react";
 import UserSearch from "./components/UserSearch";
 import UserFilters from "./components/UserFilters";
 import UserTable from "./components/UserTable";
-import UserDrawer from "./components/UserDrawer";
+import UserDrawer from "../../components/admin/UserDrawer";
 
 export type User = {
   id: number;

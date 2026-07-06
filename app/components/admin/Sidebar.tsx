@@ -1,28 +1,88 @@
+import Link from "next/link";
+
+const menuItems = [
+  {
+    title: "საინფორმაციო დაფა",
+    icon: "🏠",
+    href: "/admin",
+  },
+  {
+    title: "დაჯავშნა",
+    icon: "📋",
+    href: "/admin/bookings",
+  },
+  {
+    title: "ტურები",
+    icon: "🏔️",
+    href: "/admin/tours",
+  },
+  {
+    title: "მომხმარებლები",
+    icon: "👥",
+    href: "/admin/users",
+  },
+  {
+    title: "გადახდები",
+    icon: "💳",
+    href: "/admin/payments",
+  },
+  {
+    title: "კალენდარი",
+    icon: "🗓️",
+    href: "/admin/calendar",
+  },
+  {
+    title: "ელფოსტები",
+    icon: "✉️",
+    href: "/admin/emails",
+  },
+  {
+    title: "პერსონალი",
+    icon: "👨‍💼",
+    href: "/admin/staff",
+  },
+  {
+    title: "პარამეტრები",
+    icon: "⚙️",
+    href: "/admin/settings",
+  },
+];
+
 export default function Sidebar() {
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 text-white p-6">
-      <h2 className="text-2xl font-bold mb-8">Admin Panel</h2>
+    <aside className="w-72 min-h-screen bg-slate-950 text-white p-6">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold">
+          🏔️ სვანეთი
+        </h1>
 
-      <nav className="space-y-4">
-        <a href="/admin" className="block hover:text-cyan-400">
-          📊 Dashboard
-        </a>
+        <p className="text-slate-400 mt-2">
+          მოგზაურობის ცენტრის CMS
+        </p>
+      </div>
 
-        <a href="/admin/tours" className="block hover:text-cyan-400">
-          🏔️ Tours
-        </a>
-
-        <a href="/admin/bookings" className="block hover:text-cyan-400">
-          📅 Bookings
-        </a>
-
-        <a href="/admin/users" className="block hover:text-cyan-400">
-          👤 Users
-        </a>
-
-        <a href="/" className="block hover:text-red-400">
-          ⬅️ Back to Website
-        </a>
+      <nav className="space-y-3">
+        {menuItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="
+              flex
+              items-center
+              gap-3
+              rounded-2xl
+              px-4
+              py-3
+              text-slate-200
+              hover:bg-white/10
+              hover:text-white
+              transition
+            "
+          >
+            <span>{item.icon}</span>
+            <span className="font-medium">{item.title}</span>
+          </Link>
+        ))}
       </nav>
     </aside>
   );

@@ -1,0 +1,9 @@
+import Image from "next/image";
+
+<Image
+  src="/profile.jpg"
+  alt="ნანა ასათიანი"
+  width={90}
+  height={90}
+  className="rounded-full object-cover border-4 border-cyan-400 shadow-xl"
+/>
