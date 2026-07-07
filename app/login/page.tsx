@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
+import { supabase } from "../lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,18 +43,12 @@ export default function LoginPage() {
       return;
     }
 
-    switch (profile?.role) {
-      case "Director":
-        router.push("/admin");
-        break;
-
-      case "Staff":
-        router.push("/staff");
-        break;
-
-      default:
-        router.push("/dashboard");
-        break;
+    if (profile?.role === "Director") {
+      router.push("/admin");
+    } else if (profile?.role === "Staff") {
+      router.push("/staff");
+    } else {
+      router.push("/dashboard");
     }
   };
 
@@ -114,20 +108,22 @@ export default function LoginPage() {
         >
           Login
         </button>
+
+        <button
+          type="button"
+          onClick={() => router.push("/signup")}
+          style={{
+            padding: "10px",
+            background: "#22c55e",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+        >
+          Create Account
+        </button>
       </form>
     </main>
   );
-}<button
-  type="button"
-  onClick={() => router.push("/signup")}
-  style={{
-    padding: "10px",
-    background: "#22c55e",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  }}
->
-  Create Account
-</button>
+}
