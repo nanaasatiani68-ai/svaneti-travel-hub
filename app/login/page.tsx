@@ -43,13 +43,18 @@ export default function LoginPage() {
       return;
     }
 
-    if (profile?.role === "Director") {
-      router.push("/admin");
-    } else if (profile?.role === "Staff") {
-      router.push("/staff");
-    } else {
-      alert("თქვენ არ გაქვთ ადმინისტრატორის უფლება");
-      await supabase.auth.signOut();
+    switch (profile?.role) {
+      case "Director":
+        router.push("/admin");
+        break;
+
+      case "Staff":
+        router.push("/staff");
+        break;
+
+      default:
+        router.push("/dashboard");
+        break;
     }
   };
 
@@ -76,7 +81,7 @@ export default function LoginPage() {
           boxShadow: "0 0 10px rgba(0,0,0,0.1)",
         }}
       >
-        <h2 style={{ textAlign: "center" }}>🔐 Admin Login</h2>
+        <h2 style={{ textAlign: "center" }}>🔐 Login</h2>
 
         <input
           type="email"
@@ -112,4 +117,17 @@ export default function LoginPage() {
       </form>
     </main>
   );
-}
+}<button
+  type="button"
+  onClick={() => router.push("/signup")}
+  style={{
+    padding: "10px",
+    background: "#22c55e",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  }}
+>
+  Create Account
+</button>
