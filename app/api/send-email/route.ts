@@ -1,14 +1,32 @@
+import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Missing RESEND_API_KEY" },
+        { status: 500 }
+      );
+    }
+
+    const resend = new Resend(apiKey);
+
     const body = await req.json();
 
-    const { customerName, customerEmail, customerPhone } = body;
+    const {
+      customerName,
+      customerEmail,
+      customerPhone,
+      message,
+    } = body;
 
-    // სტუმრისთვის
+    // Email to customer
     await resend.emails.send({
       from: "Svaneti Travel Hub <onboarding@resend.dev>",
       to: customerEmail,
@@ -18,44 +36,46 @@ export async function POST(req: Request) {
 
         <p>Hello <b>${customerName}</b>,</p>
 
-        <p>Your booking has been received successfully.</p>
+        <p>We have received your booking request.</p>
 
-        <p>We will contact you shortly.</p>
+        <p>Our team will contact you shortly.</p>
 
-        <hr/>
+        <hr>
 
         <p><b>Phone:</b> ${customerPhone}</p>
+        <p><b>Message:</b> ${message || "-"}</p>
 
-        <p>Best regards,<br/>Svaneti Travel Hub</p>
+        <br>
+
+        <p>Svaneti Travel Hub</p>
       `,
     });
 
-    // შენთვის
+    // Email to admin
     await resend.emails.send({
       from: "Svaneti Travel Hub <onboarding@resend.dev>",
-      to: "nanaasatiani68@gmail.com", // აქ ჩაწერე შენი ელფოსტა თუ სხვა გინდა
-      subject: "📩 New Booking",
+      to: "nanaasatiani68@gmail.com",
+      subject: "New Booking",
       html: `
-        <h2>New Booking Received</h2>
+        <h2>New Booking</h2>
 
         <p><b>Name:</b> ${customerName}</p>
-
         <p><b>Email:</b> ${customerEmail}</p>
-
         <p><b>Phone:</b> ${customerPhone}</p>
+        <p><b>Message:</b> ${message || "-"}</p>
       `,
     });
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
     });
-
   } catch (error) {
     console.error(error);
 
-    return Response.json(
+    return NextResponse.json(
       {
         success: false,
+        error: "Failed to send email",
       },
       {
         status: 500,
