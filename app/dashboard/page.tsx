@@ -1,107 +1,92 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      setEmail(user.email || "");
-    };
-
-    checkUser();
-  }, [router]);
-
-  const logout = async () => {
+  async function logout() {
     await supabase.auth.signOut();
     router.push("/login");
-  };
+  }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#f5f5f5",
-        padding: "40px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          background: "#fff",
-          borderRadius: "12px",
-          padding: "30px",
-          boxShadow: "0 0 15px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h1>👋 კეთილი იყოს თქვენი მობრძანება</h1>
+    <main className="min-h-screen bg-slate-100 p-10">
+      <div className="max-w-5xl mx-auto">
 
-        <p>
-          <strong>შესული მომხმარებელი:</strong> {email}
+        <h1 className="text-4xl font-bold mb-2">
+          👋 Welcome to your Dashboard
+        </h1>
+
+        <p className="text-gray-600 mb-10">
+          Manage your profile, tours and bookings.
         </p>
 
-        <hr style={{ margin: "25px 0" }} />
+        <div className="grid md:grid-cols-3 gap-6">
 
-        <button
-          onClick={() => router.push("/dashboard/add-tour")}
-          style={{
-            padding: "15px 25px",
-            background: "#0ea5e9",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "16px",
-            marginRight: "15px",
-          }}
-        >
-          ➕ ტურის დამატება
-        </button>
+          <Link
+            href="/profile"
+            className="bg-white rounded-xl p-6 shadow hover:shadow-lg"
+          >
+            <h2 className="text-2xl font-bold">👤 My Profile</h2>
+            <p className="mt-2 text-gray-600">
+              Edit your personal information.
+            </p>
+          </Link>
 
-        <button
-          onClick={() => router.push("/dashboard/my-tours")}
-          style={{
-            padding: "15px 25px",
-            background: "#10b981",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "16px",
-            marginRight: "15px",
-          }}
-        >
-          📋 ჩემი ტურები
-        </button>
+          <Link
+            href="/dashboard/my-tours"
+            className="bg-white rounded-xl p-6 shadow hover:shadow-lg"
+          >
+            <h2 className="text-2xl font-bold">🏔️ My Tours</h2>
+            <p className="mt-2 text-gray-600">
+              View and manage your tours.
+            </p>
+          </Link>
 
-        <button
-          onClick={logout}
-          style={{
-            padding: "15px 25px",
-            background: "#ef4444",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "16px",
-          }}
-        >
-          🚪 გასვლა
-        </button>
+          <Link
+            href="/dashboard/add-tour"
+            className="bg-white rounded-xl p-6 shadow hover:shadow-lg"
+          >
+            <h2 className="text-2xl font-bold">➕ Add Tour</h2>
+            <p className="mt-2 text-gray-600">
+              Publish a new tour.
+            </p>
+          </Link>
+
+          <Link
+            href="/dashboard/bookings"
+            className="bg-white rounded-xl p-6 shadow hover:shadow-lg"
+          >
+            <h2 className="text-2xl font-bold">📅 My Bookings</h2>
+            <p className="mt-2 text-gray-600">
+              See all your bookings.
+            </p>
+          </Link>
+
+          <Link
+            href="/dashboard/favorites"
+            className="bg-white rounded-xl p-6 shadow hover:shadow-lg"
+          >
+            <h2 className="text-2xl font-bold">❤️ Favorites</h2>
+            <p className="mt-2 text-gray-600">
+              Saved tours and hotels.
+            </p>
+          </Link>
+
+          <button
+            onClick={logout}
+            className="bg-red-500 text-white rounded-xl p-6 hover:bg-red-600"
+          >
+            <h2 className="text-2xl font-bold">🚪 Logout</h2>
+            <p className="mt-2">
+              Sign out of your account.
+            </p>
+          </button>
+
+        </div>
       </div>
     </main>
   );
