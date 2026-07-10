@@ -1,76 +1,197 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabase";
 
 export default function AddTransferPage() {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState("");
+
+  const [fromLocation, setFromLocation] = useState("");
+  const [toLocation, setToLocation] = useState("");
   const [price, setPrice] = useState("");
   const [vehicle, setVehicle] = useState("");
   const [seats, setSeats] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      setUserId(user.id);
+    };
+
+    getUser();
+  }, [router]);
+
+  const addTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      !fromLocation.trim() ||
+      !toLocation.trim() ||
+      !price.trim()
+    ) {
+      alert("გთხოვ შეავსო აუცილებელი ველები.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.from("transfers").insert({
+      user_id: userId,
+      from_location: fromLocation,
+      to_location: toLocation,
+      price: Number(price),
+      vehicle,
+      seats: seats ? Number(seats) : null,
+      description,
+      image_url: imageUrl,
+      status: "pending",
+    });
+
+    setLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("✅ ტრანსფერი წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას.");
+
+    router.push("/dashboard");
+  };
 
   return (
-    <main className="min-h-screen bg-gray-100 p-10">
-      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-xl">
-
-        <h1 className="mb-8 text-4xl font-bold">
-          🚐 ახალი ტრანსფერის დამატება
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#f5f5f5",
+        padding: "40px",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "700px",
+          margin: "0 auto",
+          background: "#fff",
+          padding: "30px",
+          borderRadius: "12px",
+          boxShadow: "0 5px 15px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h1 style={{ marginBottom: "20px" }}>
+          🚐 ტრანსფერის დამატება
         </h1>
 
-        <div className="grid gap-5">
-
-          <input
-            className="rounded-xl border p-4"
+        <form
+          onSubmit={addTransfer}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "15px",
+          }}
+        >          <input
+            type="text"
             placeholder="საიდან"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            value={fromLocation}
+            onChange={(e) => setFromLocation(e.target.value)}
+            style={{ padding: "12px" }}
+            required
           />
 
           <input
-            className="rounded-xl border p-4"
+            type="text"
             placeholder="სადამდე"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
+            value={toLocation}
+            onChange={(e) => setToLocation(e.target.value)}
+            style={{ padding: "12px" }}
+            required
           />
 
           <input
-            className="rounded-xl border p-4"
+            type="number"
             placeholder="ფასი (₾)"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            style={{ padding: "12px" }}
+            required
           />
 
           <input
-            className="rounded-xl border p-4"
+            type="text"
             placeholder="მანქანა"
             value={vehicle}
             onChange={(e) => setVehicle(e.target.value)}
+            style={{ padding: "12px" }}
           />
 
           <input
-            className="rounded-xl border p-4"
+            type="number"
             placeholder="ადგილების რაოდენობა"
             value={seats}
             onChange={(e) => setSeats(e.target.value)}
+            style={{ padding: "12px" }}
           />
 
           <textarea
-            className="rounded-xl border p-4"
-            rows={5}
-            placeholder="აღწერა"
+            placeholder="ტრანსფერის აღწერა"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            rows={5}
+            style={{ padding: "12px" }}
+          />
+
+          <input
+            type="text"
+            placeholder="ფოტოს URL"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            style={{ padding: "12px" }}
           />
 
           <button
-            className="rounded-xl bg-sky-500 p-4 font-bold text-white hover:bg-sky-600"
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: "15px",
+              background: "#0ea5e9",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
           >
-            ტრანსფერის დამატება
+            {loading ? "იტვირთება..." : "ტრანსფერის დამატება"}
           </button>
 
-        </div>
-
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            style={{
+              padding: "15px",
+              background: "#64748b",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "16px",
+            }}
+          >
+            უკან დაბრუნება
+          </button>        </form>
       </div>
     </main>
   );
