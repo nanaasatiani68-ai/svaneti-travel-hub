@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const stats = [
   {
     title: "დაჯავშნები",
@@ -5,6 +7,7 @@ const stats = [
     note: "+12% ამ კვირაში",
     color: "from-sky-500 to-cyan-400",
     icon: "📋",
+    href: "/admin-v2/bookings",
   },
   {
     title: "შემოსავალი",
@@ -12,6 +15,7 @@ const stats = [
     note: "+18% ამ თვეში",
     color: "from-green-500 to-emerald-400",
     icon: "💰",
+    href: "/admin-v2/payments",
   },
   {
     title: "მომხმარებლები",
@@ -19,6 +23,7 @@ const stats = [
     note: "24 ახალი",
     color: "from-purple-500 to-violet-400",
     icon: "👥",
+    href: "/admin-v2/users",
   },
   {
     title: "ტურები",
@@ -26,6 +31,7 @@ const stats = [
     note: "6 აქტიური",
     color: "from-orange-500 to-red-400",
     icon: "🏔️",
+    href: "/admin-v2/tours",
   },
 ];
 
@@ -91,97 +97,99 @@ const activities = [
 
 export default function AdminV2Page() {
   return (
-    <div className="space-y-8">
-      <section className="rounded-3xl bg-white/10 border border-white/20 p-8 backdrop-blur-xl shadow-2xl">
-        <span className="inline-block bg-cyan-500 text-white px-4 py-1 rounded-full text-sm font-semibold mb-4 shadow-lg">
+    <div className="space-y-8 p-4 sm:p-6 lg:p-8">
+      <section className="rounded-3xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
+        <span className="mb-4 inline-block rounded-full bg-cyan-500 px-4 py-1 text-sm font-semibold text-white shadow-lg">
           🏔️ სვანეთის ტურისტული ცენტრი
         </span>
 
-        <h1 className="text-5xl font-extrabold text-white">
+        <h1 className="text-4xl font-extrabold text-white sm:text-5xl">
           კეთილი იყოს შენი დაბრუნება, ნანა 👋
         </h1>
 
-        <p className="text-white/80 mt-4 text-lg">
-          მართე ჯავშნები, ტურები, მომხმარებლები და მთელი პლატფორმა ერთი ადგილიდან.
+        <p className="mt-4 text-lg text-white/80">
+          მართე ჯავშნები, ტურები, მომხმარებლები და მთელი პლატფორმა ერთი
+          ადგილიდან.
         </p>
 
-        <p className="text-white/60 mt-2">
+        <p className="mt-2 text-white/60">
           დღეს ახალი თავგადასავლების დასაწყისია.
         </p>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      {/* დიდი ფერადი ბარათები */}
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((item) => (
-          <div
+          <Link
             key={item.title}
-            className={`rounded-3xl p-6 text-white shadow-2xl bg-gradient-to-br ${item.color} hover:scale-105 transition-all duration-300`}
+            href={item.href}
+            className={`block cursor-pointer rounded-3xl bg-gradient-to-br p-6 text-white shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] ${item.color}`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white/80">{item.title}</p>
-                <h2 className="text-4xl font-bold mt-3">{item.value}</h2>
-                <p className="text-white/75 mt-2 text-sm">{item.note}</p>
+
+                <h2 className="mt-3 text-4xl font-bold">
+                  {item.value}
+                </h2>
+
+                <p className="mt-2 text-sm text-white/75">
+                  {item.note}
+                </p>
               </div>
 
               <div className="text-5xl">{item.icon}</div>
             </div>
-          </div>
+          </Link>
         ))}
-      </section>      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      </section>
 
-        <div className="xl:col-span-2 rounded-3xl bg-white/10 border border-white/20 p-6 backdrop-blur-xl shadow-2xl">
-
-          <div className="flex items-center justify-between mb-8">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl xl:col-span-2">
+          <div className="mb-8 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">
               📈 შემოსავლების მიმოხილვა
             </h2>
 
-            <span className="text-cyan-300 font-semibold">
+            <span className="font-semibold text-cyan-300">
               ბოლო 6 თვე
             </span>
           </div>
 
-          <div className="flex items-end justify-between h-72 gap-4">
-
+          <div className="flex h-72 items-end justify-between gap-4">
             {revenueData.map((item) => (
               <div
                 key={item.month}
-                className="flex flex-col items-center flex-1"
+                className="flex flex-1 flex-col items-center"
               >
                 <div
                   style={{
                     height: `${item.value * 2}px`,
                   }}
-                  className="w-full rounded-t-3xl bg-gradient-to-t from-cyan-600 to-sky-400 shadow-xl hover:scale-105 transition"
+                  className="w-full rounded-t-3xl bg-gradient-to-t from-cyan-600 to-sky-400 shadow-xl transition hover:scale-105"
                 />
 
-                <span className="text-white/70 mt-4">
+                <span className="mt-4 text-white/70">
                   {item.month}
                 </span>
               </div>
             ))}
-
           </div>
-
         </div>
 
-        <div className="rounded-3xl bg-white/10 border border-white/20 p-6 backdrop-blur-xl shadow-2xl">
-
-          <h2 className="text-2xl font-bold text-white mb-6">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <h2 className="mb-6 text-2xl font-bold text-white">
             📅 დღეს
           </h2>
 
           <div className="space-y-5">
-
             {todayItems.map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between bg-white/5 rounded-2xl p-4"
+                className="flex items-center justify-between rounded-2xl bg-white/5 p-4"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">
-                    {item.icon}
-                  </span>
+                  <span className="text-2xl">{item.icon}</span>
 
                   <span className="text-white">
                     {item.label}
@@ -191,52 +199,50 @@ export default function AdminV2Page() {
                 <span className="font-bold text-cyan-300">
                   {item.value}
                 </span>
-
               </div>
             ))}
-
           </div>
-
         </div>
+      </section>
 
-      </section>      <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        <div className="rounded-3xl bg-white/10 border border-white/20 p-6 backdrop-blur-xl shadow-2xl">
-
-          <div className="flex items-center justify-between mb-6">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">
               📋 ბოლო ჯავშნები
             </h2>
 
-            <button className="text-cyan-300 hover:text-cyan-200 transition">
+            <Link
+              href="/admin-v2/bookings"
+              className="text-cyan-300 transition hover:text-cyan-200"
+            >
               ყველას ნახვა →
-            </button>
+            </Link>
           </div>
 
           <div className="space-y-4">
-
             {latestBookings.map((booking) => (
               <div
                 key={booking.guest}
-                className="flex items-center justify-between rounded-2xl bg-white/5 p-4 hover:bg-white/10 transition"
+                className="flex items-center justify-between rounded-2xl bg-white/5 p-4 transition hover:bg-white/10"
               >
                 <div>
-                  <h3 className="text-white font-semibold">
+                  <h3 className="font-semibold text-white">
                     {booking.guest}
                   </h3>
 
-                  <p className="text-white/60 text-sm">
+                  <p className="text-sm text-white/60">
                     {booking.type}
                   </p>
                 </div>
 
                 <div className="text-right">
-                  <p className="text-cyan-300 font-bold">
+                  <p className="font-bold text-cyan-300">
                     {booking.price}
                   </p>
 
                   <span
-                    className={`inline-block mt-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                    className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold ${
                       booking.status === "Confirmed"
                         ? "bg-green-500/20 text-green-300"
                         : "bg-yellow-500/20 text-yellow-300"
@@ -245,17 +251,13 @@ export default function AdminV2Page() {
                     {booking.status}
                   </span>
                 </div>
-
               </div>
             ))}
-
           </div>
-
         </div>
 
-        <div className="rounded-3xl bg-white/10 border border-white/20 p-6 backdrop-blur-xl shadow-2xl">
-
-          <div className="flex items-center justify-between mb-6">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">
               🔔 ბოლო აქტივობა
             </h2>
@@ -266,121 +268,109 @@ export default function AdminV2Page() {
           </div>
 
           <div className="space-y-4">
-
             {activities.map((activity) => (
               <div
                 key={activity}
-                className="flex items-center gap-4 rounded-2xl bg-white/5 p-4 hover:bg-white/10 transition"
+                className="flex items-center gap-4 rounded-2xl bg-white/5 p-4 transition hover:bg-white/10"
               >
-                <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse"></div>
+                <div className="h-3 w-3 animate-pulse rounded-full bg-cyan-400" />
 
                 <span className="text-white/80">
                   {activity}
                 </span>
-
               </div>
             ))}
-
           </div>
-
         </div>
+      </section>
 
-      </section>      <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        <div className="rounded-3xl bg-white/10 border border-white/20 p-6 backdrop-blur-xl shadow-2xl">
-
-          <h2 className="text-2xl font-bold text-white mb-6">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <h2 className="mb-6 text-2xl font-bold text-white">
             ⚡ Quick Actions
           </h2>
 
-          <div className="grid grid-cols-2 gap-4">
-
-            <button className="rounded-2xl bg-cyan-500 hover:bg-cyan-600 transition p-5 font-semibold">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Link
+              href="/admin-v2/bookings"
+              className="rounded-2xl bg-cyan-500 p-5 text-center font-semibold transition hover:bg-cyan-600"
+            >
               ➕ ახალი ჯავშანი
-            </button>
+            </Link>
 
-            <button className="rounded-2xl bg-green-500 hover:bg-green-600 transition p-5 font-semibold">
-              🏔️ ახალი ტური
-            </button>
+            <Link
+              href="/admin-v2/tours"
+              className="rounded-2xl bg-green-500 p-5 text-center font-semibold transition hover:bg-green-600"
+            >
+              🏔️ ტურების მართვა
+            </Link>
 
-            <button className="rounded-2xl bg-purple-500 hover:bg-purple-600 transition p-5 font-semibold">
-              👤 მომხმარებლის დამატება
-            </button>
+            <Link
+              href="/admin-v2/users"
+              className="rounded-2xl bg-purple-500 p-5 text-center font-semibold transition hover:bg-purple-600"
+            >
+              👤 მომხმარებლების მართვა
+            </Link>
 
-            <button className="rounded-2xl bg-orange-500 hover:bg-orange-600 transition p-5 font-semibold">
+            <Link
+              href="/admin-v2/emails"
+              className="rounded-2xl bg-orange-500 p-5 text-center font-semibold transition hover:bg-orange-600"
+            >
               📧 ელფოსტის გაგზავნა
-            </button>
-
+            </Link>
           </div>
-
         </div>
 
-        <div className="rounded-3xl bg-white/10 border border-white/20 p-6 backdrop-blur-xl shadow-2xl">
-
-          <h2 className="text-2xl font-bold text-white mb-6">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <h2 className="mb-6 text-2xl font-bold text-white">
             🌤️ Mestia Weather
           </h2>
 
           <div className="flex items-center justify-between">
-
             <div>
-
               <h3 className="text-6xl font-bold text-white">
                 18°
               </h3>
 
-              <p className="text-white/70 mt-3">
+              <p className="mt-3 text-white/70">
                 Sunny • Mestia
               </p>
 
-              <p className="text-white/50 mt-2">
+              <p className="mt-2 text-white/50">
                 Perfect day for hiking.
               </p>
-
             </div>
 
             <div className="text-8xl">
               ☀️
             </div>
-
           </div>
-
         </div>
-
       </section>
 
       <footer className="rounded-3xl bg-gradient-to-r from-cyan-600 to-blue-600 p-8 shadow-2xl">
-
-        <div className="flex items-center justify-between">
-
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-
             <h2 className="text-3xl font-bold text-white">
-              🚀 Svaneti Travel Hub
+              🚀 Georgia Travel Hub
             </h2>
 
-            <p className="text-cyan-100 mt-2">
+            <p className="mt-2 text-cyan-100">
               Admin Dashboard v2 • Public Beta
             </p>
-
           </div>
 
-          <div className="text-right">
-
+          <div className="sm:text-right">
             <p className="text-cyan-100">
               Built with ❤️ by Nana Asatiani
             </p>
 
-            <p className="text-white font-bold mt-2">
+            <p className="mt-2 font-bold text-white">
               Version 2.0
             </p>
-
           </div>
-
         </div>
-
       </footer>
-
     </div>
   );
 }
