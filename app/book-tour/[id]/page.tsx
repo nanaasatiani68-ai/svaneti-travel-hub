@@ -1,13 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import Link from "next/link";<Link
-  href={`/book-tour/${tour.id}`}
-  className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
->
-  დაჯავშნა
-</Link>
 import { supabase } from "@/app/lib/supabase";
 
 type Tour = {
@@ -41,7 +36,10 @@ export default function BookTourPage() {
 
   useEffect(() => {
     async function loadTour() {
-      if (!Number.isInteger(tourId)) {
+      setLoadingTour(true);
+      setErrorMessage("");
+
+      if (!Number.isInteger(tourId) || tourId < 1) {
         setErrorMessage("ტურის ID არასწორია.");
         setLoadingTour(false);
         return;
@@ -68,7 +66,7 @@ export default function BookTourPage() {
 
       if (error) {
         console.error("Tour loading error:", error);
-        setErrorMessage("ტურის ჩატვირთვა ვერ მოხერხდა.");
+        setErrorMessage(`ტურის ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
         setLoadingTour(false);
         return;
       }
@@ -122,7 +120,7 @@ export default function BookTourPage() {
       return;
     }
 
-    if (people < 1) {
+    if (!Number.isInteger(people) || people < 1) {
       setErrorMessage("სტუმრების რაოდენობა უნდა იყოს მინიმუმ 1.");
       return;
     }
@@ -138,7 +136,12 @@ export default function BookTourPage() {
 
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
+
+    if (userError) {
+      console.error("User loading error:", userError);
+    }
 
     const { error } = await supabase.from("bookings").insert({
       tour_id: tour.id,
@@ -148,7 +151,7 @@ export default function BookTourPage() {
       guest_phone: guestPhone.trim(),
       booking_date: bookingDate,
       people,
-      total_price: totalPrice,
+      total_price: tour.price !== null ? totalPrice : null,
       notes: notes.trim() || null,
       status: "pending",
     });
@@ -190,13 +193,9 @@ export default function BookTourPage() {
         <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/10 p-8 text-center shadow-2xl backdrop-blur-xl">
           <div className="mb-4 text-6xl">🏔️</div>
 
-          <h1 className="text-2xl font-bold">
-            ტური ვერ მოიძებნა
-          </h1>
+          <h1 className="text-2xl font-bold">ტური ვერ მოიძებნა</h1>
 
-          <p className="mt-3 text-white/70">
-            {errorMessage}
-          </p>
+          <p className="mt-3 text-white/70">{errorMessage}</p>
 
           <Link
             href="/"
@@ -220,7 +219,6 @@ export default function BookTourPage() {
         </Link>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_460px]">
-          {/* ტურის ინფორმაცია */}
           <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl backdrop-blur-xl">
             {tour.image_url ? (
               <img
@@ -278,9 +276,7 @@ export default function BookTourPage() {
               </div>
 
               <div className="mt-8">
-                <h2 className="text-2xl font-bold">
-                  ტურის აღწერა
-                </h2>
+                <h2 className="text-2xl font-bold">ტურის აღწერა</h2>
 
                 <p className="mt-4 whitespace-pre-line leading-8 text-white/70">
                   {tour.description || "ტურის აღწერა არ არის დამატებული."}
@@ -289,7 +285,6 @@ export default function BookTourPage() {
             </div>
           </section>
 
-          {/* დაჯავშნის ფორმა */}
           <section className="h-fit rounded-3xl border border-white/10 bg-white p-6 text-slate-900 shadow-2xl sm:p-8 lg:sticky lg:top-6">
             <div className="mb-7">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-cyan-600">
@@ -313,7 +308,8 @@ export default function BookTourPage() {
                 </p>
 
                 <p className="mt-2 text-sm">
-                  ადმინისტრატორი დაგიკავშირდება მითითებულ ტელეფონზე ან ელფოსტაზე.
+                  ადმინისტრატორი დაგიკავშირდება მითითებულ ტელეფონზე ან
+                  ელფოსტაზე.
                 </p>
               </div>
             )}
@@ -376,9 +372,10 @@ export default function BookTourPage() {
                     min={1}
                     max={tour.max_people || undefined}
                     value={people}
-                    onChange={(event) =>
-                      setPeople(Math.max(1, Number(event.target.value)))
-                    }
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      setPeople(Number.isNaN(value) ? 1 : Math.max(1, value));
+                    }}
                     required
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                   />
@@ -396,7 +393,7 @@ export default function BookTourPage() {
               </FormField>
 
               <div className="rounded-2xl bg-slate-100 p-5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <span className="text-slate-500">
                     ფასი ერთ ადამიანზე
                   </span>
@@ -408,21 +405,17 @@ export default function BookTourPage() {
                   </span>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 flex items-center justify-between gap-4">
                   <span className="text-slate-500">
                     სტუმრების რაოდენობა
                   </span>
 
-                  <span className="font-bold">
-                    {people}
-                  </span>
+                  <span className="font-bold">{people}</span>
                 </div>
 
                 <div className="mt-4 border-t border-slate-300 pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold">
-                      ჯამური ფასი
-                    </span>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-lg font-bold">ჯამური ფასი</span>
 
                     <span className="text-2xl font-extrabold text-cyan-700">
                       {tour.price !== null
@@ -474,9 +467,7 @@ function InfoBox({
             {label}
           </p>
 
-          <p className="mt-1 font-semibold text-white">
-            {value}
-          </p>
+          <p className="mt-1 font-semibold text-white">{value}</p>
         </div>
       </div>
     </div>
@@ -488,7 +479,7 @@ function FormField({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block">
