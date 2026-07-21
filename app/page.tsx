@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+type Language = "ka" | "en";
+
 type Tour = {
   id: number | string;
   title: string | null;
@@ -19,17 +21,256 @@ type Tour = {
   created_at: string | null;
 };
 
-const categories = [
-  "ყველა",
-  "Hiking",
-  "Jeep Tour",
-  "Horse Riding",
-  "Cultural",
-  "Adventure",
+const translations = {
+  ka: {
+    betaTitle: "კეთილი იყოს თქვენი მობრძანება Public Beta-ზე",
+    betaText:
+      "Georgia Travel Hub ყოველდღიურად ვითარდება. დაათვალიერე ტურები, ტრანსფერები, სასტუმროები და დაგეგმე მოგზაურობა საქართველოში.",
+    exploreNow: "საიტის დათვალიერება",
+
+    discoverGeorgia: "აღმოაჩინე საქართველო",
+    tours: "ტურები",
+    services: "სერვისები",
+    allTours: "ყველა ტური",
+    addTour: "ტურის დამატება",
+    login: "შესვლა",
+    signup: "რეგისტრაცია",
+
+    menu: "მენიუ",
+    closeMenu: "მენიუს დახურვა",
+
+    heroBadge: "ტურები • სასტუმროები • ტრანსფერები • გიდები",
+    heroTitle: "აღმოაჩინე საქართველო ერთ სივრცეში",
+    heroText:
+      "მოძებნე ტური, შეადარე ფასები, ნახე მარშრუტები და დაჯავშნე სასურველი გამოცდილება რეგისტრაციის გარეშე.",
+
+    searchPlaceholder: "მოძებნე ტური, ადგილი ან კატეგორია...",
+    allLocations: "ყველა მდებარეობა",
+    search: "ძებნა",
+    viewAllTours: "ყველა ტურის ნახვა",
+    addYourTour: "დაამატე შენი ტური",
+
+    availableTours: "ხელმისაწვდომი ტური",
+    locations: "მდებარეობა",
+    onlineBooking: "ონლაინ დაჯავშნა",
+    localExperience: "ადგილობრივი გამოცდილება",
+
+    categoriesLabel: "კატეგორიები",
+    categoriesTitle: "რა ტიპის მოგზაურობა გსურს?",
+
+    allCategory: "ყველა",
+    hiking: "ლაშქრობა",
+    jeepTour: "ჯიპ-ტური",
+    horseRiding: "ცხენით გასეირნება",
+    cultural: "კულტურული",
+    adventure: "სათავგადასავლო",
+
+    toursLabel: "ტურები",
+    toursTitle: "იპოვე სასურველი ტური",
+    toursFound: "ნაპოვნია",
+    tourWord: "ტური",
+    clearFilters: "ფილტრების გასუფთავება",
+
+    loadingTours: "ტურები იტვირთება...",
+    noToursTitle: "ტური ვერ მოიძებნა",
+    noToursText: "შეცვალე საძიებო სიტყვა ან ფილტრები.",
+    loadingError: "ტურების ჩატვირთვა ვერ მოხერხდა",
+
+    available: "ხელმისაწვდომია",
+    georgia: "საქართველო",
+    notSpecified: "არ არის მითითებული",
+    maxPeople: "მაქს.",
+    people: "ადამიანი",
+    peopleUnknown: "რაოდენობა უცნობია",
+    newOffer: "ახალი შეთავაზება",
+    pricePerPerson: "ფასი ერთ ადამიანზე",
+    negotiable: "შეთანხმებით",
+    book: "დაჯავშნა",
+    addFavorite: "ფავორიტებში დამატება",
+
+    recommended: "რეკომენდებული",
+    popularTours: "პოპულარული ტურები",
+    popular: "პოპულარული",
+
+    everythingInOnePlace: "ყველაფერი ერთ სივრცეში",
+    planFullTrip: "დაგეგმე სრული მოგზაურობა",
+    planFullTripText:
+      "აირჩიე ტური, ტრანსფერი, სასტუმრო ან ადგილობრივი გიდი.",
+
+    transfers: "ტრანსფერები",
+    hotels: "სასტუმროები",
+    guides: "ადგილობრივი გიდები",
+
+    toursDescription:
+      "ლაშქრობა, ჯიპ-ტურები, ცხენით გასეირნება და კულტურული მარშრუტები.",
+    transfersDescription:
+      "აეროპორტის, მესტიის, უშგულისა და კერძო ტრანსფერები.",
+    hotelsDescription:
+      "სასტუმროები, საოჯახო სახლები და უნიკალური განთავსების ობიექტები.",
+    guidesDescription:
+      "იპოვე გამოცდილი გიდი სხვადასხვა ენასა და რეგიონში.",
+
+    viewTours: "ტურების ნახვა",
+    viewTransfers: "ტრანსფერების ნახვა",
+    viewHotels: "სასტუმროების ნახვა",
+    viewGuides: "გიდების ნახვა",
+
+    ownTourTitle: "გაქვს საკუთარი ტური?",
+    ownTourText:
+      "დარეგისტრირდი, დაამატე ტური და მიიღე ონლაინ ჯავშნები ტურისტებისგან.",
+
+    footerDescription:
+      "ტურების, ტრანსფერების, სასტუმროებისა და ადგილობრივი გამოცდილებების პლატფორმა.",
+    quickLinks: "სწრაფი ბმულები",
+    forTourOwners: "ტურის მფლობელებისთვის",
+    userDashboard: "მომხმარებლის პანელი",
+    madeInGeorgia: "დამზადებულია საქართველოში ❤️",
+  },
+
+  en: {
+    betaTitle: "Welcome to Public Beta",
+    betaText:
+      "Georgia Travel Hub is growing every day. Explore tours, transfers and hotels, and plan your journey across Georgia.",
+    exploreNow: "Explore Now",
+
+    discoverGeorgia: "Discover Georgia",
+    tours: "Tours",
+    services: "Services",
+    allTours: "All Tours",
+    addTour: "Add Tour",
+    login: "Login",
+    signup: "Create Account",
+
+    menu: "Menu",
+    closeMenu: "Close menu",
+
+    heroBadge: "Tours • Hotels • Transfers • Guides",
+    heroTitle: "Discover Georgia in One Place",
+    heroText:
+      "Find tours, compare prices, explore routes and book your preferred experience without registration.",
+
+    searchPlaceholder: "Search by tour, location or category...",
+    allLocations: "All locations",
+    search: "Search",
+    viewAllTours: "View All Tours",
+    addYourTour: "Add Your Tour",
+
+    availableTours: "Available tours",
+    locations: "Locations",
+    onlineBooking: "Online booking",
+    localExperience: "Local experience",
+
+    categoriesLabel: "Categories",
+    categoriesTitle: "What kind of journey are you looking for?",
+
+    allCategory: "All",
+    hiking: "Hiking",
+    jeepTour: "Jeep Tour",
+    horseRiding: "Horse Riding",
+    cultural: "Cultural",
+    adventure: "Adventure",
+
+    toursLabel: "Tours",
+    toursTitle: "Find Your Perfect Tour",
+    toursFound: "Found",
+    tourWord: "tours",
+    clearFilters: "Clear Filters",
+
+    loadingTours: "Loading tours...",
+    noToursTitle: "No tours found",
+    noToursText: "Try changing the search term or filters.",
+    loadingError: "Tours could not be loaded",
+
+    available: "Available",
+    georgia: "Georgia",
+    notSpecified: "Not specified",
+    maxPeople: "Max.",
+    people: "people",
+    peopleUnknown: "Capacity unknown",
+    newOffer: "New offer",
+    pricePerPerson: "Price per person",
+    negotiable: "Contact for price",
+    book: "Book Now",
+    addFavorite: "Add to favorites",
+
+    recommended: "Recommended",
+    popularTours: "Popular Tours",
+    popular: "Popular",
+
+    everythingInOnePlace: "Everything in One Place",
+    planFullTrip: "Plan Your Complete Journey",
+    planFullTripText:
+      "Choose a tour, transfer, hotel or experienced local guide.",
+
+    transfers: "Transfers",
+    hotels: "Hotels",
+    guides: "Local Guides",
+
+    toursDescription:
+      "Hiking, jeep tours, horse riding and cultural routes.",
+    transfersDescription:
+      "Airport, Mestia, Ushguli and private transfers.",
+    hotelsDescription:
+      "Hotels, guesthouses and unique accommodation across Georgia.",
+    guidesDescription:
+      "Find an experienced guide by language and destination.",
+
+    viewTours: "View Tours",
+    viewTransfers: "View Transfers",
+    viewHotels: "View Hotels",
+    viewGuides: "View Guides",
+
+    ownTourTitle: "Do You Offer Tours?",
+    ownTourText:
+      "Create an account, add your tour and receive online bookings from travelers.",
+
+    footerDescription:
+      "A platform for tours, transfers, hotels and local experiences across Georgia.",
+    quickLinks: "Quick Links",
+    forTourOwners: "For Tour Owners",
+    userDashboard: "User Dashboard",
+    madeInGeorgia: "Made with ❤️ in Georgia",
+  },
+};
+
+const categoryOptions = [
+  {
+    value: "all",
+    ka: "ყველა",
+    en: "All",
+  },
+  {
+    value: "hiking",
+    ka: "ლაშქრობა",
+    en: "Hiking",
+  },
+  {
+    value: "jeep tour",
+    ka: "ჯიპ-ტური",
+    en: "Jeep Tour",
+  },
+  {
+    value: "horse riding",
+    ka: "ცხენით გასეირნება",
+    en: "Horse Riding",
+  },
+  {
+    value: "cultural",
+    ka: "კულტურული",
+    en: "Cultural",
+  },
+  {
+    value: "adventure",
+    ka: "სათავგადასავლო",
+    en: "Adventure",
+  },
 ];
 
 export default function Home() {
   const router = useRouter();
+
+  const [language, setLanguage] = useState<Language>("ka");
+  const [languageLoaded, setLanguageLoaded] = useState(false);
 
   const [showBeta, setShowBeta] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -39,8 +280,26 @@ export default function Home() {
   const [toursError, setToursError] = useState("");
 
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("ყველა");
-  const [selectedLocation, setSelectedLocation] = useState("ყველა");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("all");
+
+  const t = translations[language];
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem("site-language");
+
+    if (savedLanguage === "ka" || savedLanguage === "en") {
+      setLanguage(savedLanguage);
+    }
+
+    const betaClosed = sessionStorage.getItem("beta-closed");
+
+    if (betaClosed === "true") {
+      setShowBeta(false);
+    }
+
+    setLanguageLoaded(true);
+  }, []);
 
   useEffect(() => {
     async function loadApprovedTours() {
@@ -69,7 +328,8 @@ export default function Home() {
 
       if (error) {
         console.error("Tours loading error:", error);
-        setToursError(`ტურების ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
+
+        setToursError(`${t.loadingError}: ${error.message}`);
         setLoadingTours(false);
         return;
       }
@@ -79,7 +339,17 @@ export default function Home() {
     }
 
     loadApprovedTours();
-  }, []);
+  }, [t.loadingError]);
+
+  function changeLanguage(nextLanguage: Language) {
+    setLanguage(nextLanguage);
+    localStorage.setItem("site-language", nextLanguage);
+  }
+
+  function closeBetaModal() {
+    setShowBeta(false);
+    sessionStorage.setItem("beta-closed", "true");
+  }
 
   async function goToAddTour() {
     const {
@@ -103,37 +373,34 @@ export default function Home() {
       )
     );
 
-    return ["ყველა", ...uniqueLocations];
+    return uniqueLocations;
   }, [tours]);
 
   const filteredTours = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
     return tours.filter((tour) => {
+      const tourTitle = String(tour.title || "").toLowerCase();
+      const tourDescription = String(
+        tour.description || ""
+      ).toLowerCase();
+      const tourLocation = String(tour.location || "").toLowerCase();
+      const tourCategory = String(tour.category || "").toLowerCase();
+
       const matchesSearch =
         !searchValue ||
-        String(tour.title || "")
-          .toLowerCase()
-          .includes(searchValue) ||
-        String(tour.description || "")
-          .toLowerCase()
-          .includes(searchValue) ||
-        String(tour.location || "")
-          .toLowerCase()
-          .includes(searchValue) ||
-        String(tour.category || "")
-          .toLowerCase()
-          .includes(searchValue);
+        tourTitle.includes(searchValue) ||
+        tourDescription.includes(searchValue) ||
+        tourLocation.includes(searchValue) ||
+        tourCategory.includes(searchValue);
 
       const matchesCategory =
-        selectedCategory === "ყველა" ||
-        String(tour.category || "").toLowerCase() ===
-          selectedCategory.toLowerCase();
+        selectedCategory === "all" ||
+        tourCategory.includes(selectedCategory.toLowerCase());
 
       const matchesLocation =
-        selectedLocation === "ყველა" ||
-        String(tour.location || "").toLowerCase() ===
-          selectedLocation.toLowerCase();
+        selectedLocation === "all" ||
+        tourLocation === selectedLocation.toLowerCase();
 
       return matchesSearch && matchesCategory && matchesLocation;
     });
@@ -141,32 +408,49 @@ export default function Home() {
 
   const popularTours = tours.slice(0, 3);
 
-  const closeMobileMenu = () => {
+  function closeMobileMenu() {
     setMobileMenuOpen(false);
-  };
+  }
+
+  if (!languageLoaded) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="text-6xl">🏔️</div>
+          <p className="mt-4 font-semibold">Georgia Travel Hub</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       {showBeta && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-slate-900/90 p-7 text-center shadow-2xl sm:p-9">
+          <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-slate-900/95 p-7 text-center shadow-2xl sm:p-9">
             <div className="mb-4 text-5xl">🚀</div>
 
             <h2 className="text-2xl font-extrabold sm:text-3xl">
-              Welcome to Public Beta
+              {t.betaTitle}
             </h2>
 
             <p className="mt-4 leading-7 text-white/70">
-              Georgia Travel Hub ყოველდღიურად ვითარდება. დაათვალიერე ტურები,
-              ტრანსფერები, სასტუმროები და დაგეგმე მოგზაურობა საქართველოში.
+              {t.betaText}
             </p>
+
+            <div className="mt-6 flex justify-center">
+              <LanguageSwitcher
+                language={language}
+                changeLanguage={changeLanguage}
+              />
+            </div>
 
             <button
               type="button"
-              onClick={() => setShowBeta(false)}
+              onClick={closeBetaModal}
               className="mt-7 w-full rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600 sm:w-auto"
             >
-              საიტის დათვალიერება
+              {t.exploreNow}
             </button>
           </div>
         </div>
@@ -192,7 +476,7 @@ export default function Home() {
                 </h1>
 
                 <p className="text-xs text-white/60">
-                  Discover Georgia
+                  {t.discoverGeorgia}
                 </p>
               </div>
             </Link>
@@ -202,21 +486,21 @@ export default function Home() {
                 href="#tours"
                 className="font-semibold text-white/80 transition hover:text-cyan-300"
               >
-                ტურები
+                {t.tours}
               </a>
 
               <a
                 href="#services"
                 className="font-semibold text-white/80 transition hover:text-cyan-300"
               >
-                სერვისები
+                {t.services}
               </a>
 
               <Link
                 href="/tours"
                 className="font-semibold text-white/80 transition hover:text-cyan-300"
               >
-                ყველა ტური
+                {t.allTours}
               </Link>
 
               <button
@@ -224,23 +508,28 @@ export default function Home() {
                 onClick={goToAddTour}
                 className="font-semibold text-white/80 transition hover:text-cyan-300"
               >
-                ტურის დამატება
+                {t.addTour}
               </button>
             </nav>
 
             <div className="hidden items-center gap-3 lg:flex">
+              <LanguageSwitcher
+                language={language}
+                changeLanguage={changeLanguage}
+              />
+
               <Link
                 href="/login"
                 className="rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 font-semibold transition hover:bg-white/20"
               >
-                შესვლა
+                {t.login}
               </Link>
 
               <Link
                 href="/signup"
                 className="rounded-xl bg-emerald-500 px-5 py-2.5 font-semibold transition hover:bg-emerald-600"
               >
-                რეგისტრაცია
+                {t.signup}
               </Link>
             </div>
 
@@ -248,7 +537,7 @@ export default function Home() {
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-xl lg:hidden"
-              aria-label="Open menu"
+              aria-label={t.menu}
             >
               ☰
             </button>
@@ -259,22 +548,33 @@ export default function Home() {
           <>
             <button
               type="button"
-              aria-label="Close menu overlay"
+              aria-label={t.closeMenu}
               onClick={closeMobileMenu}
               className="fixed inset-0 z-[9998] bg-black/70 lg:hidden"
             />
 
-            <aside className="fixed bottom-0 right-0 top-0 z-[9999] w-[300px] max-w-[85vw] border-l border-white/10 bg-slate-950 p-5 shadow-2xl lg:hidden">
+            <aside className="fixed bottom-0 right-0 top-0 z-[9999] w-[300px] max-w-[85vw] overflow-y-auto border-l border-white/10 bg-slate-950 p-5 shadow-2xl lg:hidden">
               <div className="flex items-center justify-between">
-                <p className="font-extrabold">Georgia Travel Hub</p>
+                <p className="font-extrabold">
+                  Georgia Travel Hub
+                </p>
 
                 <button
                   type="button"
                   onClick={closeMobileMenu}
                   className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-xl"
+                  aria-label={t.closeMenu}
                 >
                   ✕
                 </button>
+              </div>
+
+              <div className="mt-6">
+                <LanguageSwitcher
+                  language={language}
+                  changeLanguage={changeLanguage}
+                  fullWidth
+                />
               </div>
 
               <nav className="mt-8 space-y-3">
@@ -283,7 +583,7 @@ export default function Home() {
                   onClick={closeMobileMenu}
                   className="block rounded-2xl bg-white/5 px-4 py-3 font-semibold"
                 >
-                  🏔️ ტურები
+                  🏔️ {t.tours}
                 </a>
 
                 <a
@@ -291,7 +591,7 @@ export default function Home() {
                   onClick={closeMobileMenu}
                   className="block rounded-2xl bg-white/5 px-4 py-3 font-semibold"
                 >
-                  🧭 სერვისები
+                  🧭 {t.services}
                 </a>
 
                 <Link
@@ -299,7 +599,7 @@ export default function Home() {
                   onClick={closeMobileMenu}
                   className="block rounded-2xl bg-white/5 px-4 py-3 font-semibold"
                 >
-                  📋 ყველა ტური
+                  📋 {t.allTours}
                 </Link>
 
                 <button
@@ -310,7 +610,7 @@ export default function Home() {
                   }}
                   className="block w-full rounded-2xl bg-white/5 px-4 py-3 text-left font-semibold"
                 >
-                  ➕ ტურის დამატება
+                  ➕ {t.addTour}
                 </button>
 
                 <Link
@@ -318,7 +618,7 @@ export default function Home() {
                   onClick={closeMobileMenu}
                   className="block rounded-2xl border border-white/10 px-4 py-3 text-center font-semibold"
                 >
-                  შესვლა
+                  {t.login}
                 </Link>
 
                 <Link
@@ -326,7 +626,7 @@ export default function Home() {
                   onClick={closeMobileMenu}
                   className="block rounded-2xl bg-emerald-500 px-4 py-3 text-center font-semibold"
                 >
-                  რეგისტრაცია
+                  {t.signup}
                 </Link>
               </nav>
             </aside>
@@ -336,16 +636,15 @@ export default function Home() {
         <div className="mx-auto flex min-h-[calc(100vh-89px)] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
           <div className="w-full max-w-5xl">
             <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-semibold backdrop-blur-xl">
-              ტურები • სასტუმროები • ტრანსფერები • გიდები
+              {t.heroBadge}
             </div>
 
             <h2 className="mt-6 max-w-4xl text-4xl font-black leading-tight drop-shadow-xl sm:text-6xl lg:text-7xl">
-              აღმოაჩინე საქართველო ერთ სივრცეში
+              {t.heroTitle}
             </h2>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/75 sm:text-xl">
-              მოძებნე ტური, შეადარე ფასები, ნახე მარშრუტები და დაჯავშნე
-              სასურველი გამოცდილება რეგისტრაციის გარეშე.
+              {t.heroText}
             </p>
 
             <div className="mt-9 rounded-3xl border border-white/15 bg-slate-950/50 p-4 shadow-2xl backdrop-blur-xl sm:p-5">
@@ -358,8 +657,10 @@ export default function Home() {
                   <input
                     type="text"
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="მოძებნე ტური, ადგილი ან კატეგორია..."
+                    onChange={(event) =>
+                      setSearch(event.target.value)
+                    }
+                    placeholder={t.searchPlaceholder}
                     className="w-full rounded-2xl border border-white/15 bg-white px-12 py-4 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
                   />
                 </div>
@@ -371,11 +672,14 @@ export default function Home() {
                   }
                   className="w-full rounded-2xl border border-white/15 bg-white px-4 py-4 font-semibold text-slate-900 outline-none focus:border-cyan-500"
                 >
+                  <option value="all">{t.allLocations}</option>
+
                   {locations.map((location) => (
-                    <option key={location} value={location}>
-                      {location === "ყველა"
-                        ? "ყველა მდებარეობა"
-                        : location}
+                    <option
+                      key={location}
+                      value={location.toLowerCase()}
+                    >
+                      {location}
                     </option>
                   ))}
                 </select>
@@ -384,7 +688,7 @@ export default function Home() {
                   href="#tours"
                   className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-7 py-4 font-extrabold text-white shadow-lg transition hover:bg-cyan-600"
                 >
-                  ძებნა
+                  {t.search}
                 </a>
               </div>
             </div>
@@ -394,7 +698,7 @@ export default function Home() {
                 href="/tours"
                 className="rounded-2xl bg-cyan-500 px-7 py-3.5 font-bold shadow-xl transition hover:bg-cyan-600"
               >
-                ყველა ტურის ნახვა
+                {t.viewAllTours}
               </Link>
 
               <button
@@ -402,7 +706,7 @@ export default function Home() {
                 onClick={goToAddTour}
                 className="rounded-2xl bg-emerald-500 px-7 py-3.5 font-bold shadow-xl transition hover:bg-emerald-600"
               >
-                ➕ დაამატე შენი ტური
+                ➕ {t.addYourTour}
               </button>
             </div>
           </div>
@@ -413,50 +717,59 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
             value={String(tours.length)}
-            label="ხელმისაწვდომი ტური"
+            label={t.availableTours}
             icon="🏔️"
           />
 
           <StatCard
-            value={String(locations.length - 1)}
-            label="მდებარეობა"
+            value={String(locations.length)}
+            label={t.locations}
             icon="📍"
           />
 
-          <StatCard value="24/7" label="ონლაინ დაჯავშნა" icon="📱" />
+          <StatCard
+            value="24/7"
+            label={t.onlineBooking}
+            icon="📱"
+          />
 
-          <StatCard value="100%" label="ადგილობრივი გამოცდილება" icon="🇬🇪" />
+          <StatCard
+            value="100%"
+            label={t.localExperience}
+            icon="🇬🇪"
+          />
         </div>
       </section>
 
       <section className="bg-slate-950 px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-              კატეგორიები
-            </p>
+          <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
+            {t.categoriesLabel}
+          </p>
 
-            <h2 className="mt-3 text-3xl font-black sm:text-4xl">
-              რა ტიპის მოგზაურობა გსურს?
-            </h2>
-          </div>
+          <h2 className="mt-3 text-3xl font-black sm:text-4xl">
+            {t.categoriesTitle}
+          </h2>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            {categories.map((category) => {
-              const active = selectedCategory === category;
+            {categoryOptions.map((category) => {
+              const active =
+                selectedCategory === category.value;
 
               return (
                 <button
-                  key={category}
+                  key={category.value}
                   type="button"
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() =>
+                    setSelectedCategory(category.value)
+                  }
                   className={`rounded-full px-5 py-3 text-sm font-bold transition ${
                     active
                       ? "bg-cyan-500 text-white"
                       : "border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  {category}
+                  {category[language]}
                 </button>
               );
             })}
@@ -472,31 +785,31 @@ export default function Home() {
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-                ტურები
+                {t.toursLabel}
               </p>
 
               <h2 className="mt-3 text-3xl font-black sm:text-4xl">
-                იპოვე სასურველი ტური
+                {t.toursTitle}
               </h2>
 
               <p className="mt-3 text-white/55">
-                ნაპოვნია {filteredTours.length} ტური
+                {t.toursFound} {filteredTours.length} {t.tourWord}
               </p>
             </div>
 
             {(search ||
-              selectedCategory !== "ყველა" ||
-              selectedLocation !== "ყველა") && (
+              selectedCategory !== "all" ||
+              selectedLocation !== "all") && (
               <button
                 type="button"
                 onClick={() => {
                   setSearch("");
-                  setSelectedCategory("ყველა");
-                  setSelectedLocation("ყველა");
+                  setSelectedCategory("all");
+                  setSelectedLocation("all");
                 }}
                 className="w-fit rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
               >
-                ფილტრების გასუფთავება
+                {t.clearFilters}
               </button>
             )}
           </div>
@@ -504,8 +817,9 @@ export default function Home() {
           {loadingTours && (
             <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-10 text-center">
               <div className="text-5xl">⏳</div>
+
               <p className="mt-4 text-lg font-semibold">
-                ტურები იტვირთება...
+                {t.loadingTours}
               </p>
             </div>
           )}
@@ -523,11 +837,11 @@ export default function Home() {
                 <div className="text-6xl">🔍</div>
 
                 <h3 className="mt-4 text-2xl font-bold">
-                  ტური ვერ მოიძებნა
+                  {t.noToursTitle}
                 </h3>
 
                 <p className="mt-2 text-white/50">
-                  შეცვალე საძიებო სიტყვა ან ფილტრები.
+                  {t.noToursText}
                 </p>
               </div>
             )}
@@ -537,36 +851,27 @@ export default function Home() {
             filteredTours.length > 0 && (
               <div className="mt-10 grid gap-7 md:grid-cols-2 xl:grid-cols-3">
                 {filteredTours.map((tour) => (
-                  <TourCard key={tour.id} tour={tour} />
+                  <TourCard
+                    key={tour.id}
+                    tour={tour}
+                    language={language}
+                  />
                 ))}
               </div>
             )}
-
-          {!loadingTours && !toursError && tours.length > 6 && (
-            <div className="mt-10 text-center">
-              <Link
-                href="/tours"
-                className="inline-flex rounded-2xl border border-white/15 bg-white/10 px-7 py-4 font-bold transition hover:bg-white/20"
-              >
-                ყველა ტურის სრულ გვერდზე ნახვა
-              </Link>
-            </div>
-          )}
         </div>
       </section>
 
       {popularTours.length > 0 && (
         <section className="bg-slate-900 px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.25em] text-emerald-400">
-                რეკომენდებული
-              </p>
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-emerald-400">
+              {t.recommended}
+            </p>
 
-              <h2 className="mt-3 text-3xl font-black sm:text-4xl">
-                პოპულარული ტურები
-              </h2>
-            </div>
+            <h2 className="mt-3 text-3xl font-black sm:text-4xl">
+              {t.popularTours}
+            </h2>
 
             <div className="mt-10 grid gap-7 lg:grid-cols-3">
               {popularTours.map((tour, index) => (
@@ -575,7 +880,7 @@ export default function Home() {
                   className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-2xl"
                 >
                   <div className="absolute left-4 top-4 z-10 rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-slate-950">
-                    #{index + 1} პოპულარული
+                    #{index + 1} {t.popular}
                   </div>
 
                   {tour.image_url ? (
@@ -592,25 +897,27 @@ export default function Home() {
 
                   <div className="p-6">
                     <h3 className="text-2xl font-extrabold">
-                      {tour.title || "უსახელო ტური"}
+                      {tour.title || t.tours}
                     </h3>
 
                     <p className="mt-3 text-white/60">
-                      📍 {tour.location || "საქართველო"}
+                      📍 {tour.location || t.georgia}
                     </p>
 
                     <div className="mt-6 flex items-center justify-between gap-4">
                       <p className="text-2xl font-black text-cyan-300">
                         {tour.price !== null
-                          ? `${Number(tour.price).toLocaleString()} ₾`
-                          : "შეთანხმებით"}
+                          ? `${Number(
+                              tour.price
+                            ).toLocaleString()} ₾`
+                          : t.negotiable}
                       </p>
 
                       <Link
                         href={`/book-tour/${tour.id}`}
                         className="rounded-xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
                       >
-                        დაჯავშნა
+                        {t.book}
                       </Link>
                     </div>
                   </div>
@@ -628,49 +935,49 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-              ყველაფერი ერთ სივრცეში
+              {t.everythingInOnePlace}
             </p>
 
             <h2 className="mt-3 text-3xl font-black sm:text-4xl">
-              დაგეგმე სრული მოგზაურობა
+              {t.planFullTrip}
             </h2>
 
             <p className="mx-auto mt-4 max-w-2xl leading-7 text-white/55">
-              აირჩიე ტური, ტრანსფერი, სასტუმრო ან ადგილობრივი გიდი.
+              {t.planFullTripText}
             </p>
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <ServiceCard
               icon="🏔️"
-              title="ტურები"
-              description="ლაშქრობა, ჯიპ-ტურები, ცხენით გასეირნება და კულტურული მარშრუტები."
+              title={t.tours}
+              description={t.toursDescription}
               href="/tours"
-              buttonText="ტურების ნახვა"
+              buttonText={t.viewTours}
             />
 
             <ServiceCard
               icon="🚐"
-              title="ტრანსფერები"
-              description="აეროპორტის, მესტიის, უშგულისა და კერძო ტრანსფერები."
+              title={t.transfers}
+              description={t.transfersDescription}
               href="/transfers"
-              buttonText="ტრანსფერების ნახვა"
+              buttonText={t.viewTransfers}
             />
 
             <ServiceCard
               icon="🏨"
-              title="სასტუმროები"
-              description="სასტუმროები, საოჯახო სახლები და უნიკალური განთავსების ობიექტები."
+              title={t.hotels}
+              description={t.hotelsDescription}
               href="/hotels"
-              buttonText="სასტუმროების ნახვა"
+              buttonText={t.viewHotels}
             />
 
             <ServiceCard
               icon="🧑‍💼"
-              title="ადგილობრივი გიდები"
-              description="იპოვე გამოცდილი გიდი სხვადასხვა ენასა და რეგიონში."
+              title={t.guides}
+              description={t.guidesDescription}
               href="/guides"
-              buttonText="გიდების ნახვა"
+              buttonText={t.viewGuides}
             />
           </div>
         </div>
@@ -680,11 +987,11 @@ export default function Home() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-7 text-center lg:flex-row lg:text-left">
           <div>
             <h2 className="text-3xl font-black sm:text-4xl">
-              გაქვს საკუთარი ტური?
+              {t.ownTourTitle}
             </h2>
 
             <p className="mt-3 max-w-2xl text-white/80">
-              დარეგისტრირდი, დაამატე ტური და მიიღე ონლაინ ჯავშნები ტურისტებისგან.
+              {t.ownTourText}
             </p>
           </div>
 
@@ -693,7 +1000,7 @@ export default function Home() {
             onClick={goToAddTour}
             className="w-full rounded-2xl bg-white px-8 py-4 font-black text-slate-950 shadow-xl transition hover:bg-slate-100 sm:w-auto"
           >
-            ➕ ტურის დამატება
+            ➕ {t.addTour}
           </button>
         </div>
       </section>
@@ -706,40 +1013,39 @@ export default function Home() {
             </h3>
 
             <p className="mt-3 max-w-sm leading-7 text-white/50">
-              ტურების, ტრანსფერების, სასტუმროებისა და ადგილობრივი
-              გამოცდილებების პლატფორმა.
+              {t.footerDescription}
             </p>
           </div>
 
           <div>
-            <h3 className="font-bold">სწრაფი ბმულები</h3>
+            <h3 className="font-bold">{t.quickLinks}</h3>
 
             <div className="mt-4 space-y-3 text-white/55">
               <Link
                 href="/tours"
                 className="block transition hover:text-white"
               >
-                ყველა ტური
+                {t.allTours}
               </Link>
 
               <Link
                 href="/login"
                 className="block transition hover:text-white"
               >
-                შესვლა
+                {t.login}
               </Link>
 
               <Link
                 href="/signup"
                 className="block transition hover:text-white"
               >
-                რეგისტრაცია
+                {t.signup}
               </Link>
             </div>
           </div>
 
           <div>
-            <h3 className="font-bold">ტურის მფლობელებისთვის</h3>
+            <h3 className="font-bold">{t.forTourOwners}</h3>
 
             <div className="mt-4 space-y-3 text-white/55">
               <button
@@ -747,32 +1053,47 @@ export default function Home() {
                 onClick={goToAddTour}
                 className="block transition hover:text-white"
               >
-                ტურის დამატება
+                {t.addTour}
               </button>
 
               <Link
                 href="/dashboard"
                 className="block transition hover:text-white"
               >
-                მომხმარებლის პანელი
+                {t.userDashboard}
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="mx-auto mt-10 max-w-7xl border-t border-white/10 pt-6 text-center text-sm text-white/40">
-          <p>© 2026 Georgia Travel Hub</p>
-          <p className="mt-1">Made with ❤️ in Georgia</p>
+        <div className="mx-auto mt-10 flex max-w-7xl flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-sm text-white/40 sm:flex-row">
+          <div>
+            <p>© 2026 Georgia Travel Hub</p>
+            <p className="mt-1">{t.madeInGeorgia}</p>
+          </div>
+
+          <LanguageSwitcher
+            language={language}
+            changeLanguage={changeLanguage}
+          />
         </div>
       </footer>
     </main>
   );
 }
 
-function TourCard({ tour }: { tour: Tour }) {
+function TourCard({
+  tour,
+  language,
+}: {
+  tour: Tour;
+  language: Language;
+}) {
+  const t = translations[language];
+
   return (
     <article className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/10">
-      <div className="relative">
+      <div className="relative overflow-hidden">
         {tour.image_url ? (
           <img
             src={tour.image_url}
@@ -794,7 +1115,7 @@ function TourCard({ tour }: { tour: Tour }) {
         <button
           type="button"
           className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-slate-950/80 text-xl backdrop-blur-xl transition hover:bg-red-500"
-          title="ფავორიტებში დამატება"
+          title={t.addFavorite}
         >
           ♡
         </button>
@@ -803,38 +1124,35 @@ function TourCard({ tour }: { tour: Tour }) {
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <h3 className="text-2xl font-extrabold">
-            {tour.title || "უსახელო ტური"}
+            {tour.title || t.tours}
           </h3>
 
           <span className="shrink-0 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">
-            ხელმისაწვდომია
+            {t.available}
           </span>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
           <TourInfo
             icon="📍"
-            value={tour.location || "საქართველო"}
+            value={tour.location || t.georgia}
           />
 
           <TourInfo
             icon="⏱️"
-            value={tour.duration || "არ არის მითითებული"}
+            value={tour.duration || t.notSpecified}
           />
 
           <TourInfo
             icon="👥"
             value={
               tour.max_people
-                ? `მაქს. ${tour.max_people}`
-                : "რაოდენობა უცნობია"
+                ? `${t.maxPeople} ${tour.max_people} ${t.people}`
+                : t.peopleUnknown
             }
           />
 
-          <TourInfo
-            icon="⭐"
-            value="ახალი შეთავაზება"
-          />
+          <TourInfo icon="⭐" value={t.newOffer} />
         </div>
 
         {tour.description && (
@@ -846,13 +1164,13 @@ function TourCard({ tour }: { tour: Tour }) {
         <div className="mt-7 flex items-end justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-white/35">
-              ფასი ერთ ადამიანზე
+              {t.pricePerPerson}
             </p>
 
             <p className="mt-1 text-2xl font-black text-cyan-300">
               {tour.price !== null
                 ? `${Number(tour.price).toLocaleString()} ₾`
-                : "შეთანხმებით"}
+                : t.negotiable}
             </p>
           </div>
 
@@ -860,7 +1178,7 @@ function TourCard({ tour }: { tour: Tour }) {
             href={`/book-tour/${tour.id}`}
             className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
           >
-            დაჯავშნა
+            {t.book}
           </Link>
         </div>
       </div>
@@ -900,7 +1218,9 @@ function ServiceCard({
     <article className="flex h-full flex-col rounded-3xl border border-white/10 bg-white/5 p-7 shadow-xl transition hover:-translate-y-1 hover:bg-white/10">
       <div className="text-5xl">{icon}</div>
 
-      <h3 className="mt-5 text-2xl font-extrabold">{title}</h3>
+      <h3 className="mt-5 text-2xl font-extrabold">
+        {title}
+      </h3>
 
       <p className="mt-3 flex-1 leading-7 text-white/55">
         {description}
@@ -936,6 +1256,52 @@ function StatCard({
       <p className="mt-1 text-xs text-white/50 sm:text-sm">
         {label}
       </p>
+    </div>
+  );
+}
+
+function LanguageSwitcher({
+  language,
+  changeLanguage,
+  fullWidth = false,
+}: {
+  language: Language;
+  changeLanguage: (language: Language) => void;
+  fullWidth?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center rounded-xl border border-white/15 bg-white/10 p-1 ${
+        fullWidth ? "w-full" : ""
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => changeLanguage("ka")}
+        className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
+          fullWidth ? "flex-1" : ""
+        } ${
+          language === "ka"
+            ? "bg-white text-slate-950"
+            : "text-white/70 hover:text-white"
+        }`}
+      >
+        🇬🇪 ქართული
+      </button>
+
+      <button
+        type="button"
+        onClick={() => changeLanguage("en")}
+        className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
+          fullWidth ? "flex-1" : ""
+        } ${
+          language === "en"
+            ? "bg-white text-slate-950"
+            : "text-white/70 hover:text-white"
+        }`}
+      >
+        🇬🇧 English
+      </button>
     </div>
   );
 }
