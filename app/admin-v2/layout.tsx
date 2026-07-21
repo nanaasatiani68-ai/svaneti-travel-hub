@@ -25,6 +25,11 @@ const menuItems = [
     icon: "🏔️",
   },
   {
+    name: "ტურები და მფლობელები",
+    href: "/admin-v2/tour-owners",
+    icon: "📊",
+  },
+  {
     name: "Transfers",
     href: "/admin-v2/transfers",
     icon: "🚐",
@@ -92,12 +97,12 @@ export default function AdminV2Layout({
   return (
     <div className="min-h-screen bg-[#07111d] text-white">
       {/* Desktop sidebar */}
-      <aside className="fixed bottom-0 left-0 top-0 z-[9999] hidden w-[285px] flex-col border-r border-white/10 bg-[#07101b] pointer-events-auto lg:flex">
+      <aside className="pointer-events-auto fixed bottom-0 left-0 top-0 z-[9999] hidden w-[285px] flex-col border-r border-white/10 bg-[#07101b] lg:flex">
         {/* Logo */}
         <div className="shrink-0 border-b border-white/10 px-6 py-6">
           <Link
             href="/admin-v2"
-            className="relative z-[10000] flex cursor-pointer items-center gap-3 pointer-events-auto"
+            className="pointer-events-auto relative z-[10000] flex cursor-pointer items-center gap-3"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-2xl shadow-lg">
               🏔️
@@ -116,7 +121,7 @@ export default function AdminV2Layout({
         </div>
 
         {/* Menu */}
-        <nav className="relative z-[10000] flex-1 overflow-y-auto px-4 py-5 pointer-events-auto">
+        <nav className="pointer-events-auto relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
           <div className="space-y-2">
             {menuItems.map((item) => {
               const active = isActive(item.href);
@@ -125,7 +130,7 @@ export default function AdminV2Layout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`relative z-[10001] flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold pointer-events-auto transition-all duration-200 ${
+                  className={`pointer-events-auto relative z-[10001] flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold transition-all duration-200 ${
                     active
                       ? "bg-gradient-to-r from-cyan-500/25 to-emerald-500/15 text-cyan-300 ring-1 ring-cyan-400/20"
                       : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -147,10 +152,10 @@ export default function AdminV2Layout({
         </nav>
 
         {/* Footer */}
-        <div className="relative z-[10000] shrink-0 border-t border-white/10 p-4 pointer-events-auto">
+        <div className="pointer-events-auto relative z-[10000] shrink-0 border-t border-white/10 p-4">
           <Link
             href="/"
-            className="relative z-[10001] flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 pointer-events-auto transition hover:bg-white/10 hover:text-white"
+            className="pointer-events-auto relative z-[10001] flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
           >
             <span className="text-lg">🌐</span>
             <span>მთავარ საიტზე დაბრუნება</span>
@@ -170,7 +175,7 @@ export default function AdminV2Layout({
 
       {/* Mobile sidebar */}
       <aside
-        className={`fixed bottom-0 left-0 top-0 z-[9999] flex w-[285px] flex-col border-r border-white/10 bg-[#07101b] pointer-events-auto transition-transform duration-300 lg:hidden ${
+        className={`pointer-events-auto fixed bottom-0 left-0 top-0 z-[9999] flex w-[285px] flex-col border-r border-white/10 bg-[#07101b] transition-transform duration-300 lg:hidden ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -178,7 +183,7 @@ export default function AdminV2Layout({
           <Link
             href="/admin-v2"
             onClick={closeMobileMenu}
-            className="flex cursor-pointer items-center gap-3 pointer-events-auto"
+            className="pointer-events-auto flex cursor-pointer items-center gap-3"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl">
               🏔️
@@ -198,13 +203,13 @@ export default function AdminV2Layout({
           <button
             type="button"
             onClick={closeMobileMenu}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-xl pointer-events-auto hover:bg-white/20"
+            className="pointer-events-auto flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-xl hover:bg-white/20"
           >
             ✕
           </button>
         </div>
 
-        <nav className="relative z-[10000] flex-1 overflow-y-auto px-4 py-5 pointer-events-auto">
+        <nav className="pointer-events-auto relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
           <div className="space-y-2">
             {menuItems.map((item) => {
               const active = isActive(item.href);
@@ -214,7 +219,7 @@ export default function AdminV2Layout({
                   key={item.href}
                   href={item.href}
                   onClick={closeMobileMenu}
-                  className={`relative z-[10001] flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold pointer-events-auto transition ${
+                  className={`pointer-events-auto relative z-[10001] flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold transition ${
                     active
                       ? "bg-cyan-500/20 text-cyan-300"
                       : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -235,7 +240,7 @@ export default function AdminV2Layout({
           <Link
             href="/"
             onClick={closeMobileMenu}
-            className="flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 pointer-events-auto hover:bg-white/10 hover:text-white"
+            className="pointer-events-auto flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
           >
             <span>🌐</span>
             <span>მთავარ საიტზე დაბრუნება</span>
@@ -252,7 +257,7 @@ export default function AdminV2Layout({
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl pointer-events-auto hover:bg-white/10 lg:hidden"
+                className="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl hover:bg-white/10 lg:hidden"
                 aria-label="Open mobile menu"
               >
                 ☰
@@ -261,7 +266,7 @@ export default function AdminV2Layout({
               <div>
                 <Link
                   href="/admin-v2"
-                  className="relative z-[101] cursor-pointer text-xl font-bold text-white pointer-events-auto sm:text-2xl"
+                  className="pointer-events-auto relative z-[101] cursor-pointer text-xl font-bold text-white sm:text-2xl"
                 >
                   Georgia Travel Hub
                 </Link>
@@ -272,10 +277,10 @@ export default function AdminV2Layout({
               </div>
             </div>
 
-            <div className="relative z-[101] flex items-center gap-3 pointer-events-auto">
+            <div className="pointer-events-auto relative z-[101] flex items-center gap-3">
               <Link
                 href="/admin-v2/settings"
-                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg pointer-events-auto transition hover:bg-white/10"
+                className="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
                 aria-label="Settings"
               >
                 ⚙️
@@ -283,7 +288,7 @@ export default function AdminV2Layout({
 
               <Link
                 href="/profile"
-                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 pointer-events-auto transition hover:bg-white/10"
+                className="pointer-events-auto flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 transition hover:bg-white/10"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-400 font-bold text-slate-950">
                   A
