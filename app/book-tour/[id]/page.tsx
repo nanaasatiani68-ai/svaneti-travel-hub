@@ -2,7 +2,12 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import Link from "next/link";<Link
+  href={`/book-tour/${tour.id}`}
+  className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
+>
+  დაჯავშნა
+</Link>
 import { supabase } from "@/app/lib/supabase";
 
 type Tour = {
