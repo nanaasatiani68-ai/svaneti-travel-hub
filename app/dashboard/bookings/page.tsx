@@ -29,111 +29,144 @@ type BookingWithTour = Booking & {
 export default function DashboardBookingsPage() {
   const [bookings, setBookings] = useState<BookingWithTour[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  useEffect(() => {
-    async function loadOwnerBookings() {
-      setLoading(true);
-      setErrorMessage("");
+  async function loadOwnerBookings() {
+    setLoading(true);
+    setErrorMessage("");
 
-      // შესული მომხმარებლის მიღება
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        setErrorMessage(
-          "ჯავშნების სანახავად საჭიროა ავტორიზაცია."
-        );
-        setLoading(false);
-        return;
-      }
-
-      // ჯერ ვპოულობთ ამ მომხმარებლის ტურებს
-      const { data: toursData, error: toursError } =
-        await supabase
-          .from("tours")
-          .select("id, title")
-          .eq("user_id", user.id);
-
-      if (toursError) {
-        console.error("Tours loading error:", toursError);
-        setErrorMessage(
-          `თქვენი ტურების ჩატვირთვა ვერ მოხერხდა: ${toursError.message}`
-        );
-        setLoading(false);
-        return;
-      }
-
-      const ownerTours = (toursData ?? []) as Tour[];
-
-      if (ownerTours.length === 0) {
-        setBookings([]);
-        setLoading(false);
-        return;
-      }
-
-      const tourIds = ownerTours.map((tour) => tour.id);
-
-      // შემდეგ ვიღებთ მხოლოდ ამ ტურებზე შემოსულ ჯავშნებს
-      const { data: bookingsData, error: bookingsError } =
-        await supabase
-          .from("bookings")
-          .select(
-            `
-              id,
-              tour_id,
-              guest_name,
-              guest_email,
-              guest_phone,
-              booking_date,
-              people,
-              total_price,
-              notes,
-              status,
-              created_at
-            `
-          )
-          .in("tour_id", tourIds)
-          .order("created_at", { ascending: false });
-
-      if (bookingsError) {
-        console.error(
-          "Bookings loading error:",
-          bookingsError
-        );
-
-        setErrorMessage(
-          `ჯავშნების ჩატვირთვა ვერ მოხერხდა: ${bookingsError.message}`
-        );
-
-        setLoading(false);
-        return;
-      }
-
-      const tourTitleMap = new Map(
-        ownerTours.map((tour) => [
-          tour.id,
-          tour.title || "უსახელო ტური",
-        ])
-      );
-
-      const preparedBookings: BookingWithTour[] = (
-        (bookingsData ?? []) as Booking[]
-      ).map((booking) => ({
-        ...booking,
-        tour_title:
-          tourTitleMap.get(booking.tour_id) ||
-          "უცნობი ტური",
-      }));
-
-      setBookings(preparedBookings);
+    if (userError || !user) {
+      setErrorMessage("ჯავშნების სანახავად საჭიროა ავტორიზაცია.");
       setLoading(false);
+      return;
     }
 
+    const { data: toursData, error: toursError } = await supabase
+      .from("tours")
+      .select("id, title")
+      .eq("user_id", user.id);
+
+    if (toursError) {
+      console.error("Tours loading error:", toursError);
+      setErrorMessage(
+        `თქვენი ტურების ჩატვირთვა ვერ მოხერხდა: ${toursError.message}`
+      );
+      setLoading(false);
+      return;
+    }
+
+    const ownerTours = (toursData ?? []) as Tour[];
+
+    if (ownerTours.length === 0) {
+      setBookings([]);
+      setLoading(false);
+      return;
+    }
+
+    const tourIds = ownerTours.map((tour) => tour.id);
+
+    const { data: bookingsData, error: bookingsError } = await supabase
+      .from("bookings")
+      .select(
+        `
+          id,
+          tour_id,
+          guest_name,
+          guest_email,
+          guest_phone,
+          booking_date,
+          people,
+          total_price,
+          notes,
+          status,
+          created_at
+        `
+      )
+      .in("tour_id", tourIds)
+      .order("created_at", { ascending: false });
+
+    if (bookingsError) {
+      console.error("Bookings loading error:", bookingsError);
+      setErrorMessage(
+        `ჯავშნების ჩატვირთვა ვერ მოხერხდა: ${bookingsError.message}`
+      );
+      setLoading(false);
+      return;
+    }
+
+    const tourTitleMap = new Map(
+      ownerTours.map((tour) => [
+        tour.id,
+        tour.title || "უსახელო ტური",
+      ])
+    );
+
+    const preparedBookings: BookingWithTour[] = (
+      (bookingsData ?? []) as Booking[]
+    ).map((booking) => ({
+      ...booking,
+      tour_title:
+        tourTitleMap.get(booking.tour_id) || "უცნობი ტური",
+    }));
+
+    setBookings(preparedBookings);
+    setLoading(false);
+  }
+
+  useEffect(() => {
     loadOwnerBookings();
   }, []);
+
+  async function updateBookingStatus(
+    bookingId: string,
+    newStatus: "confirmed" | "rejected"
+  ) {
+    setUpdatingId(bookingId);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const { error } = await supabase
+      .from("bookings")
+      .update({
+        status: newStatus,
+      })
+      .eq("id", bookingId);
+
+    if (error) {
+      console.error("Booking update error:", error);
+      setErrorMessage(
+        `ჯავშნის სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+      );
+      setUpdatingId(null);
+      return;
+    }
+
+    setBookings((currentBookings) =>
+      currentBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status: newStatus,
+            }
+          : booking
+      )
+    );
+
+    setSuccessMessage(
+      newStatus === "confirmed"
+        ? "ჯავშანი წარმატებით დადასტურდა."
+        : "ჯავშანი უარყოფილია."
+    );
+
+    setUpdatingId(null);
+  }
 
   if (loading) {
     return (
@@ -159,14 +192,19 @@ export default function DashboardBookingsPage() {
         </h1>
 
         <p className="mt-2 text-slate-500">
-          აქ ჩანს მხოლოდ თქვენს ტურებზე შემოსული
-          მოთხოვნები.
+          აქ ჩანს მხოლოდ თქვენს ტურებზე შემოსული მოთხოვნები.
         </p>
       </div>
 
       {errorMessage && (
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 font-semibold text-red-700">
           {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-700">
+          ✅ {successMessage}
         </div>
       )}
 
@@ -186,99 +224,149 @@ export default function DashboardBookingsPage() {
       )}
 
       <div className="space-y-6">
-        {bookings.map((booking) => (
-          <article
-            key={booking.id}
-            className="rounded-3xl bg-white p-6 text-slate-900 shadow-lg"
-          >
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-cyan-600">
-                  {booking.tour_title}
-                </p>
+        {bookings.map((booking) => {
+          const status = booking.status || "pending";
+          const isPending = status === "pending";
+          const isUpdating = updatingId === booking.id;
 
-                <h2 className="mt-2 text-2xl font-extrabold">
-                  {booking.guest_name || "სტუმარი"}
-                </h2>
+          return (
+            <article
+              key={booking.id}
+              className="rounded-3xl bg-white p-6 text-slate-900 shadow-lg"
+            >
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wide text-cyan-600">
+                    {booking.tour_title}
+                  </p>
 
-                <p className="mt-1 text-sm text-slate-400">
-                  ტურის ID: {booking.tour_id}
-                </p>
+                  <h2 className="mt-2 text-2xl font-extrabold">
+                    {booking.guest_name || "სტუმარი"}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-400">
+                    ტურის ID: {booking.tour_id}
+                  </p>
+                </div>
+
+                <BookingStatus status={booking.status} />
               </div>
 
-              <BookingStatus status={booking.status} />
-            </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <InfoItem
+                  label="ტურის თარიღი"
+                  value={
+                    booking.booking_date ||
+                    "არ არის მითითებული"
+                  }
+                />
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <InfoItem
-                label="ტურის თარიღი"
-                value={
-                  booking.booking_date ||
-                  "არ არის მითითებული"
-                }
-              />
+                <InfoItem
+                  label="სტუმრების რაოდენობა"
+                  value={
+                    booking.people
+                      ? `${booking.people} ადამიანი`
+                      : "არ არის მითითებული"
+                  }
+                />
 
-              <InfoItem
-                label="სტუმრების რაოდენობა"
-                value={
-                  booking.people
-                    ? `${booking.people} ადამიანი`
-                    : "არ არის მითითებული"
-                }
-              />
+                <InfoItem
+                  label="ჯამური ფასი"
+                  value={
+                    booking.total_price !== null
+                      ? `${Number(
+                          booking.total_price
+                        ).toLocaleString()} ₾`
+                      : "შეთანხმებით"
+                  }
+                />
 
-              <InfoItem
-                label="ჯამური ფასი"
-                value={
-                  booking.total_price !== null
-                    ? `${Number(
-                        booking.total_price
-                      ).toLocaleString()} ₾`
-                    : "შეთანხმებით"
-                }
-              />
+                <InfoItem
+                  label="ელფოსტა"
+                  value={
+                    booking.guest_email ||
+                    "არ არის მითითებული"
+                  }
+                />
 
-              <InfoItem
-                label="ელფოსტა"
-                value={
-                  booking.guest_email ||
-                  "არ არის მითითებული"
-                }
-              />
+                <InfoItem
+                  label="ტელეფონი"
+                  value={
+                    booking.guest_phone ||
+                    "არ არის მითითებული"
+                  }
+                />
 
-              <InfoItem
-                label="ტელეფონი"
-                value={
-                  booking.guest_phone ||
-                  "არ არის მითითებული"
-                }
-              />
-
-              <InfoItem
-                label="მოთხოვნის თარიღი"
-                value={
-                  booking.created_at
-                    ? new Date(
-                        booking.created_at
-                      ).toLocaleDateString("ka-GE")
-                    : "არ არის მითითებული"
-                }
-              />
-            </div>
-
-            {booking.notes && (
-              <div className="mt-6 rounded-2xl bg-slate-100 p-5">
-                <p className="text-sm font-bold text-slate-500">
-                  დამატებითი შეტყობინება
-                </p>
-
-                <p className="mt-2 whitespace-pre-line text-slate-700">
-                  {booking.notes}
-                </p>
+                <InfoItem
+                  label="მოთხოვნის თარიღი"
+                  value={
+                    booking.created_at
+                      ? new Date(
+                          booking.created_at
+                        ).toLocaleDateString("ka-GE")
+                      : "არ არის მითითებული"
+                  }
+                />
               </div>
-            )}
-          </article>
-        ))}
+
+              {booking.notes && (
+                <div className="mt-6 rounded-2xl bg-slate-100 p-5">
+                  <p className="text-sm font-bold text-slate-500">
+                    დამატებითი შეტყობინება
+                  </p>
+
+                  <p className="mt-2 whitespace-pre-line text-slate-700">
+                    {booking.notes}
+                  </p>
+                </div>
+              )}
+
+              {isPending && (
+                <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    onClick={() =>
+                      updateBookingStatus(
+                        booking.id,
+                        "confirmed"
+                      )
+                    }
+                    className="rounded-2xl bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isUpdating
+                      ? "მუშავდება..."
+                      : "✅ დადასტურება"}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUpdating}
+                    onClick={() =>
+                      updateBookingStatus(
+                        booking.id,
+                        "rejected"
+                      )
+                    }
+                    className="rounded-2xl bg-red-600 px-6 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isUpdating
+                      ? "მუშავდება..."
+                      : "❌ უარყოფა"}
+                  </button>
+                </div>
+              )}
+
+              {!isPending && (
+                <div className="mt-6 border-t border-slate-200 pt-6">
+                  <p className="text-sm font-semibold text-slate-500">
+                    ამ ჯავშნის გადაწყვეტილება უკვე მიღებულია.
+                  </p>
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
