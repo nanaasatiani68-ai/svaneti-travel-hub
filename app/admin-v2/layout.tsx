@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { supabase } from "@/lib/supabase";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -80,7 +81,10 @@ export default function AdminV2Layout({
   children,
 }: AdminLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const isActive = (href: string) => {
     if (href === "/admin-v2") {
@@ -93,6 +97,26 @@ export default function AdminV2Layout({
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
   };
+
+  async function logout() {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Logout error:", error);
+      alert(`ანგარიშიდან გამოსვლა ვერ მოხერხდა: ${error.message}`);
+      setLoggingOut(false);
+      return;
+    }
+
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-[#07111d] text-white">
@@ -109,9 +133,7 @@ export default function AdminV2Layout({
             </div>
 
             <div>
-              <h1 className="text-xl font-bold text-white">
-                საქართველო
-              </h1>
+              <h1 className="text-xl font-bold text-white">საქართველო</h1>
 
               <p className="mt-1 text-xs text-slate-400">
                 მოგზაურობის ცენტრის CMS
@@ -120,7 +142,7 @@ export default function AdminV2Layout({
           </Link>
         </div>
 
-        {/* Menu */}
+        {/* Desktop menu */}
         <nav className="pointer-events-auto relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
           <div className="space-y-2">
             {menuItems.map((item) => {
@@ -151,15 +173,32 @@ export default function AdminV2Layout({
           </div>
         </nav>
 
-        {/* Footer */}
+        {/* Desktop footer */}
         <div className="pointer-events-auto relative z-[10000] shrink-0 border-t border-white/10 p-4">
-          <Link
-            href="/"
-            className="pointer-events-auto relative z-[10001] flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-          >
-            <span className="text-lg">🌐</span>
-            <span>მთავარ საიტზე დაბრუნება</span>
-          </Link>
+          <div className="space-y-2">
+            <Link
+              href="/"
+              className="pointer-events-auto relative z-[10001] flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <span className="text-lg">🌐</span>
+              <span>მთავარ საიტზე დაბრუნება</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={logout}
+              disabled={loggingOut}
+              className="pointer-events-auto relative z-[10001] flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="text-lg">🚪</span>
+
+              <span>
+                {loggingOut
+                  ? "გამოსვლა მიმდინარეობს..."
+                  : "ანგარიშიდან გამოსვლა"}
+              </span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -190,13 +229,9 @@ export default function AdminV2Layout({
             </div>
 
             <div>
-              <h2 className="font-bold text-white">
-                Georgia Travel Hub
-              </h2>
+              <h2 className="font-bold text-white">Georgia Travel Hub</h2>
 
-              <p className="text-xs text-slate-400">
-                Admin Panel V2
-              </p>
+              <p className="text-xs text-slate-400">Admin Panel V2</p>
             </div>
           </Link>
 
@@ -204,11 +239,13 @@ export default function AdminV2Layout({
             type="button"
             onClick={closeMobileMenu}
             className="pointer-events-auto flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-xl hover:bg-white/20"
+            aria-label="Close mobile menu"
           >
             ✕
           </button>
         </div>
 
+        {/* Mobile menu */}
         <nav className="pointer-events-auto relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
           <div className="space-y-2">
             {menuItems.map((item) => {
@@ -230,21 +267,46 @@ export default function AdminV2Layout({
                   </span>
 
                   <span>{item.name}</span>
+
+                  {active && (
+                    <span className="ml-auto h-2 w-2 rounded-full bg-cyan-400" />
+                  )}
                 </Link>
               );
             })}
           </div>
         </nav>
 
+        {/* Mobile footer */}
         <div className="border-t border-white/10 p-4">
-          <Link
-            href="/"
-            onClick={closeMobileMenu}
-            className="pointer-events-auto flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
-          >
-            <span>🌐</span>
-            <span>მთავარ საიტზე დაბრუნება</span>
-          </Link>
+          <div className="space-y-2">
+            <Link
+              href="/"
+              onClick={closeMobileMenu}
+              className="pointer-events-auto flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
+            >
+              <span>🌐</span>
+              <span>მთავარ საიტზე დაბრუნება</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={async () => {
+                closeMobileMenu();
+                await logout();
+              }}
+              disabled={loggingOut}
+              className="pointer-events-auto flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span>🚪</span>
+
+              <span>
+                {loggingOut
+                  ? "გამოსვლა მიმდინარეობს..."
+                  : "ანგარიშიდან გამოსვლა"}
+              </span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -271,9 +333,7 @@ export default function AdminV2Layout({
                   Georgia Travel Hub
                 </Link>
 
-                <p className="mt-1 text-sm text-slate-400">
-                  Admin Panel V2
-                </p>
+                <p className="mt-1 text-sm text-slate-400">Admin Panel V2</p>
               </div>
             </div>
 
@@ -295,15 +355,22 @@ export default function AdminV2Layout({
                 </div>
 
                 <div className="hidden text-left sm:block">
-                  <p className="text-sm font-bold text-white">
-                    Administrator
-                  </p>
+                  <p className="text-sm font-bold text-white">Administrator</p>
 
-                  <p className="text-xs text-slate-400">
-                    Director
-                  </p>
+                  <p className="text-xs text-slate-400">Director</p>
                 </div>
               </Link>
+
+              <button
+                type="button"
+                onClick={logout}
+                disabled={loggingOut}
+                className="hidden items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60 sm:flex"
+              >
+                <span>🚪</span>
+
+                <span>{loggingOut ? "გამოდის..." : "გამოსვლა"}</span>
+              </button>
             </div>
           </div>
         </header>
