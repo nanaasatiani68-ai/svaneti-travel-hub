@@ -1,6 +1,17 @@
-import Link from "next/link";
+"use client";
 
-const stats = [
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+
+type AdminProfile = {
+  full_name: string | null;
+  role: string | null;
+};
+
+type UserRole = "Director" | "Admin";
+
+const allStats = [
   {
     title: "დაჯავშნები",
     value: "128",
@@ -8,6 +19,7 @@ const stats = [
     color: "from-sky-500 to-cyan-400",
     icon: "📋",
     href: "/admin-v2/bookings",
+    directorOnly: false,
   },
   {
     title: "შემოსავალი",
@@ -16,6 +28,7 @@ const stats = [
     color: "from-green-500 to-emerald-400",
     icon: "💰",
     href: "/admin-v2/payments",
+    directorOnly: true,
   },
   {
     title: "მომხმარებლები",
@@ -24,6 +37,7 @@ const stats = [
     color: "from-purple-500 to-violet-400",
     icon: "👥",
     href: "/admin-v2/users",
+    directorOnly: true,
   },
   {
     title: "ტურები",
@@ -32,6 +46,7 @@ const stats = [
     color: "from-orange-500 to-red-400",
     icon: "🏔️",
     href: "/admin-v2/tours",
+    directorOnly: false,
   },
 ];
 
@@ -64,6 +79,7 @@ const todayItems = [
     icon: "💰",
     label: "შემოსავალი",
     value: "₾3,450",
+    directorOnly: true,
   },
 ];
 
@@ -96,20 +112,132 @@ const activities = [
 ];
 
 export default function AdminV2Page() {
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      setLoading(true);
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("User loading error:", userError);
+        setLoading(false);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("Profile loading error:", profileError);
+      }
+
+      const typedProfile = profile as AdminProfile | null;
+
+      const normalizedRole = String(typedProfile?.role || "")
+        .trim()
+        .toLowerCase();
+
+      if (normalizedRole === "director") {
+        setRole("Director");
+      } else if (normalizedRole === "admin") {
+        setRole("Admin");
+      }
+
+      setFullName(
+        typedProfile?.full_name ||
+          user.user_metadata?.full_name ||
+          "მომხმარებელი"
+      );
+
+      setLoading(false);
+    }
+
+    loadProfile();
+  }, []);
+
+  const firstName = useMemo(() => {
+    const name = fullName.trim();
+
+    if (!name) {
+      return role === "Director" ? "ნანა" : "ლერი";
+    }
+
+    return name.split(/\s+/)[0];
+  }, [fullName, role]);
+
+  const visibleStats = useMemo(() => {
+    if (role === "Director") {
+      return allStats;
+    }
+
+    return allStats.filter((item) => !item.directorOnly);
+  }, [role]);
+
+  const visibleTodayItems = useMemo(() => {
+    if (role === "Director") {
+      return todayItems;
+    }
+
+    return todayItems.filter((item) => !item.directorOnly);
+  }, [role]);
+
+  if (loading) {
+    return (
+      <main className="flex min-h-[calc(100vh-86px)] items-center justify-center bg-[#07111d] text-white">
+        <div className="text-center">
+          <div className="text-6xl">⏳</div>
+
+          <p className="mt-4 text-lg font-semibold">
+            Dashboard იტვირთება...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8">
       <section className="rounded-3xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
         <span className="mb-4 inline-block rounded-full bg-cyan-500 px-4 py-1 text-sm font-semibold text-white shadow-lg">
-          🏔️ სვანეთის ტურისტული ცენტრი
+          🏔️ Georgia Travel Hub
         </span>
 
         <h1 className="text-4xl font-extrabold text-white sm:text-5xl">
-          კეთილი იყოს შენი დაბრუნება, ნანა 👋
+          კეთილი იყოს შენი დაბრუნება, {firstName} 👋
         </h1>
 
-        <p className="mt-4 text-lg text-white/80">
-          მართე ჯავშნები, ტურები, მომხმარებლები და მთელი პლატფორმა ერთი
-          ადგილიდან.
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span
+            className={`rounded-full px-4 py-2 text-sm font-bold ${
+              role === "Director"
+                ? "bg-violet-500/20 text-violet-200"
+                : "bg-cyan-500/20 text-cyan-200"
+            }`}
+          >
+            {role === "Director" ? "👑 Director" : "🛡️ Admin"}
+          </span>
+
+          <span className="text-sm text-white/60">
+            {role === "Director"
+              ? "სრული ადმინისტრაციული წვდომა"
+              : "ადმინისტრატორის შეზღუდული წვდომა"}
+          </span>
+        </div>
+
+        <p className="mt-5 text-lg text-white/80">
+          {role === "Director"
+            ? "მართე ჯავშნები, ტურები, მომხმარებლები, ფინანსები და მთელი პლატფორმა ერთი ადგილიდან."
+            : "მართე ჯავშნები, ტურები, ტრანსფერები, სასტუმროები და გიდები."}
         </p>
 
         <p className="mt-2 text-white/60">
@@ -117,9 +245,12 @@ export default function AdminV2Page() {
         </p>
       </section>
 
-      {/* დიდი ფერადი ბარათები */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((item) => (
+      <section
+        className={`grid grid-cols-1 gap-6 md:grid-cols-2 ${
+          visibleStats.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-2"
+        }`}
+      >
+        {visibleStats.map((item) => (
           <Link
             key={item.title}
             href={item.href}
@@ -145,45 +276,57 @@ export default function AdminV2Page() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl xl:col-span-2">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">
-              📈 შემოსავლების მიმოხილვა
-            </h2>
+        {role === "Director" && (
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl xl:col-span-2">
+            <div className="mb-8 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">
+                📈 შემოსავლების მიმოხილვა
+              </h2>
 
-            <span className="font-semibold text-cyan-300">
-              ბოლო 6 თვე
-            </span>
-          </div>
+              <span className="font-semibold text-cyan-300">
+                ბოლო 6 თვე
+              </span>
+            </div>
 
-          <div className="flex h-72 items-end justify-between gap-4">
-            {revenueData.map((item) => (
-              <div
-                key={item.month}
-                className="flex flex-1 flex-col items-center"
-              >
+            <div className="flex h-72 items-end justify-between gap-4">
+              {revenueData.map((item) => (
                 <div
-                  style={{
-                    height: `${item.value * 2}px`,
-                  }}
-                  className="w-full rounded-t-3xl bg-gradient-to-t from-cyan-600 to-sky-400 shadow-xl transition hover:scale-105"
-                />
+                  key={item.month}
+                  className="flex flex-1 flex-col items-center"
+                >
+                  <div
+                    style={{
+                      height: `${item.value * 2}px`,
+                    }}
+                    className="w-full rounded-t-3xl bg-gradient-to-t from-cyan-600 to-sky-400 shadow-xl transition hover:scale-105"
+                  />
 
-                <span className="mt-4 text-white/70">
-                  {item.month}
-                </span>
-              </div>
-            ))}
+                  <span className="mt-4 text-white/70">
+                    {item.month}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+        <div
+          className={`rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl ${
+            role === "Admin" ? "xl:col-span-3" : ""
+          }`}
+        >
           <h2 className="mb-6 text-2xl font-bold text-white">
             📅 დღეს
           </h2>
 
-          <div className="space-y-5">
-            {todayItems.map((item) => (
+          <div
+            className={`grid gap-5 ${
+              role === "Admin"
+                ? "sm:grid-cols-2 lg:grid-cols-3"
+                : "grid-cols-1"
+            }`}
+          >
+            {visibleTodayItems.map((item) => (
               <div
                 key={item.label}
                 className="flex items-center justify-between rounded-2xl bg-white/5 p-4"
@@ -262,9 +405,7 @@ export default function AdminV2Page() {
               🔔 ბოლო აქტივობა
             </h2>
 
-            <span className="text-cyan-300">
-              Live
-            </span>
+            <span className="text-cyan-300">Live</span>
           </div>
 
           <div className="space-y-4">
@@ -287,7 +428,7 @@ export default function AdminV2Page() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
           <h2 className="mb-6 text-2xl font-bold text-white">
-            ⚡ Quick Actions
+            ⚡ სწრაფი მოქმედებები
           </h2>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -295,7 +436,7 @@ export default function AdminV2Page() {
               href="/admin-v2/bookings"
               className="rounded-2xl bg-cyan-500 p-5 text-center font-semibold transition hover:bg-cyan-600"
             >
-              ➕ ახალი ჯავშანი
+              📋 ჯავშნების მართვა
             </Link>
 
             <Link
@@ -306,10 +447,24 @@ export default function AdminV2Page() {
             </Link>
 
             <Link
-              href="/admin-v2/users"
-              className="rounded-2xl bg-purple-500 p-5 text-center font-semibold transition hover:bg-purple-600"
+              href="/admin-v2/transfers"
+              className="rounded-2xl bg-blue-500 p-5 text-center font-semibold transition hover:bg-blue-600"
             >
-              👤 მომხმარებლების მართვა
+              🚐 ტრანსფერების მართვა
+            </Link>
+
+            <Link
+              href="/admin-v2/hotels"
+              className="rounded-2xl bg-emerald-500 p-5 text-center font-semibold transition hover:bg-emerald-600"
+            >
+              🏨 სასტუმროების მართვა
+            </Link>
+
+            <Link
+              href="/admin-v2/guides"
+              className="rounded-2xl bg-amber-500 p-5 text-center font-semibold transition hover:bg-amber-600"
+            >
+              🧑‍💼 გიდების მართვა
             </Link>
 
             <Link
@@ -318,32 +473,46 @@ export default function AdminV2Page() {
             >
               📧 ელფოსტის გაგზავნა
             </Link>
+
+            {role === "Director" && (
+              <>
+                <Link
+                  href="/admin-v2/users"
+                  className="rounded-2xl bg-purple-500 p-5 text-center font-semibold transition hover:bg-purple-600"
+                >
+                  👤 მომხმარებლების მართვა
+                </Link>
+
+                <Link
+                  href="/admin-v2/payments"
+                  className="rounded-2xl bg-violet-500 p-5 text-center font-semibold transition hover:bg-violet-600"
+                >
+                  💳 გადახდების მართვა
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
         <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
           <h2 className="mb-6 text-2xl font-bold text-white">
-            🌤️ Mestia Weather
+            🌤️ მესტიის ამინდი
           </h2>
 
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-6xl font-bold text-white">
-                18°
-              </h3>
+              <h3 className="text-6xl font-bold text-white">18°</h3>
 
               <p className="mt-3 text-white/70">
-                Sunny • Mestia
+                მზიანი • მესტია
               </p>
 
               <p className="mt-2 text-white/50">
-                Perfect day for hiking.
+                კარგი დღეა ლაშქრობისთვის.
               </p>
             </div>
 
-            <div className="text-8xl">
-              ☀️
-            </div>
+            <div className="text-8xl">☀️</div>
           </div>
         </div>
       </section>
@@ -356,7 +525,10 @@ export default function AdminV2Page() {
             </h2>
 
             <p className="mt-2 text-cyan-100">
-              Admin Dashboard v2 • Public Beta
+              {role === "Director"
+                ? "Director Dashboard"
+                : "Administrator Dashboard"}{" "}
+              • Public Beta
             </p>
           </div>
 
