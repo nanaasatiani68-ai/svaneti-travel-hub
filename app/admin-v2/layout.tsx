@@ -1,15 +1,35 @@
 "use client";
 
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
 type AdminLayoutProps = {
   children: ReactNode;
 };
 
-const menuItems = [
+type UserRole = "Director" | "Admin";
+
+type AdminProfile = {
+  full_name: string | null;
+  role: string | null;
+};
+
+type MenuItem = {
+  name: string;
+  href: string;
+  icon: string;
+  directorOnly?: boolean;
+};
+
+const menuItems: MenuItem[] = [
   {
     name: "Dashboard",
     href: "/admin-v2",
@@ -49,11 +69,13 @@ const menuItems = [
     name: "Users",
     href: "/admin-v2/users",
     icon: "👥",
+    directorOnly: true,
   },
   {
     name: "Staff",
     href: "/admin-v2/staff",
     icon: "👤",
+    directorOnly: true,
   },
   {
     name: "Emails",
@@ -64,6 +86,7 @@ const menuItems = [
     name: "Payments",
     href: "/admin-v2/payments",
     icon: "💳",
+    directorOnly: true,
   },
   {
     name: "Calendar",
@@ -74,7 +97,15 @@ const menuItems = [
     name: "Settings",
     href: "/admin-v2/settings",
     icon: "⚙️",
+    directorOnly: true,
   },
+];
+
+const directorOnlyPaths = [
+  "/admin-v2/users",
+  "/admin-v2/staff",
+  "/admin-v2/payments",
+  "/admin-v2/settings",
 ];
 
 export default function AdminV2Layout({
@@ -85,18 +116,106 @@ export default function AdminV2Layout({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
-  const isActive = (href: string) => {
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+
+  const loadAdmin = useCallback(async () => {
+    setCheckingAccess(true);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      router.replace("/login");
+      return;
+    }
+
+    setEmail(user.email || "");
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("full_name, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Admin profile loading error:", profileError);
+      await supabase.auth.signOut();
+      router.replace("/login");
+      return;
+    }
+
+    const typedProfile = profile as AdminProfile | null;
+
+    const normalizedRole = String(typedProfile?.role || "")
+      .trim()
+      .toLowerCase();
+
+    let resolvedRole: UserRole | null = null;
+
+    if (normalizedRole === "director") {
+      resolvedRole = "Director";
+    }
+
+    if (normalizedRole === "admin") {
+      resolvedRole = "Admin";
+    }
+
+    if (!resolvedRole) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    setRole(resolvedRole);
+
+    setFullName(
+      typedProfile?.full_name ||
+        user.user_metadata?.full_name ||
+        (resolvedRole === "Director" ? "Director" : "Administrator")
+    );
+
+    const currentPathIsDirectorOnly = directorOnlyPaths.some(
+      (protectedPath) =>
+        pathname === protectedPath ||
+        pathname.startsWith(`${protectedPath}/`)
+    );
+
+    if (resolvedRole === "Admin" && currentPathIsDirectorOnly) {
+      router.replace("/admin-v2");
+      return;
+    }
+
+    setCheckingAccess(false);
+  }, [pathname, router]);
+
+  useEffect(() => {
+    loadAdmin();
+  }, [loadAdmin]);
+
+  const visibleMenuItems = useMemo(() => {
+    if (role === "Director") {
+      return menuItems;
+    }
+
+    return menuItems.filter((item) => !item.directorOnly);
+  }, [role]);
+
+  function isActive(href: string) {
     if (href === "/admin-v2") {
       return pathname === "/admin-v2";
     }
 
     return pathname === href || pathname.startsWith(`${href}/`);
-  };
+  }
 
-  const closeMobileMenu = () => {
+  function closeMobileMenu() {
     setMobileMenuOpen(false);
-  };
+  }
 
   async function logout() {
     if (loggingOut) {
@@ -118,41 +237,63 @@ export default function AdminV2Layout({
     router.refresh();
   }
 
+  if (checkingAccess) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#07111d] px-4 text-white">
+        <div className="text-center">
+          <div className="text-6xl">🔐</div>
+
+          <h1 className="mt-5 text-2xl font-extrabold">
+            წვდომა მოწმდება
+          </h1>
+
+          <p className="mt-3 text-slate-400">
+            გთხოვ დაელოდე...
+          </p>
+
+          <div className="mx-auto mt-6 h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-cyan-400" />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#07111d] text-white">
       {/* Desktop sidebar */}
       <aside className="pointer-events-auto fixed bottom-0 left-0 top-0 z-[9999] hidden w-[285px] flex-col border-r border-white/10 bg-[#07101b] lg:flex">
-        {/* Logo */}
         <div className="shrink-0 border-b border-white/10 px-6 py-6">
           <Link
             href="/admin-v2"
-            className="pointer-events-auto relative z-[10000] flex cursor-pointer items-center gap-3"
+            className="relative z-[10000] flex items-center gap-3"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-2xl shadow-lg">
               🏔️
             </div>
 
             <div>
-              <h1 className="text-xl font-bold text-white">საქართველო</h1>
+              <h1 className="text-xl font-bold text-white">
+                Georgia Travel Hub
+              </h1>
 
               <p className="mt-1 text-xs text-slate-400">
-                მოგზაურობის ცენტრის CMS
+                {role === "Director"
+                  ? "Director Panel"
+                  : "Administrator Panel"}
               </p>
             </div>
           </Link>
         </div>
 
-        {/* Desktop menu */}
-        <nav className="pointer-events-auto relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
+        <nav className="relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
           <div className="space-y-2">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const active = isActive(item.href);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`pointer-events-auto relative z-[10001] flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold transition-all duration-200 ${
+                  className={`relative z-[10001] flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold transition-all duration-200 ${
                     active
                       ? "bg-gradient-to-r from-cyan-500/25 to-emerald-500/15 text-cyan-300 ring-1 ring-cyan-400/20"
                       : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -173,12 +314,31 @@ export default function AdminV2Layout({
           </div>
         </nav>
 
-        {/* Desktop footer */}
-        <div className="pointer-events-auto relative z-[10000] shrink-0 border-t border-white/10 p-4">
+        <div className="relative z-[10000] shrink-0 border-t border-white/10 p-4">
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="truncate text-sm font-bold text-white">
+              {fullName}
+            </p>
+
+            <p className="mt-1 truncate text-xs text-slate-400">
+              {email}
+            </p>
+
+            <span
+              className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                role === "Director"
+                  ? "bg-violet-500/15 text-violet-300"
+                  : "bg-cyan-500/15 text-cyan-300"
+              }`}
+            >
+              {role === "Director" ? "👑 Director" : "🛡️ Admin"}
+            </span>
+          </div>
+
           <div className="space-y-2">
             <Link
               href="/"
-              className="pointer-events-auto relative z-[10001] flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
             >
               <span className="text-lg">🌐</span>
               <span>მთავარ საიტზე დაბრუნება</span>
@@ -188,7 +348,7 @@ export default function AdminV2Layout({
               type="button"
               onClick={logout}
               disabled={loggingOut}
-              className="pointer-events-auto relative z-[10001] flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span className="text-lg">🚪</span>
 
@@ -202,11 +362,11 @@ export default function AdminV2Layout({
         </div>
       </aside>
 
-      {/* Mobile dark overlay */}
+      {/* Mobile overlay */}
       {mobileMenuOpen && (
         <button
           type="button"
-          aria-label="Close mobile menu"
+          aria-label="მენიუს დახურვა"
           onClick={closeMobileMenu}
           className="fixed inset-0 z-[9997] bg-black/70 lg:hidden"
         />
@@ -214,7 +374,7 @@ export default function AdminV2Layout({
 
       {/* Mobile sidebar */}
       <aside
-        className={`pointer-events-auto fixed bottom-0 left-0 top-0 z-[9999] flex w-[285px] flex-col border-r border-white/10 bg-[#07101b] transition-transform duration-300 lg:hidden ${
+        className={`fixed bottom-0 left-0 top-0 z-[9999] flex w-[285px] flex-col border-r border-white/10 bg-[#07101b] transition-transform duration-300 lg:hidden ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -222,33 +382,36 @@ export default function AdminV2Layout({
           <Link
             href="/admin-v2"
             onClick={closeMobileMenu}
-            className="pointer-events-auto flex cursor-pointer items-center gap-3"
+            className="flex items-center gap-3"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-xl">
               🏔️
             </div>
 
             <div>
-              <h2 className="font-bold text-white">Georgia Travel Hub</h2>
+              <h2 className="font-bold text-white">
+                Georgia Travel Hub
+              </h2>
 
-              <p className="text-xs text-slate-400">Admin Panel V2</p>
+              <p className="text-xs text-slate-400">
+                {role === "Director" ? "Director" : "Admin"}
+              </p>
             </div>
           </Link>
 
           <button
             type="button"
             onClick={closeMobileMenu}
-            className="pointer-events-auto flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-xl hover:bg-white/20"
-            aria-label="Close mobile menu"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-xl hover:bg-white/20"
+            aria-label="მენიუს დახურვა"
           >
             ✕
           </button>
         </div>
 
-        {/* Mobile menu */}
-        <nav className="pointer-events-auto relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
+        <nav className="relative z-[10000] flex-1 overflow-y-auto px-4 py-5">
           <div className="space-y-2">
-            {menuItems.map((item) => {
+            {visibleMenuItems.map((item) => {
               const active = isActive(item.href);
 
               return (
@@ -256,7 +419,7 @@ export default function AdminV2Layout({
                   key={item.href}
                   href={item.href}
                   onClick={closeMobileMenu}
-                  className={`pointer-events-auto relative z-[10001] flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold transition ${
+                  className={`relative z-[10001] flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-semibold transition ${
                     active
                       ? "bg-cyan-500/20 text-cyan-300"
                       : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -277,13 +440,26 @@ export default function AdminV2Layout({
           </div>
         </nav>
 
-        {/* Mobile footer */}
         <div className="border-t border-white/10 p-4">
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="truncate text-sm font-bold text-white">
+              {fullName}
+            </p>
+
+            <p className="mt-1 truncate text-xs text-slate-400">
+              {email}
+            </p>
+
+            <p className="mt-2 text-xs font-bold text-cyan-300">
+              {role === "Director" ? "👑 Director" : "🛡️ Admin"}
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Link
               href="/"
               onClick={closeMobileMenu}
-              className="pointer-events-auto flex cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
             >
               <span>🌐</span>
               <span>მთავარ საიტზე დაბრუნება</span>
@@ -296,7 +472,7 @@ export default function AdminV2Layout({
                 await logout();
               }}
               disabled={loggingOut}
-              className="pointer-events-auto flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <span>🚪</span>
 
@@ -310,17 +486,16 @@ export default function AdminV2Layout({
         </div>
       </aside>
 
-      {/* Main page */}
+      {/* Main area */}
       <div className="relative z-0 min-h-screen w-full lg:ml-[285px] lg:w-[calc(100%-285px)]">
-        {/* Header */}
         <header className="sticky top-0 z-[100] border-b border-white/10 bg-[#0a1726]/95 backdrop-blur-xl">
           <div className="flex min-h-[86px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl hover:bg-white/10 lg:hidden"
-                aria-label="Open mobile menu"
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl hover:bg-white/10 lg:hidden"
+                aria-label="მენიუს გახსნა"
               >
                 ☰
               </button>
@@ -328,36 +503,46 @@ export default function AdminV2Layout({
               <div>
                 <Link
                   href="/admin-v2"
-                  className="pointer-events-auto relative z-[101] cursor-pointer text-xl font-bold text-white sm:text-2xl"
+                  className="text-xl font-bold text-white sm:text-2xl"
                 >
                   Georgia Travel Hub
                 </Link>
 
-                <p className="mt-1 text-sm text-slate-400">Admin Panel V2</p>
+                <p className="mt-1 text-sm text-slate-400">
+                  {role === "Director"
+                    ? "Director Panel — სრული წვდომა"
+                    : "Admin Panel — შეზღუდული წვდომა"}
+                </p>
               </div>
             </div>
 
-            <div className="pointer-events-auto relative z-[101] flex items-center gap-3">
-              <Link
-                href="/admin-v2/settings"
-                className="pointer-events-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
-                aria-label="Settings"
-              >
-                ⚙️
-              </Link>
+            <div className="flex items-center gap-3">
+              {role === "Director" && (
+                <Link
+                  href="/admin-v2/settings"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg transition hover:bg-white/10"
+                  aria-label="პარამეტრები"
+                >
+                  ⚙️
+                </Link>
+              )}
 
               <Link
                 href="/profile"
-                className="pointer-events-auto flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 transition hover:bg-white/10"
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 transition hover:bg-white/10"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-400 font-bold text-slate-950">
-                  A
+                  {fullName.trim().charAt(0).toUpperCase() || "A"}
                 </div>
 
-                <div className="hidden text-left sm:block">
-                  <p className="text-sm font-bold text-white">Administrator</p>
+                <div className="hidden max-w-[180px] text-left sm:block">
+                  <p className="truncate text-sm font-bold text-white">
+                    {fullName}
+                  </p>
 
-                  <p className="text-xs text-slate-400">Director</p>
+                  <p className="text-xs text-slate-400">
+                    {role}
+                  </p>
                 </div>
               </Link>
 
@@ -375,7 +560,6 @@ export default function AdminV2Layout({
           </div>
         </header>
 
-        {/* Page content */}
         <main className="relative z-0 min-h-[calc(100vh-86px)] bg-gradient-to-br from-[#0b1929] via-[#081522] to-[#07111d]">
           {children}
         </main>
