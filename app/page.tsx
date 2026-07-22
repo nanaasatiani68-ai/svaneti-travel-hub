@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import WeatherCard from "./components/WeatherCard";
 
 type Language = "ka" | "en";
 
@@ -708,6 +709,10 @@ export default function Home() {
               >
                 ➕ {t.addYourTour}
               </button>
+            </div>
+
+            <div className="mt-8">
+              <WeatherCard />
             </div>
           </div>
         </div>
