@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,25 +11,42 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const login = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+  async function login(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setErrorMessage("");
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
       password,
     });
 
     if (error) {
-      alert(error.message);
+      console.error("Login error:", error);
+
+      if (error.message.toLowerCase().includes("invalid login credentials")) {
+        setErrorMessage("ელფოსტა ან პაროლი არასწორია.");
+      } else if (error.message.toLowerCase().includes("email not confirmed")) {
+        setErrorMessage(
+          "ელფოსტა ჯერ არ არის დადასტურებული. შეამოწმე ელფოსტაზე მიღებული წერილი."
+        );
+      } else {
+        setErrorMessage(`შესვლა ვერ მოხერხდა: ${error.message}`);
+      }
+
+      setLoading(false);
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = data.user;
 
     if (!user) {
-      alert("User not found");
+      setErrorMessage("მომხმარებელი ვერ მოიძებნა.");
+      setLoading(false);
       return;
     }
 
@@ -36,94 +54,107 @@ export default function LoginPage() {
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
-      alert("პროფილი ვერ მოიძებნა");
-      return;
+      console.error("Profile loading error:", profileError);
     }
 
-    if (profile?.role === "Director") {
-      router.push("/admin");
-    } else if (profile?.role === "Staff") {
-      router.push("/staff");
+    const role = String(profile?.role || "")
+      .trim()
+      .toLowerCase();
+
+    if (role === "director" || role === "admin") {
+      router.replace("/admin-v2");
+    } else if (role === "staff") {
+      router.replace("/staff");
     } else {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
-  };
+
+    router.refresh();
+  }
 
   return (
-    <main
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "#f5f5f5",
-      }}
-    >
-      <form
-        onSubmit={login}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px",
-          width: "350px",
-          padding: "30px",
-          background: "white",
-          borderRadius: "10px",
-          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h2 style={{ textAlign: "center" }}>🔐 Login</h2>
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-10">
+      <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white p-6 text-slate-900 shadow-2xl sm:p-8">
+        <div className="text-center">
+          <div className="text-6xl">🔐</div>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: "10px" }}
-        />
+          <h1 className="mt-4 text-3xl font-extrabold">
+            ანგარიშზე შესვლა
+          </h1>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: "10px" }}
-        />
+          <p className="mt-2 text-sm text-slate-500">
+            შედი Georgia Travel Hub-ის ანგარიშზე
+          </p>
+        </div>
 
-        <button
-          type="submit"
-          style={{
-            padding: "10px",
-            background: "#0ea5e9",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
+        {errorMessage && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            {errorMessage}
+          </div>
+        )}
+
+        <form onSubmit={login} className="mt-7 space-y-5">
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-slate-700">
+              ელფოსტა
+            </span>
+
+            <input
+              type="email"
+              placeholder="example@email.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-slate-700">
+              პაროლი
+            </span>
+
+            <input
+              type="password"
+              placeholder="შეიყვანე პაროლი"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "მიმდინარეობს შესვლა..." : "შესვლა"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          ანგარიში ჯერ არ გაქვს?{" "}
+          <Link
+            href="/signup"
+            className="font-bold text-cyan-700 hover:text-cyan-800"
+          >
+            რეგისტრაცია
+          </Link>
+        </p>
+
+        <Link
+          href="/"
+          className="mt-5 block text-center text-sm font-semibold text-slate-500 hover:text-slate-900"
         >
-          Login
-        </button>
-
-        <button
-          type="button"
-          onClick={() => router.push("/signup")}
-          style={{
-            padding: "10px",
-            background: "#22c55e",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          Create Account
-        </button>
-      </form>
+          ← მთავარ გვერდზე დაბრუნება
+        </Link>
+      </section>
     </main>
   );
 }
