@@ -3,6 +3,7 @@
 import {
   ChangeEvent,
   FormEvent,
+  ReactNode,
   useEffect,
   useState,
 } from "react";
@@ -106,7 +107,9 @@ export default function ProfilePage() {
   }, [router]);
 
   function updateField(
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >
   ) {
     const { name, value } = event.target;
 
@@ -130,7 +133,9 @@ export default function ProfilePage() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      setMessage("პროფილის შესანახად საჭიროა ავტორიზაცია.");
+      setMessage(
+        "პროფილის შესანახად საჭიროა ავტორიზაცია."
+      );
       setMessageType("error");
       setSaving(false);
       return;
@@ -171,11 +176,19 @@ export default function ProfilePage() {
       return;
     }
 
-    await supabase.auth.updateUser({
-      data: {
-        full_name: profile.full_name.trim(),
-      },
-    });
+    const { error: authUpdateError } =
+      await supabase.auth.updateUser({
+        data: {
+          full_name: profile.full_name.trim(),
+        },
+      });
+
+    if (authUpdateError) {
+      console.error(
+        "Auth profile update error:",
+        authUpdateError
+      );
+    }
 
     setMessage("პროფილი წარმატებით შეინახა.");
     setMessageType("success");
@@ -210,7 +223,8 @@ export default function ProfilePage() {
             </h1>
 
             <p className="mt-3 text-white/60">
-              შეავსე ინფორმაცია, რომელიც შენს ტურებზე გამოჩნდება.
+              შეავსე ინფორმაცია, რომელიც შენს ტურებზე
+              გამოჩნდება.
             </p>
           </div>
 
@@ -259,7 +273,8 @@ export default function ProfilePage() {
 
             {(profile.city || profile.country) && (
               <p className="mt-3 text-white/65">
-                📍 {[profile.city, profile.country]
+                📍{" "}
+                {[profile.city, profile.country]
                   .filter(Boolean)
                   .join(", ")}
               </p>
@@ -271,14 +286,20 @@ export default function ProfilePage() {
               </p>
             )}
 
+            {profile.bio && (
+              <p className="mt-4 whitespace-pre-line text-sm leading-6 text-white/55">
+                {profile.bio}
+              </p>
+            )}
+
             <div className="mt-6 rounded-2xl bg-cyan-500/10 p-4 text-left">
               <p className="text-sm font-bold text-cyan-200">
                 საჯარო ინფორმაცია
               </p>
 
               <p className="mt-2 text-xs leading-5 text-white/50">
-                სახელი, ფოტო, ქალაქი, აღწერა და ტელეფონი გამოჩნდება
-                შენს ტურის გვერდზე.
+                სახელი, ფოტო, ქალაქი, აღწერა და ტელეფონი
+                გამოჩნდება შენს ტურის გვერდზე.
               </p>
             </div>
           </aside>
