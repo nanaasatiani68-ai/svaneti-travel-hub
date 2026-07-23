@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
-
-type Tour = {
-  id: number;
-  title: string | null;
-};
 
 type Booking = {
   id: string;
-  tour_id: number;
+  tour_id: number | string | null;
+  user_id: string | null;
   guest_name: string | null;
   guest_email: string | null;
   guest_phone: string | null;
@@ -22,20 +20,44 @@ type Booking = {
   created_at: string | null;
 };
 
-type BookingWithTour = Booking & {
-  tour_title: string;
+type Tour = {
+  id: number | string;
+  title: string | null;
+  user_id: string | null;
+  image_url: string | null;
+  location: string | null;
 };
 
+type PreparedBooking = Booking & {
+  tour_title: string;
+  tour_image: string | null;
+  tour_location: string | null;
+};
+
+type ActiveTab = "my-bookings" | "received-bookings";
+
 export default function DashboardBookingsPage() {
-  const [bookings, setBookings] = useState<BookingWithTour[]>([]);
+  const router = useRouter();
+
+  const [activeTab, setActiveTab] =
+    useState<ActiveTab>("my-bookings");
+
+  const [myBookings, setMyBookings] = useState<PreparedBooking[]>([]);
+  const [receivedBookings, setReceivedBookings] = useState<
+    PreparedBooking[]
+  >([]);
+
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState("");
+
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  async function loadOwnerBookings() {
+  const loadBookings = useCallback(async () => {
     setLoading(true);
     setErrorMessage("");
+    setSuccessMessage("");
 
     const {
       data: { user },
@@ -43,88 +65,169 @@ export default function DashboardBookingsPage() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      setErrorMessage("ჯავშნების სანახავად საჭიროა ავტორიზაცია.");
-      setLoading(false);
+      router.replace("/login");
       return;
     }
 
-    const { data: toursData, error: toursError } = await supabase
-      .from("tours")
-      .select("id, title")
-      .eq("user_id", user.id);
+    setCurrentUserId(user.id);
 
-    if (toursError) {
-      console.error("Tours loading error:", toursError);
+    const { data: myBookingsData, error: myBookingsError } =
+      await supabase
+        .from("bookings")
+        .select(
+          `
+            id,
+            tour_id,
+            user_id,
+            guest_name,
+            guest_email,
+            guest_phone,
+            booking_date,
+            people,
+            total_price,
+            notes,
+            status,
+            created_at
+          `
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+    if (myBookingsError) {
+      console.error("My bookings loading error:", myBookingsError);
+
       setErrorMessage(
-        `თქვენი ტურების ჩატვირთვა ვერ მოხერხდა: ${toursError.message}`
+        `ჩემი ჯავშნების ჩატვირთვა ვერ მოხერხდა: ${myBookingsError.message}`
       );
+
       setLoading(false);
       return;
     }
 
-    const ownerTours = (toursData ?? []) as Tour[];
+    const { data: ownerToursData, error: ownerToursError } =
+      await supabase
+        .from("tours")
+        .select("id, title, user_id, image_url, location")
+        .eq("user_id", user.id);
 
-    if (ownerTours.length === 0) {
-      setBookings([]);
+    if (ownerToursError) {
+      console.error("Owner tours loading error:", ownerToursError);
+
+      setErrorMessage(
+        `თქვენი ტურების ჩატვირთვა ვერ მოხერხდა: ${ownerToursError.message}`
+      );
+
       setLoading(false);
       return;
     }
 
-    const tourIds = ownerTours.map((tour) => tour.id);
+    const ownerTours = (ownerToursData as Tour[] | null) ?? [];
+    const ownerTourIds = ownerTours.map((tour) => tour.id);
 
-    const { data: bookingsData, error: bookingsError } = await supabase
-      .from("bookings")
-      .select(
-        `
-          id,
-          tour_id,
-          guest_name,
-          guest_email,
-          guest_phone,
-          booking_date,
-          people,
-          total_price,
-          notes,
-          status,
-          created_at
-        `
+    let receivedBookingsData: Booking[] = [];
+
+    if (ownerTourIds.length > 0) {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(
+          `
+            id,
+            tour_id,
+            user_id,
+            guest_name,
+            guest_email,
+            guest_phone,
+            booking_date,
+            people,
+            total_price,
+            notes,
+            status,
+            created_at
+          `
+        )
+        .in("tour_id", ownerTourIds)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Received bookings loading error:", error);
+
+        setErrorMessage(
+          `მიღებული ჯავშნების ჩატვირთვა ვერ მოხერხდა: ${error.message}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      receivedBookingsData = (data as Booking[] | null) ?? [];
+    }
+
+    const myBookingRows =
+      (myBookingsData as Booking[] | null) ?? [];
+
+    const allTourIds = Array.from(
+      new Set(
+        [...myBookingRows, ...receivedBookingsData]
+          .map((booking) => booking.tour_id)
+          .filter(
+            (tourId): tourId is number | string =>
+              tourId !== null && tourId !== undefined
+          )
       )
-      .in("tour_id", tourIds)
-      .order("created_at", { ascending: false });
-
-    if (bookingsError) {
-      console.error("Bookings loading error:", bookingsError);
-      setErrorMessage(
-        `ჯავშნების ჩატვირთვა ვერ მოხერხდა: ${bookingsError.message}`
-      );
-      setLoading(false);
-      return;
-    }
-
-    const tourTitleMap = new Map(
-      ownerTours.map((tour) => [
-        tour.id,
-        tour.title || "უსახელო ტური",
-      ])
     );
 
-    const preparedBookings: BookingWithTour[] = (
-      (bookingsData ?? []) as Booking[]
-    ).map((booking) => ({
-      ...booking,
-      tour_title:
-        tourTitleMap.get(booking.tour_id) || "უცნობი ტური",
-    }));
+    let allTours: Tour[] = [];
 
-    setBookings(preparedBookings);
+    if (allTourIds.length > 0) {
+      const { data: toursData, error: toursError } = await supabase
+        .from("tours")
+        .select("id, title, user_id, image_url, location")
+        .in("id", allTourIds);
+
+      if (toursError) {
+        console.error("Tours information error:", toursError);
+
+        setErrorMessage(
+          `ტურების ინფორმაციის ჩატვირთვა ვერ მოხერხდა: ${toursError.message}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      allTours = (toursData as Tour[] | null) ?? [];
+    }
+
+    const tourMap = new Map(
+      allTours.map((tour) => [String(tour.id), tour])
+    );
+
+    const prepareBookings = (
+      bookingRows: Booking[]
+    ): PreparedBooking[] =>
+      bookingRows.map((booking) => {
+        const tour = booking.tour_id
+          ? tourMap.get(String(booking.tour_id))
+          : undefined;
+
+        return {
+          ...booking,
+          tour_title: tour?.title || "უცნობი ტური",
+          tour_image: tour?.image_url || null,
+          tour_location: tour?.location || null,
+        };
+      });
+
+    setMyBookings(prepareBookings(myBookingRows));
+    setReceivedBookings(prepareBookings(receivedBookingsData));
     setLoading(false);
-  }
+  }, [router]);
 
   useEffect(() => {
-    loadOwnerBookings();
-  }, []);
+    loadBookings();
+  }, [loadBookings]);
 
-  async function updateBookingStatus(
+  async function updateReceivedBookingStatus(
     bookingId: string,
     newStatus: "confirmed" | "rejected"
   ) {
@@ -132,30 +235,53 @@ export default function DashboardBookingsPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({
-        status: newStatus,
-      })
-      .eq("id", bookingId);
+    const booking = receivedBookings.find(
+      (item) => item.id === bookingId
+    );
 
-    if (error) {
-      console.error("Booking update error:", error);
-      setErrorMessage(
-        `ჯავშნის სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
-      );
+    if (!booking?.tour_id) {
+      setErrorMessage("ჯავშნის ტური ვერ მოიძებნა.");
       setUpdatingId(null);
       return;
     }
 
-    setBookings((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.id === bookingId
-          ? {
-              ...booking,
-              status: newStatus,
-            }
-          : booking
+    const { data: ownerTour, error: ownerTourError } = await supabase
+      .from("tours")
+      .select("id")
+      .eq("id", booking.tour_id)
+      .eq("user_id", currentUserId)
+      .maybeSingle();
+
+    if (ownerTourError || !ownerTour) {
+      setErrorMessage(
+        "ამ ჯავშნის სტატუსის შეცვლის უფლება არ გაქვს."
+      );
+
+      setUpdatingId(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: newStatus })
+      .eq("id", bookingId);
+
+    if (error) {
+      console.error("Booking update error:", error);
+
+      setErrorMessage(
+        `ჯავშნის სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+      );
+
+      setUpdatingId(null);
+      return;
+    }
+
+    setReceivedBookings((currentBookings) =>
+      currentBookings.map((item) =>
+        item.id === bookingId
+          ? { ...item, status: newStatus }
+          : item
       )
     );
 
@@ -168,207 +294,363 @@ export default function DashboardBookingsPage() {
     setUpdatingId(null);
   }
 
+  async function cancelMyBooking(booking: PreparedBooking) {
+    if (booking.status !== "pending") {
+      setErrorMessage(
+        "შეგიძლია მხოლოდ მოლოდინში მყოფი ჯავშნის გაუქმება."
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ნამდვილად გინდა ჯავშნის გაუქმება?\n\nტური: ${booking.tour_title}`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setUpdatingId(booking.id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", booking.id)
+      .eq("user_id", currentUserId)
+      .eq("status", "pending");
+
+    if (error) {
+      console.error("Booking cancellation error:", error);
+
+      setErrorMessage(
+        `ჯავშნის გაუქმება ვერ მოხერხდა: ${error.message}`
+      );
+
+      setUpdatingId(null);
+      return;
+    }
+
+    setMyBookings((currentBookings) =>
+      currentBookings.map((item) =>
+        item.id === booking.id
+          ? { ...item, status: "cancelled" }
+          : item
+      )
+    );
+
+    setSuccessMessage("ჯავშანი წარმატებით გაუქმდა.");
+    setUpdatingId(null);
+  }
+
+  const visibleBookings = useMemo(
+    () =>
+      activeTab === "my-bookings"
+        ? myBookings
+        : receivedBookings,
+    [activeTab, myBookings, receivedBookings]
+  );
+
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl p-6">
-        <h1 className="mb-6 text-3xl font-bold">
-          🗓️ მიღებული ჯავშნები
-        </h1>
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="text-center">
+          <div className="text-6xl">📅</div>
 
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <p className="text-slate-600">
+          <p className="mt-4 text-lg font-semibold">
             ჯავშნები იტვირთება...
           </p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">
-          🗓️ მიღებული ჯავშნები
-        </h1>
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-10 text-white sm:px-6">
+      <div className="mx-auto max-w-7xl">
+        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+              მომხმარებლის პანელი
+            </p>
 
-        <p className="mt-2 text-slate-500">
-          აქ ჩანს მხოლოდ თქვენს ტურებზე შემოსული მოთხოვნები.
-        </p>
-      </div>
+            <h1 className="mt-3 text-4xl font-black sm:text-5xl">
+              📅 ჯავშნები
+            </h1>
 
-      {errorMessage && (
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-5 font-semibold text-red-700">
-          {errorMessage}
-        </div>
-      )}
+            <p className="mt-3 text-white/60">
+              ნახე შენი ჯავშნები და შენს ტურებზე მიღებული მოთხოვნები.
+            </p>
+          </div>
 
-      {successMessage && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 font-semibold text-emerald-700">
-          ✅ {successMessage}
-        </div>
-      )}
-
-      {!errorMessage && bookings.length === 0 && (
-        <div className="rounded-2xl bg-white p-10 text-center shadow">
-          <div className="mb-4 text-6xl">📭</div>
-
-          <h2 className="text-2xl font-bold text-slate-900">
-            მიღებული ჯავშნები ჯერ არ გაქვთ
-          </h2>
-
-          <p className="mt-3 text-slate-500">
-            როდესაც სტუმარი თქვენს ტურს დაჯავშნის,
-            მოთხოვნა აქ გამოჩნდება.
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-6">
-        {bookings.map((booking) => {
-          const status = booking.status || "pending";
-          const isPending = status === "pending";
-          const isUpdating = updatingId === booking.id;
-
-          return (
-            <article
-              key={booking.id}
-              className="rounded-3xl bg-white p-6 text-slate-900 shadow-lg"
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/tours"
+              className="rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
             >
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-wide text-cyan-600">
-                    {booking.tour_title}
-                  </p>
+              ტურების ნახვა
+            </Link>
 
-                  <h2 className="mt-2 text-2xl font-extrabold">
-                    {booking.guest_name || "სტუმარი"}
-                  </h2>
+            <Link
+              href="/dashboard"
+              className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 font-bold transition hover:bg-white/20"
+            >
+              ← Dashboard
+            </Link>
+          </div>
+        </header>
 
-                  <p className="mt-1 text-sm text-slate-400">
-                    ტურის ID: {booking.tour_id}
-                  </p>
-                </div>
+        <section className="mt-8 grid gap-3 rounded-3xl border border-white/10 bg-white/5 p-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("my-bookings")}
+            className={`rounded-2xl px-5 py-4 text-left font-bold transition ${
+              activeTab === "my-bookings"
+                ? "bg-cyan-500 text-white"
+                : "bg-white/5 text-white/65 hover:bg-white/10"
+            }`}
+          >
+            <span className="block text-lg">🎫 ჩემი ჯავშნები</span>
 
-                <BookingStatus status={booking.status} />
-              </div>
+            <span className="mt-1 block text-sm opacity-70">
+              რაოდენობა: {myBookings.length}
+            </span>
+          </button>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <InfoItem
-                  label="ტურის თარიღი"
-                  value={
-                    booking.booking_date ||
-                    "არ არის მითითებული"
-                  }
-                />
+          <button
+            type="button"
+            onClick={() => setActiveTab("received-bookings")}
+            className={`rounded-2xl px-5 py-4 text-left font-bold transition ${
+              activeTab === "received-bookings"
+                ? "bg-cyan-500 text-white"
+                : "bg-white/5 text-white/65 hover:bg-white/10"
+            }`}
+          >
+            <span className="block text-lg">
+              📥 მიღებული ჯავშნები
+            </span>
 
-                <InfoItem
-                  label="სტუმრების რაოდენობა"
-                  value={
-                    booking.people
-                      ? `${booking.people} ადამიანი`
-                      : "არ არის მითითებული"
-                  }
-                />
+            <span className="mt-1 block text-sm opacity-70">
+              რაოდენობა: {receivedBookings.length}
+            </span>
+          </button>
+        </section>
 
-                <InfoItem
-                  label="ჯამური ფასი"
-                  value={
-                    booking.total_price !== null
-                      ? `${Number(
-                          booking.total_price
-                        ).toLocaleString()} ₾`
-                      : "შეთანხმებით"
-                  }
-                />
+        {errorMessage && (
+          <div className="mt-7 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 font-semibold text-red-200">
+            {errorMessage}
+          </div>
+        )}
 
-                <InfoItem
-                  label="ელფოსტა"
-                  value={
-                    booking.guest_email ||
-                    "არ არის მითითებული"
-                  }
-                />
+        {successMessage && (
+          <div className="mt-7 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 font-semibold text-emerald-200">
+            ✅ {successMessage}
+          </div>
+        )}
 
-                <InfoItem
-                  label="ტელეფონი"
-                  value={
-                    booking.guest_phone ||
-                    "არ არის მითითებული"
-                  }
-                />
+        {visibleBookings.length === 0 ? (
+          <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-12 text-center shadow-2xl">
+            <div className="text-7xl">
+              {activeTab === "my-bookings" ? "🎫" : "📭"}
+            </div>
 
-                <InfoItem
-                  label="მოთხოვნის თარიღი"
-                  value={
-                    booking.created_at
-                      ? new Date(
-                          booking.created_at
-                        ).toLocaleDateString("ka-GE")
-                      : "არ არის მითითებული"
-                  }
-                />
-              </div>
+            <h2 className="mt-5 text-3xl font-black">
+              {activeTab === "my-bookings"
+                ? "ჯავშნები ჯერ არ გაქვს"
+                : "მიღებული ჯავშნები ჯერ არ არის"}
+            </h2>
 
-              {booking.notes && (
-                <div className="mt-6 rounded-2xl bg-slate-100 p-5">
-                  <p className="text-sm font-bold text-slate-500">
-                    დამატებითი შეტყობინება
-                  </p>
+            <p className="mt-3 text-white/60">
+              {activeTab === "my-bookings"
+                ? "ტურების გვერდიდან დაჯავშნე სასურველი ტური."
+                : "როდესაც სტუმარი შენს ტურს დაჯავშნის, მოთხოვნა აქ გამოჩნდება."}
+            </p>
 
-                  <p className="mt-2 whitespace-pre-line text-slate-700">
-                    {booking.notes}
-                  </p>
-                </div>
-              )}
+            {activeTab === "my-bookings" && (
+              <Link
+                href="/tours"
+                className="mt-7 inline-flex rounded-2xl bg-cyan-500 px-7 py-4 font-bold transition hover:bg-cyan-600"
+              >
+                ტურების ნახვა
+              </Link>
+            )}
+          </section>
+        ) : (
+          <section className="mt-8 space-y-6">
+            {visibleBookings.map((booking) => {
+              const status = booking.status || "pending";
+              const isPending = status === "pending";
+              const isUpdating = updatingId === booking.id;
 
-              {isPending && (
-                <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row">
-                  <button
-                    type="button"
-                    disabled={isUpdating}
-                    onClick={() =>
-                      updateBookingStatus(
-                        booking.id,
-                        "confirmed"
-                      )
-                    }
-                    className="rounded-2xl bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isUpdating
-                      ? "მუშავდება..."
-                      : "✅ დადასტურება"}
-                  </button>
+              return (
+                <article
+                  key={booking.id}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-white text-slate-900 shadow-2xl"
+                >
+                  <div className="grid md:grid-cols-[240px_1fr]">
+                    <div className="relative min-h-[220px] bg-slate-200">
+                      {booking.tour_image ? (
+                        <img
+                          src={booking.tour_image}
+                          alt={booking.tour_title}
+                          className="h-full min-h-[220px] w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full min-h-[220px] items-center justify-center bg-slate-800 text-7xl">
+                          🏔️
+                        </div>
+                      )}
+                    </div>
 
-                  <button
-                    type="button"
-                    disabled={isUpdating}
-                    onClick={() =>
-                      updateBookingStatus(
-                        booking.id,
-                        "rejected"
-                      )
-                    }
-                    className="rounded-2xl bg-red-600 px-6 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isUpdating
-                      ? "მუშავდება..."
-                      : "❌ უარყოფა"}
-                  </button>
-                </div>
-              )}
+                    <div className="p-6">
+                      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                        <div>
+                          <p className="text-sm font-black uppercase tracking-wide text-cyan-600">
+                            {booking.tour_title}
+                          </p>
 
-              {!isPending && (
-                <div className="mt-6 border-t border-slate-200 pt-6">
-                  <p className="text-sm font-semibold text-slate-500">
-                    ამ ჯავშნის გადაწყვეტილება უკვე მიღებულია.
-                  </p>
-                </div>
-              )}
-            </article>
-          );
-        })}
+                          <h2 className="mt-2 text-2xl font-black">
+                            {activeTab === "my-bookings"
+                              ? booking.tour_location ||
+                                "მდებარეობა არ არის მითითებული"
+                              : booking.guest_name || "სტუმარი"}
+                          </h2>
+                        </div>
+
+                        <BookingStatus status={booking.status} />
+                      </div>
+
+                      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <InfoItem
+                          label="ტურის თარიღი"
+                          value={
+                            booking.booking_date ||
+                            "არ არის მითითებული"
+                          }
+                        />
+
+                        <InfoItem
+                          label="ადამიანების რაოდენობა"
+                          value={
+                            booking.people
+                              ? `${booking.people} ადამიანი`
+                              : "არ არის მითითებული"
+                          }
+                        />
+
+                        <InfoItem
+                          label="ჯამური ფასი"
+                          value={
+                            booking.total_price !== null
+                              ? `${Number(
+                                  booking.total_price
+                                ).toLocaleString()} ₾`
+                              : "შეთანხმებით"
+                          }
+                        />
+
+                        {activeTab === "received-bookings" && (
+                          <>
+                            <InfoItem
+                              label="ელფოსტა"
+                              value={
+                                booking.guest_email ||
+                                "არ არის მითითებული"
+                              }
+                            />
+
+                            <InfoItem
+                              label="ტელეფონი"
+                              value={
+                                booking.guest_phone ||
+                                "არ არის მითითებული"
+                              }
+                            />
+                          </>
+                        )}
+
+                        <InfoItem
+                          label="მოთხოვნის თარიღი"
+                          value={formatDate(booking.created_at)}
+                        />
+                      </div>
+
+                      {booking.notes && (
+                        <div className="mt-6 rounded-2xl bg-slate-100 p-5">
+                          <p className="text-sm font-bold text-slate-500">
+                            დამატებითი შეტყობინება
+                          </p>
+
+                          <p className="mt-2 whitespace-pre-line text-slate-700">
+                            {booking.notes}
+                          </p>
+                        </div>
+                      )}
+
+                      {activeTab === "my-bookings" &&
+                        isPending && (
+                          <div className="mt-6 border-t border-slate-200 pt-6">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                cancelMyBooking(booking)
+                              }
+                              disabled={isUpdating}
+                              className="rounded-2xl bg-red-600 px-6 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isUpdating
+                                ? "მუშავდება..."
+                                : "ჯავშნის გაუქმება"}
+                            </button>
+                          </div>
+                        )}
+
+                      {activeTab === "received-bookings" &&
+                        isPending && (
+                          <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateReceivedBookingStatus(
+                                  booking.id,
+                                  "confirmed"
+                                )
+                              }
+                              disabled={isUpdating}
+                              className="rounded-2xl bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isUpdating
+                                ? "მუშავდება..."
+                                : "✅ დადასტურება"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateReceivedBookingStatus(
+                                  booking.id,
+                                  "rejected"
+                                )
+                              }
+                              disabled={isUpdating}
+                              className="rounded-2xl bg-red-600 px-6 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isUpdating
+                                ? "მუშავდება..."
+                                : "❌ უარყოფა"}
+                            </button>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -380,8 +662,8 @@ function BookingStatus({
   const normalizedStatus = status || "pending";
 
   if (
-    normalizedStatus === "approved" ||
-    normalizedStatus === "confirmed"
+    normalizedStatus === "confirmed" ||
+    normalizedStatus === "approved"
   ) {
     return (
       <span className="w-fit rounded-full bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-700">
@@ -390,13 +672,18 @@ function BookingStatus({
     );
   }
 
-  if (
-    normalizedStatus === "rejected" ||
-    normalizedStatus === "cancelled"
-  ) {
+  if (normalizedStatus === "rejected") {
     return (
       <span className="w-fit rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
         უარყოფილი
+      </span>
+    );
+  }
+
+  if (normalizedStatus === "cancelled") {
+    return (
+      <span className="w-fit rounded-full bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700">
+        გაუქმებული
       </span>
     );
   }
@@ -426,4 +713,24 @@ function InfoItem({
       </p>
     </div>
   );
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "არ არის მითითებული";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ka-GE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
