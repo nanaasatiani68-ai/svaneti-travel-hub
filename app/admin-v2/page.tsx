@@ -12,6 +12,12 @@ import { supabase } from "@/lib/supabase";
 
 type UserRole = "Director" | "Admin";
 
+type NormalizedStatus =
+  | "confirmed"
+  | "rejected"
+  | "cancelled"
+  | "pending";
+
 type AdminProfile = {
   full_name: string | null;
   role: string | null;
@@ -186,9 +192,7 @@ export default function AdminV2Page() {
 
       if (normalizedRole === "director") {
         resolvedRole = "Director";
-      }
-
-      if (normalizedRole === "admin") {
+      } else if (normalizedRole === "admin") {
         resolvedRole = "Admin";
       }
 
@@ -399,15 +403,18 @@ export default function AdminV2Page() {
       );
 
       const pendingTours = tours.filter(
-        (tour) => normalizeStatus(tour.status) === "pending"
+        (tour) =>
+          normalizeStatus(tour.status) === "pending"
       );
 
       const approvedTours = tours.filter(
-        (tour) => normalizeStatus(tour.status) === "approved"
+        (tour) =>
+          normalizeStatus(tour.status) === "confirmed"
       );
 
       const rejectedTours = tours.filter(
-        (tour) => normalizeStatus(tour.status) === "rejected"
+        (tour) =>
+          normalizeStatus(tour.status) === "rejected"
       );
 
       const latestBookingRows = bookings.slice(0, 6);
@@ -425,10 +432,7 @@ export default function AdminV2Page() {
         )
       );
 
-      const tourTitleMap = new Map<
-        string,
-        string
-      >();
+      const tourTitleMap = new Map<string, string>();
 
       tours.forEach((tour) => {
         tourTitleMap.set(
@@ -449,12 +453,15 @@ export default function AdminV2Page() {
             .select("id, title")
             .in("id", missingTourIds);
 
-          (
-            (missingTours as Array<{
-              id: number | string;
-              title: string | null;
-            }> | null) ?? []
-          ).forEach((tour) => {
+          const missingTourRows =
+            (missingTours as
+              | Array<{
+                  id: number | string;
+                  title: string | null;
+                }>
+              | null) ?? [];
+
+          missingTourRows.forEach((tour) => {
             tourTitleMap.set(
               String(tour.id),
               tour.title || "უსახელო ტური"
@@ -1306,7 +1313,7 @@ function TourStatus({
 }) {
   const normalizedStatus = normalizeStatus(status);
 
-  if (normalizedStatus === "approved") {
+  if (normalizedStatus === "confirmed") {
     return (
       <span className="rounded-full bg-emerald-500/20 px-3 py-2 text-xs font-black text-emerald-300">
         ✅ დამტკიცებული
@@ -1347,7 +1354,9 @@ function EmptyBox({
   );
 }
 
-function normalizeStatus(status: string | null) {
+function normalizeStatus(
+  status: string | null
+): NormalizedStatus {
   const normalized = String(status || "pending")
     .trim()
     .toLowerCase();
@@ -1370,7 +1379,9 @@ function normalizeStatus(status: string | null) {
   return "pending";
 }
 
-function safeNumber(value: number | null | undefined) {
+function safeNumber(
+  value: number | null | undefined
+) {
   const numberValue = Number(value);
 
   return Number.isFinite(numberValue)
@@ -1422,16 +1433,21 @@ function formatDate(value: string | null) {
 
 function getLocalDateKey(date: Date) {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(
-    2,
-    "0"
-  );
-  const day = String(date.getDate()).padStart(2, "0");
+
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
-function getDateKeyFromValue(value: string | null) {
+function getDateKeyFromValue(
+  value: string | null
+) {
   if (!value) {
     return "";
   }
@@ -1505,7 +1521,10 @@ function createMonthlyRevenueData(
       return;
     }
 
-    month.revenue += safeNumber(booking.total_price);
+    month.revenue += safeNumber(
+      booking.total_price
+    );
+
     month.bookings += 1;
   });
 
