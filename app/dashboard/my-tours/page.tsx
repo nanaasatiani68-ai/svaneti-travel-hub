@@ -14,6 +14,7 @@ type Tour = {
   price: number | null;
   image_url: string | null;
   duration: string | null;
+  start_date: string | null;
   max_people: number | null;
   category: string | null;
   status: string | null;
@@ -26,7 +27,11 @@ export default function MyToursPage() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | number | null>(null);
+
+  const [deletingId, setDeletingId] = useState<
+    string | number | null
+  >(null);
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<
     "success" | "error" | "info"
@@ -42,9 +47,6 @@ export default function MyToursPage() {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      setMessage("ტურების სანახავად ჯერ უნდა შეხვიდე ანგარიშში.");
-      setMessageType("error");
-      setLoading(false);
       router.replace("/login");
       return;
     }
@@ -63,6 +65,7 @@ export default function MyToursPage() {
           price,
           image_url,
           duration,
+          start_date,
           max_people,
           category,
           status,
@@ -74,7 +77,11 @@ export default function MyToursPage() {
 
     if (error) {
       console.error("Tours loading error:", error);
-      setMessage(`ტურების ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
+
+      setMessage(
+        `ტურების ჩატვირთვა ვერ მოხერხდა: ${error.message}`
+      );
+
       setMessageType("error");
       setLoading(false);
       return;
@@ -125,7 +132,11 @@ export default function MyToursPage() {
 
     if (error) {
       console.error("Tour delete error:", error);
-      setMessage(`ტურის წაშლა ვერ მოხერხდა: ${error.message}`);
+
+      setMessage(
+        `ტურის წაშლა ვერ მოხერხდა: ${error.message}`
+      );
+
       setMessageType("error");
       setDeletingId(null);
       return;
@@ -135,9 +146,29 @@ export default function MyToursPage() {
       setMessage(
         "ტური არ წაიშალა. გადაამოწმე Supabase-ის DELETE პოლიტიკა."
       );
+
       setMessageType("error");
       setDeletingId(null);
       return;
+    }
+
+    const imagePath = getStoragePathFromPublicUrl(
+      tour.image_url || "",
+      "tour-images"
+    );
+
+    if (imagePath) {
+      const { error: imageDeleteError } =
+        await supabase.storage
+          .from("tour-images")
+          .remove([imagePath]);
+
+      if (imageDeleteError) {
+        console.error(
+          "Tour image delete error:",
+          imageDeleteError
+        );
+      }
     }
 
     setTours((currentTours) =>
@@ -149,36 +180,15 @@ export default function MyToursPage() {
     setDeletingId(null);
   }
 
-  function getStatusStyle(status: string | null) {
-    if (status === "approved") {
-      return "bg-emerald-100 text-emerald-700";
-    }
-
-    if (status === "rejected") {
-      return "bg-red-100 text-red-700";
-    }
-
-    return "bg-amber-100 text-amber-700";
-  }
-
-  function getStatusText(status: string | null) {
-    if (status === "approved") {
-      return "დამტკიცებული";
-    }
-
-    if (status === "rejected") {
-      return "უარყოფილი";
-    }
-
-    return "დასამტკიცებელი";
-  }
-
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
           <div className="text-6xl">⏳</div>
-          <p className="mt-4 text-lg font-semibold">ტურები იტვირთება...</p>
+
+          <p className="mt-4 text-lg font-semibold">
+            ტურები იტვირთება...
+          </p>
         </div>
       </main>
     );
@@ -187,7 +197,7 @@ export default function MyToursPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-10 text-white sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-cyan-300">
               მომხმარებლის პანელი
@@ -198,7 +208,8 @@ export default function MyToursPage() {
             </h1>
 
             <p className="mt-3 text-white/60">
-              აქ მხოლოდ შენ მიერ დამატებული ტურები ჩანს.
+              აქ შეგიძლია ნახო, შეცვალო ან წაშალო შენ მიერ
+              დამატებული ტურები.
             </p>
           </div>
 
@@ -217,7 +228,7 @@ export default function MyToursPage() {
               ➕ ტურის დამატება
             </Link>
           </div>
-        </div>
+        </header>
 
         {message && (
           <div
@@ -242,8 +253,8 @@ export default function MyToursPage() {
             </h2>
 
             <p className="mt-3 text-white/55">
-              დაამატე შენი პირველი ტური და გაუგზავნე ადმინისტრატორს
-              დასამტკიცებლად.
+              დაამატე შენი პირველი ტური და გაუგზავნე
+              ადმინისტრატორს დასამტკიცებლად.
             </p>
 
             <Link
@@ -260,31 +271,35 @@ export default function MyToursPage() {
                 key={tour.id}
                 className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl transition hover:-translate-y-1 hover:bg-white/10"
               >
-                {tour.image_url ? (
-                  <img
-                    src={tour.image_url}
-                    alt={tour.title || "Tour"}
-                    className="h-64 w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-64 items-center justify-center bg-white/5 text-8xl">
-                    🏔️
+                <div className="relative">
+                  {tour.image_url ? (
+                    <img
+                      src={tour.image_url}
+                      alt={tour.title || "Tour"}
+                      className="h-64 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-64 items-center justify-center bg-white/5 text-8xl">
+                      🏔️
+                    </div>
+                  )}
+
+                  <div className="absolute left-4 top-4">
+                    <StatusBadge status={tour.status} />
                   </div>
-                )}
+                </div>
 
                 <div className="p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span
-                      className={`rounded-full px-4 py-2 text-xs font-bold ${getStatusStyle(
-                        tour.status
-                      )}`}
-                    >
-                      {getStatusText(tour.status)}
-                    </span>
-
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-white/35">
                       Tour #{tour.id}
                     </span>
+
+                    {tour.created_at && (
+                      <span className="text-xs text-white/35">
+                        {formatDate(tour.created_at)}
+                      </span>
+                    )}
                   </div>
 
                   <h2 className="mt-5 text-2xl font-extrabold">
@@ -292,7 +307,9 @@ export default function MyToursPage() {
                   </h2>
 
                   <p className="mt-3 text-white/60">
-                    📍 {tour.location || "მდებარეობა არ არის მითითებული"}
+                    📍{" "}
+                    {tour.location ||
+                      "მდებარეობა არ არის მითითებული"}
                   </p>
 
                   <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
@@ -300,14 +317,19 @@ export default function MyToursPage() {
                       icon="💰"
                       value={
                         tour.price !== null
-                          ? `${Number(tour.price).toLocaleString()} ₾`
+                          ? `${Number(
+                              tour.price
+                            ).toLocaleString()} ₾`
                           : "შეთანხმებით"
                       }
                     />
 
                     <InfoBox
                       icon="⏱️"
-                      value={tour.duration || "ხანგრძლივობა უცნობია"}
+                      value={
+                        tour.duration ||
+                        "ხანგრძლივობა უცნობია"
+                      }
                     />
 
                     <InfoBox
@@ -321,9 +343,18 @@ export default function MyToursPage() {
 
                     <InfoBox
                       icon="🚙"
-                      value={tour.category || "კატეგორია უცნობია"}
+                      value={
+                        tour.category ||
+                        "კატეგორია უცნობია"
+                      }
                     />
                   </div>
+
+                  {tour.start_date && (
+                    <div className="mt-4 rounded-xl bg-black/20 p-3 text-sm text-white/70">
+                      📅 დაწყება: {tour.start_date}
+                    </div>
+                  )}
 
                   {tour.description && (
                     <p className="mt-5 line-clamp-3 leading-7 text-white/55">
@@ -331,19 +362,26 @@ export default function MyToursPage() {
                     </p>
                   )}
 
-                  <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
                     <Link
                       href={`/book-tour/${tour.id}`}
-                      className="flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 text-center font-bold transition hover:bg-cyan-600"
+                      className="flex items-center justify-center rounded-2xl bg-cyan-500 px-4 py-3 text-center font-bold transition hover:bg-cyan-600"
                     >
                       👁️ ნახვა
+                    </Link>
+
+                    <Link
+                      href={`/dashboard/edit-tour/${tour.id}`}
+                      className="flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-center font-bold text-white transition hover:bg-amber-600"
+                    >
+                      ✏️ შეცვლა
                     </Link>
 
                     <button
                       type="button"
                       onClick={() => deleteTour(tour)}
                       disabled={deletingId === tour.id}
-                      className="rounded-2xl bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-2xl bg-red-600 px-4 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {deletingId === tour.id
                         ? "იშლება..."
@@ -360,6 +398,34 @@ export default function MyToursPage() {
   );
 }
 
+function StatusBadge({
+  status,
+}: {
+  status: string | null;
+}) {
+  if (status === "approved") {
+    return (
+      <span className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white shadow-lg">
+        ✅ დამტკიცებული
+      </span>
+    );
+  }
+
+  if (status === "rejected") {
+    return (
+      <span className="rounded-full bg-red-500 px-4 py-2 text-xs font-black text-white shadow-lg">
+        ❌ უარყოფილი
+      </span>
+    );
+  }
+
+  return (
+    <span className="rounded-full bg-amber-500 px-4 py-2 text-xs font-black text-white shadow-lg">
+      ⏳ დასამტკიცებელი
+    </span>
+  );
+}
+
 function InfoBox({
   icon,
   value,
@@ -373,4 +439,44 @@ function InfoBox({
       <span>{value}</span>
     </div>
   );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ka-GE", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function getStoragePathFromPublicUrl(
+  publicUrl: string,
+  bucketName: string
+) {
+  if (!publicUrl) {
+    return null;
+  }
+
+  const marker = `/storage/v1/object/public/${bucketName}/`;
+  const markerIndex = publicUrl.indexOf(marker);
+
+  if (markerIndex === -1) {
+    return null;
+  }
+
+  const encodedPath = publicUrl.slice(
+    markerIndex + marker.length
+  );
+
+  try {
+    return decodeURIComponent(encodedPath);
+  } catch {
+    return encodedPath;
+  }
 }
