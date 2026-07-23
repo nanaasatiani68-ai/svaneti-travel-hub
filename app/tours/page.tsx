@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 
 type Tour = {
@@ -24,48 +30,83 @@ type SortOption =
   | "price-high"
   | "title";
 
+type FavoriteRow = {
+  tour_id: string | number;
+};
+
 export default function PublicToursPage() {
+  const router = useRouter();
+
   const [tours, setTours] = useState<Tour[]>([]);
+  const [favoriteTourIds, setFavoriteTourIds] = useState<
+    Set<string>
+  >(new Set());
+
+  const [currentUserId, setCurrentUserId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [favoriteLoadingId, setFavoriteLoadingId] = useState<
+    string | null
+  >(null);
+
   const [errorMessage, setErrorMessage] = useState("");
+  const [favoriteMessage, setFavoriteMessage] = useState("");
+  const [favoriteMessageType, setFavoriteMessageType] = useState<
+    "success" | "error"
+  >("success");
 
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] =
+    useState("all");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [people, setPeople] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [sortBy, setSortBy] =
+    useState<SortOption>("newest");
 
   useEffect(() => {
-    async function loadTours() {
+    async function loadPage() {
       setLoading(true);
       setErrorMessage("");
 
-      const { data, error } = await supabase
-        .from("tours")
-        .select(
-          `
-            id,
-            title,
-            description,
-            location,
-            price,
-            image_url,
-            duration,
-            max_people,
-            category,
-            status,
-            created_at
-          `
-        )
-        .eq("status", "approved")
-        .order("created_at", { ascending: false });
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-      if (error) {
-        console.error("Tours loading error:", error);
+      if (userError) {
+        console.error("User loading error:", userError);
+      }
+
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+
+      const { data: toursData, error: toursError } =
+        await supabase
+          .from("tours")
+          .select(
+            `
+              id,
+              title,
+              description,
+              location,
+              price,
+              image_url,
+              duration,
+              max_people,
+              category,
+              status,
+              created_at
+            `
+          )
+          .eq("status", "approved")
+          .order("created_at", { ascending: false });
+
+      if (toursError) {
+        console.error("Tours loading error:", toursError);
 
         setErrorMessage(
-          `ტურების ჩატვირთვა ვერ მოხერხდა: ${error.message}`
+          `ტურების ჩატვირთვა ვერ მოხერხდა: ${toursError.message}`
         );
 
         setTours([]);
@@ -73,11 +114,40 @@ export default function PublicToursPage() {
         return;
       }
 
-      setTours((data as Tour[] | null) ?? []);
+      setTours((toursData as Tour[] | null) ?? []);
+
+      if (user) {
+        const {
+          data: favoritesData,
+          error: favoritesError,
+        } = await supabase
+          .from("favorites")
+          .select("tour_id")
+          .eq("user_id", user.id);
+
+        if (favoritesError) {
+          console.error(
+            "Favorites loading error:",
+            favoritesError
+          );
+        } else {
+          const rows =
+            (favoritesData as FavoriteRow[] | null) ?? [];
+
+          setFavoriteTourIds(
+            new Set(
+              rows.map((favorite) =>
+                String(favorite.tour_id)
+              )
+            )
+          );
+        }
+      }
+
       setLoading(false);
     }
 
-    loadTours();
+    loadPage();
   }, []);
 
   const categories = useMemo(() => {
@@ -98,21 +168,29 @@ export default function PublicToursPage() {
 
   const filteredTours = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
+
     const minimumPrice =
       minPrice.trim() === "" ? null : Number(minPrice);
+
     const maximumPrice =
       maxPrice.trim() === "" ? null : Number(maxPrice);
+
     const requestedPeople =
       people.trim() === "" ? null : Number(people);
 
     const result = tours.filter((tour) => {
-      const title = String(tour.title || "").toLowerCase();
+      const title = String(
+        tour.title || ""
+      ).toLowerCase();
+
       const location = String(
         tour.location || ""
       ).toLowerCase();
+
       const description = String(
         tour.description || ""
       ).toLowerCase();
+
       const category = String(
         tour.category || ""
       ).toLowerCase();
@@ -158,18 +236,28 @@ export default function PublicToursPage() {
     return [...result].sort((a, b) => {
       if (sortBy === "price-low") {
         const priceA =
-          a.price === null ? Number.POSITIVE_INFINITY : Number(a.price);
+          a.price === null
+            ? Number.POSITIVE_INFINITY
+            : Number(a.price);
+
         const priceB =
-          b.price === null ? Number.POSITIVE_INFINITY : Number(b.price);
+          b.price === null
+            ? Number.POSITIVE_INFINITY
+            : Number(b.price);
 
         return priceA - priceB;
       }
 
       if (sortBy === "price-high") {
         const priceA =
-          a.price === null ? Number.NEGATIVE_INFINITY : Number(a.price);
+          a.price === null
+            ? Number.NEGATIVE_INFINITY
+            : Number(a.price);
+
         const priceB =
-          b.price === null ? Number.NEGATIVE_INFINITY : Number(b.price);
+          b.price === null
+            ? Number.NEGATIVE_INFINITY
+            : Number(b.price);
 
         return priceB - priceA;
       }
@@ -217,6 +305,117 @@ export default function PublicToursPage() {
     setSortBy("newest");
   }
 
+  async function toggleFavorite(tour: Tour) {
+    setFavoriteMessage("");
+    setErrorMessage("");
+
+    if (!currentUserId) {
+      router.push("/login");
+      return;
+    }
+
+    const tourKey = String(tour.id);
+    const isFavorite = favoriteTourIds.has(tourKey);
+
+    setFavoriteLoadingId(tourKey);
+
+    if (isFavorite) {
+      const { error } = await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("tour_id", tour.id);
+
+      if (error) {
+        console.error(
+          "Favorite delete error:",
+          error
+        );
+
+        setFavoriteMessage(
+          `ფავორიტებიდან ამოღება ვერ მოხერხდა: ${error.message}`
+        );
+
+        setFavoriteMessageType("error");
+        setFavoriteLoadingId(null);
+        return;
+      }
+
+      setFavoriteTourIds((currentFavorites) => {
+        const updatedFavorites = new Set(
+          currentFavorites
+        );
+
+        updatedFavorites.delete(tourKey);
+
+        return updatedFavorites;
+      });
+
+      setFavoriteMessage(
+        "ტური ფავორიტებიდან ამოიღე."
+      );
+
+      setFavoriteMessageType("success");
+      setFavoriteLoadingId(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("favorites")
+      .insert({
+        user_id: currentUserId,
+        tour_id: tour.id,
+      });
+
+    if (error) {
+      console.error("Favorite insert error:", error);
+
+      if (error.code === "23505") {
+        setFavoriteTourIds((currentFavorites) => {
+          const updatedFavorites = new Set(
+            currentFavorites
+          );
+
+          updatedFavorites.add(tourKey);
+
+          return updatedFavorites;
+        });
+
+        setFavoriteMessage(
+          "ეს ტური უკვე ფავორიტებშია."
+        );
+
+        setFavoriteMessageType("success");
+      } else {
+        setFavoriteMessage(
+          `ფავორიტებში დამატება ვერ მოხერხდა: ${error.message}`
+        );
+
+        setFavoriteMessageType("error");
+      }
+
+      setFavoriteLoadingId(null);
+      return;
+    }
+
+    setFavoriteTourIds((currentFavorites) => {
+      const updatedFavorites = new Set(
+        currentFavorites
+      );
+
+      updatedFavorites.add(tourKey);
+
+      return updatedFavorites;
+    });
+
+    setFavoriteMessage(
+      "ტური ფავორიტებში დაემატა."
+    );
+
+    setFavoriteMessageType("success");
+    setFavoriteLoadingId(null);
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
@@ -245,27 +444,46 @@ export default function PublicToursPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl text-white/60">
-              მოძებნე ტური მდებარეობის, კატეგორიის, ფასისა და
-              ადამიანების რაოდენობის მიხედვით.
+              მოძებნე ტური მდებარეობის, კატეგორიის,
+              ფასისა და ადამიანების რაოდენობის მიხედვით.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
+              href="/dashboard/favorites"
+              className="inline-flex items-center justify-center rounded-2xl bg-rose-500 px-5 py-3 font-bold transition hover:bg-rose-600"
             >
-              ← Dashboard
+              ❤️ ფავორიტები
+            </Link>
+
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-5 py-3 font-bold transition hover:bg-white/20"
+            >
+              Dashboard
             </Link>
 
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+              className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
             >
-              მთავარი გვერდი
+              მთავარი
             </Link>
           </div>
         </header>
+
+        {favoriteMessage && (
+          <div
+            className={`mb-7 rounded-2xl border p-4 font-semibold ${
+              favoriteMessageType === "success"
+                ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                : "border-red-400/30 bg-red-500/10 text-red-200"
+            }`}
+          >
+            {favoriteMessage}
+          </div>
+        )}
 
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -273,7 +491,9 @@ export default function PublicToursPage() {
               <input
                 type="text"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
                 placeholder="ტური, ადგილი, აღწერა..."
                 className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
               />
@@ -283,14 +503,21 @@ export default function PublicToursPage() {
               <select
                 value={selectedCategory}
                 onChange={(event) =>
-                  setSelectedCategory(event.target.value)
+                  setSelectedCategory(
+                    event.target.value
+                  )
                 }
                 className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none focus:border-cyan-500"
               >
-                <option value="all">ყველა კატეგორია</option>
+                <option value="all">
+                  ყველა კატეგორია
+                </option>
 
                 {categories.map((category) => (
-                  <option key={category} value={category}>
+                  <option
+                    key={category}
+                    value={category}
+                  >
                     {category}
                   </option>
                 ))}
@@ -314,18 +541,27 @@ export default function PublicToursPage() {
               <select
                 value={sortBy}
                 onChange={(event) =>
-                  setSortBy(event.target.value as SortOption)
+                  setSortBy(
+                    event.target.value as SortOption
+                  )
                 }
                 className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none focus:border-cyan-500"
               >
-                <option value="newest">ჯერ ახალი</option>
+                <option value="newest">
+                  ჯერ ახალი
+                </option>
+
                 <option value="price-low">
                   ფასი: დაბლიდან მაღლა
                 </option>
+
                 <option value="price-high">
                   ფასი: მაღლიდან დაბლა
                 </option>
-                <option value="title">სახელის მიხედვით</option>
+
+                <option value="title">
+                  სახელის მიხედვით
+                </option>
               </select>
             </FilterField>
           </div>
@@ -378,10 +614,13 @@ export default function PublicToursPage() {
               ტური
             </p>
 
-            {hasActiveFilters && (
-              <span className="rounded-full bg-cyan-500/15 px-4 py-2 text-xs font-bold text-cyan-200">
-                ფილტრები აქტიურია
-              </span>
+            {currentUserId && (
+              <p className="text-sm text-white/50">
+                ფავორიტებშია:{" "}
+                <span className="font-bold text-rose-300">
+                  {favoriteTourIds.size}
+                </span>
+              </p>
             )}
           </div>
         </section>
@@ -412,106 +651,150 @@ export default function PublicToursPage() {
             />
           )}
 
-        {!errorMessage && filteredTours.length > 0 && (
-          <section className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
-            {filteredTours.map((tour) => (
-              <article
-                key={tour.id}
-                className="group overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/15"
-              >
-                <div className="relative h-64 overflow-hidden">
-                  {tour.image_url ? (
-                    <img
-                      src={tour.image_url}
-                      alt={tour.title || "Tour"}
-                      className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900">
-                      <span className="text-8xl">🏔️</span>
+        {!errorMessage &&
+          filteredTours.length > 0 && (
+            <section className="grid gap-7 md:grid-cols-2 xl:grid-cols-3">
+              {filteredTours.map((tour) => {
+                const tourKey = String(tour.id);
+                const isFavorite =
+                  favoriteTourIds.has(tourKey);
+
+                const isFavoriteLoading =
+                  favoriteLoadingId === tourKey;
+
+                return (
+                  <article
+                    key={tour.id}
+                    className="group overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/15"
+                  >
+                    <div className="relative h-64 overflow-hidden">
+                      {tour.image_url ? (
+                        <img
+                          src={tour.image_url}
+                          alt={tour.title || "Tour"}
+                          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900">
+                          <span className="text-8xl">
+                            🏔️
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent" />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleFavorite(tour)
+                        }
+                        disabled={isFavoriteLoading}
+                        aria-label={
+                          isFavorite
+                            ? "ფავორიტებიდან ამოღება"
+                            : "ფავორიტებში დამატება"
+                        }
+                        title={
+                          currentUserId
+                            ? isFavorite
+                              ? "ფავორიტებიდან ამოღება"
+                              : "ფავორიტებში დამატება"
+                            : "ფავორიტებისთვის შედი ანგარიშში"
+                        }
+                        className={`absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full text-2xl shadow-xl transition hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60 ${
+                          isFavorite
+                            ? "bg-rose-500 text-white"
+                            : "bg-white text-rose-500"
+                        }`}
+                      >
+                        {isFavoriteLoading
+                          ? "⏳"
+                          : isFavorite
+                            ? "❤️"
+                            : "♡"}
+                      </button>
+
+                      <div className="absolute left-4 top-4 flex max-w-[calc(100%-80px)] flex-wrap gap-2">
+                        <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                          ხელმისაწვდომია
+                        </span>
+
+                        {tour.category && (
+                          <span className="rounded-full border border-white/20 bg-slate-950/70 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
+                            {tour.category}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h2 className="text-2xl font-extrabold text-white drop-shadow-lg">
+                          {tour.title ||
+                            "უსახელო ტური"}
+                        </h2>
+
+                        <p className="mt-2 text-sm text-white/80">
+                          📍{" "}
+                          {tour.location ||
+                            "მდებარეობა არ არის მითითებული"}
+                        </p>
+                      </div>
                     </div>
-                  )}
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                    <div className="p-6">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <TourInfoBox
+                          icon="⏱️"
+                          value={
+                            tour.duration ||
+                            "ხანგრძლივობა უცნობია"
+                          }
+                        />
 
-                  <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
-                      ხელმისაწვდომია
-                    </span>
+                        <TourInfoBox
+                          icon="👥"
+                          value={
+                            tour.max_people
+                              ? `${tour.max_people} ადამიანი`
+                              : "რაოდენობა უცნობია"
+                          }
+                        />
+                      </div>
 
-                    {tour.category && (
-                      <span className="rounded-full border border-white/20 bg-slate-950/70 px-3 py-1 text-xs font-bold text-white backdrop-blur-md">
-                        {tour.category}
-                      </span>
-                    )}
-                  </div>
+                      {tour.description && (
+                        <p className="mt-5 line-clamp-3 leading-7 text-white/60">
+                          {tour.description}
+                        </p>
+                      )}
 
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <h2 className="text-2xl font-extrabold text-white drop-shadow-lg">
-                      {tour.title || "უსახელო ტური"}
-                    </h2>
+                      <div className="mt-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                            ფასი ერთ ადამიანზე
+                          </p>
 
-                    <p className="mt-2 text-sm text-white/80">
-                      📍{" "}
-                      {tour.location ||
-                        "მდებარეობა არ არის მითითებული"}
-                    </p>
-                  </div>
-                </div>
+                          <p className="mt-1 text-2xl font-extrabold text-cyan-300">
+                            {tour.price !== null
+                              ? `${Number(
+                                  tour.price
+                                ).toLocaleString()} ₾`
+                              : "შეთანხმებით"}
+                          </p>
+                        </div>
 
-                <div className="p-6">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <TourInfoBox
-                      icon="⏱️"
-                      value={
-                        tour.duration ||
-                        "ხანგრძლივობა უცნობია"
-                      }
-                    />
-
-                    <TourInfoBox
-                      icon="👥"
-                      value={
-                        tour.max_people
-                          ? `${tour.max_people} ადამიანი`
-                          : "რაოდენობა უცნობია"
-                      }
-                    />
-                  </div>
-
-                  {tour.description && (
-                    <p className="mt-5 line-clamp-3 leading-7 text-white/60">
-                      {tour.description}
-                    </p>
-                  )}
-
-                  <div className="mt-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
-                        ფასი ერთ ადამიანზე
-                      </p>
-
-                      <p className="mt-1 text-2xl font-extrabold text-cyan-300">
-                        {tour.price !== null
-                          ? `${Number(
-                              tour.price
-                            ).toLocaleString()} ₾`
-                          : "შეთანხმებით"}
-                      </p>
+                        <Link
+                          href={`/book-tour/${tour.id}`}
+                          className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+                        >
+                          ნახვა და დაჯავშნა
+                        </Link>
+                      </div>
                     </div>
-
-                    <Link
-                      href={`/book-tour/${tour.id}`}
-                      className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
-                    >
-                      ნახვა და დაჯავშნა
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
+                  </article>
+                );
+              })}
+            </section>
+          )}
       </div>
     </main>
   );
@@ -522,7 +805,7 @@ function FilterField({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block">
@@ -565,9 +848,13 @@ function EmptyState({
     <div className="rounded-3xl border border-white/10 bg-white/10 p-10 text-center shadow-2xl">
       <div className="mb-4 text-7xl">🏔️</div>
 
-      <h2 className="text-2xl font-bold">{title}</h2>
+      <h2 className="text-2xl font-bold">
+        {title}
+      </h2>
 
-      <p className="mt-3 text-white/60">{description}</p>
+      <p className="mt-3 text-white/60">
+        {description}
+      </p>
 
       {showClearButton && (
         <button
