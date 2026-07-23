@@ -3,13 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function approveTour(formData: FormData) {
+function getTourId(formData: FormData) {
   const tourId = formData.get("tourId");
 
-  if (!tourId) {
-    throw new Error("Tour ID is missing");
+  if (!tourId || typeof tourId !== "string") {
+    throw new Error("ტურის ID ვერ მოიძებნა.");
   }
 
+  return tourId;
+}
+
+export async function approveTour(formData: FormData) {
+  const tourId = getTourId(formData);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -25,18 +30,13 @@ export async function approveTour(formData: FormData) {
     throw new Error(`ტურის დამტკიცება ვერ მოხერხდა: ${error.message}`);
   }
 
+  revalidatePath("/admin-v2");
   revalidatePath("/admin-v2/tours");
   revalidatePath("/tours");
-  revalidatePath("/");
 }
 
 export async function rejectTour(formData: FormData) {
-  const tourId = formData.get("tourId");
-
-  if (!tourId) {
-    throw new Error("Tour ID is missing");
-  }
-
+  const tourId = getTourId(formData);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -51,36 +51,33 @@ export async function rejectTour(formData: FormData) {
     throw new Error(`ტურის უარყოფა ვერ მოხერხდა: ${error.message}`);
   }
 
+  revalidatePath("/admin-v2");
   revalidatePath("/admin-v2/tours");
   revalidatePath("/tours");
-  revalidatePath("/");
 }
 
 export async function deleteTour(formData: FormData) {
-  const tourId = formData.get("tourId");
-
-  if (!tourId) {
-    throw new Error("Tour ID is missing");
-  }
-
+  const tourId = getTourId(formData);
   const supabase = await createClient();
 
-  /*
-   * თუ bookings ცხრილში ამ ტურზე ჯავშნები არსებობს
-   * და foreign key cascade არ გაქვს, ტურის წაშლა შეიძლება დაიბლოკოს.
-   */
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("tours")
     .delete()
-    .eq("id", tourId);
+    .eq("id", tourId)
+    .select("id");
 
   if (error) {
     console.error("Delete tour error:", error);
     throw new Error(`ტურის წაშლა ვერ მოხერხდა: ${error.message}`);
   }
 
+  if (!data || data.length === 0) {
+    throw new Error(
+      "ტური არ წაიშალა. სავარაუდოდ Supabase-ის DELETE Policy ბლოკავს წაშლას."
+    );
+  }
+
+  revalidatePath("/admin-v2");
   revalidatePath("/admin-v2/tours");
-  revalidatePath("/admin-v2/tour-owners");
   revalidatePath("/tours");
-  revalidatePath("/");
 }
