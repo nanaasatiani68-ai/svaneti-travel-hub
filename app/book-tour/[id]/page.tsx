@@ -3,12 +3,13 @@
 import {
   FormEvent,
   ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 
 type Tour = {
@@ -36,18 +37,39 @@ type OwnerProfile = {
   bio: string | null;
 };
 
+type Review = {
+  id: string;
+  tour_id: number | string;
+  user_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export default function BookTourPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const tourId = params?.id;
 
   const [tour, setTour] = useState<Tour | null>(null);
   const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
+  const [currentUserId, setCurrentUserId] = useState("");
   const [loadingTour, setLoadingTour] = useState(true);
+  const [loadingReviews, setLoadingReviews] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [savingReview, setSavingReview] = useState(false);
+  const [deletingReview, setDeletingReview] = useState(false);
+
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [reviewMessageType, setReviewMessageType] = useState<
+    "success" | "error"
+  >("success");
 
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
@@ -55,6 +77,43 @@ export default function BookTourPage() {
   const [bookingDate, setBookingDate] = useState("");
   const [people, setPeople] = useState(1);
   const [notes, setNotes] = useState("");
+
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+
+  const loadReviews = useCallback(async () => {
+    if (!tourId) {
+      setLoadingReviews(false);
+      return;
+    }
+
+    setLoadingReviews(true);
+
+    const { data, error } = await supabase
+      .from("reviews")
+      .select(
+        `
+          id,
+          tour_id,
+          user_id,
+          rating,
+          comment,
+          created_at,
+          updated_at
+        `
+      )
+      .eq("tour_id", tourId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Reviews loading error:", error);
+      setLoadingReviews(false);
+      return;
+    }
+
+    setReviews((data as Review[] | null) ?? []);
+    setLoadingReviews(false);
+  }, [tourId]);
 
   useEffect(() => {
     async function loadTour() {
@@ -190,6 +249,7 @@ export default function BookTourPage() {
         return;
       }
 
+      setCurrentUserId(user.id);
       setGuestEmail(user.email || "");
 
       const { data: profile } = await supabase
@@ -211,6 +271,42 @@ export default function BookTourPage() {
 
     loadCurrentUser();
   }, []);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
+  const myReview = useMemo(() => {
+    if (!currentUserId) {
+      return null;
+    }
+
+    return (
+      reviews.find(
+        (review) => review.user_id === currentUserId
+      ) ?? null
+    );
+  }, [reviews, currentUserId]);
+
+  useEffect(() => {
+    if (myReview) {
+      setReviewRating(myReview.rating);
+      setReviewComment(myReview.comment || "");
+    }
+  }, [myReview]);
+
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) {
+      return 0;
+    }
+
+    const total = reviews.reduce(
+      (sum, review) => sum + Number(review.rating),
+      0
+    );
+
+    return total / reviews.length;
+  }, [reviews]);
 
   const totalPrice = useMemo(() => {
     if (tour?.price === null || tour?.price === undefined) {
@@ -320,6 +416,130 @@ export default function BookTourPage() {
       top: 0,
       behavior: "smooth",
     });
+  }
+
+  async function saveReview(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setReviewMessage("");
+
+    if (!tour) {
+      setReviewMessage("ტურის ინფორმაცია ვერ მოიძებნა.");
+      setReviewMessageType("error");
+      return;
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      router.push("/login");
+      return;
+    }
+
+    if (
+      !Number.isInteger(reviewRating) ||
+      reviewRating < 1 ||
+      reviewRating > 5
+    ) {
+      setReviewMessage("აირჩიე შეფასება 1-დან 5-მდე.");
+      setReviewMessageType("error");
+      return;
+    }
+
+    if (reviewComment.trim().length > 1000) {
+      setReviewMessage(
+        "კომენტარი არ უნდა აღემატებოდეს 1000 სიმბოლოს."
+      );
+      setReviewMessageType("error");
+      return;
+    }
+
+    setSavingReview(true);
+
+    const { error } = await supabase
+      .from("reviews")
+      .upsert(
+        {
+          tour_id: tour.id,
+          user_id: user.id,
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+        },
+        {
+          onConflict: "tour_id,user_id",
+        }
+      );
+
+    if (error) {
+      console.error("Review saving error:", error);
+
+      setReviewMessage(
+        `შეფასების შენახვა ვერ მოხერხდა: ${error.message}`
+      );
+
+      setReviewMessageType("error");
+      setSavingReview(false);
+      return;
+    }
+
+    setReviewMessage(
+      myReview
+        ? "შეფასება წარმატებით განახლდა."
+        : "შეფასება წარმატებით დაემატა."
+    );
+
+    setReviewMessageType("success");
+    setSavingReview(false);
+
+    await loadReviews();
+  }
+
+  async function deleteReview() {
+    if (!myReview || !currentUserId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "ნამდვილად გინდა შეფასების წაშლა?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingReview(true);
+    setReviewMessage("");
+
+    const { error } = await supabase
+      .from("reviews")
+      .delete()
+      .eq("id", myReview.id)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      console.error("Review deleting error:", error);
+
+      setReviewMessage(
+        `შეფასების წაშლა ვერ მოხერხდა: ${error.message}`
+      );
+
+      setReviewMessageType("error");
+      setDeletingReview(false);
+      return;
+    }
+
+    setReviewRating(5);
+    setReviewComment("");
+    setReviewMessage("შეფასება წარმატებით წაიშალა.");
+    setReviewMessageType("success");
+    setDeletingReview(false);
+
+    await loadReviews();
   }
 
   if (loadingTour) {
@@ -461,6 +681,22 @@ export default function BookTourPage() {
                   <p className="mt-3 text-lg text-white/80">
                     📍 {tour.location || "საქართველო"}
                   </p>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <StarDisplay rating={averageRating} />
+
+                    <span className="font-black">
+                      {reviews.length > 0
+                        ? averageRating.toFixed(1)
+                        : "ჯერ არ არის შეფასება"}
+                    </span>
+
+                    {reviews.length > 0 && (
+                      <span className="text-sm text-white/65">
+                        ({reviews.length} შეფასება)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
@@ -542,6 +778,219 @@ export default function BookTourPage() {
                 ]}
                 note="პირობები შეიძლება განსხვავდებოდეს კონკრეტული ტურის მიხედვით."
               />
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                    Reviews
+                  </p>
+
+                  <h2 className="mt-3 text-3xl font-black">
+                    ⭐ შეფასებები და კომენტარები
+                  </h2>
+                </div>
+
+                <div className="rounded-2xl bg-white/10 px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <StarDisplay rating={averageRating} />
+
+                    <span className="text-xl font-black">
+                      {reviews.length > 0
+                        ? averageRating.toFixed(1)
+                        : "0.0"}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-sm text-white/50">
+                    {reviews.length} შეფასება
+                  </p>
+                </div>
+              </div>
+
+              {reviewMessage && (
+                <div
+                  className={`mt-6 rounded-2xl border p-4 font-semibold ${
+                    reviewMessageType === "success"
+                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                      : "border-red-400/30 bg-red-500/10 text-red-200"
+                  }`}
+                >
+                  {reviewMessageType === "success" ? "✅ " : "❌ "}
+                  {reviewMessage}
+                </div>
+              )}
+
+              {currentUserId ? (
+                <form
+                  onSubmit={saveReview}
+                  className="mt-7 rounded-3xl bg-white p-6 text-slate-900"
+                >
+                  <h3 className="text-2xl font-black">
+                    {myReview
+                      ? "შეფასების შეცვლა"
+                      : "ტურის შეფასება"}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    აირჩიე ვარსკვლავების რაოდენობა და დაწერე
+                    კომენტარი.
+                  </p>
+
+                  <div className="mt-5">
+                    <p className="mb-3 text-sm font-bold text-slate-700">
+                      შენი შეფასება
+                    </p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewRating(star)}
+                          className={`flex h-12 w-12 items-center justify-center rounded-xl text-2xl transition ${
+                            star <= reviewRating
+                              ? "bg-amber-400 text-white"
+                              : "bg-slate-100 text-slate-300 hover:bg-slate-200"
+                          }`}
+                          aria-label={`${star} ვარსკვლავი`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="mt-2 text-sm font-bold text-amber-600">
+                      {reviewRating} / 5
+                    </p>
+                  </div>
+
+                  <label className="mt-5 block">
+                    <span className="mb-2 block text-sm font-bold text-slate-700">
+                      კომენტარი
+                    </span>
+
+                    <textarea
+                      value={reviewComment}
+                      onChange={(event) =>
+                        setReviewComment(event.target.value)
+                      }
+                      placeholder="დაწერე შენი გამოცდილების შესახებ..."
+                      rows={5}
+                      maxLength={1000}
+                      className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    />
+
+                    <span className="mt-2 block text-right text-xs text-slate-400">
+                      {reviewComment.length} / 1000
+                    </span>
+                  </label>
+
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="submit"
+                      disabled={savingReview}
+                      className="rounded-2xl bg-cyan-600 px-6 py-3 font-black text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {savingReview
+                        ? "ინახება..."
+                        : myReview
+                          ? "შეფასების განახლება"
+                          : "შეფასების დამატება"}
+                    </button>
+
+                    {myReview && (
+                      <button
+                        type="button"
+                        onClick={deleteReview}
+                        disabled={deletingReview}
+                        className="rounded-2xl bg-red-600 px-6 py-3 font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingReview
+                          ? "იშლება..."
+                          : "შეფასების წაშლა"}
+                      </button>
+                    )}
+                  </div>
+                </form>
+              ) : (
+                <div className="mt-7 rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6 text-center">
+                  <p className="font-bold">
+                    შეფასების დასაწერად საჭიროა ავტორიზაცია.
+                  </p>
+
+                  <Link
+                    href="/login"
+                    className="mt-4 inline-flex rounded-2xl bg-cyan-500 px-6 py-3 font-black transition hover:bg-cyan-600"
+                  >
+                    შესვლა
+                  </Link>
+                </div>
+              )}
+
+              <div className="mt-8 space-y-4">
+                {loadingReviews ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-white/60">
+                    შეფასებები იტვირთება...
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+                    <div className="text-5xl">⭐</div>
+
+                    <h3 className="mt-4 text-xl font-black">
+                      შეფასებები ჯერ არ არის
+                    </h3>
+
+                    <p className="mt-2 text-white/55">
+                      პირველი შეფასება შენ დაამატე.
+                    </p>
+                  </div>
+                ) : (
+                  reviews.map((review) => (
+                    <article
+                      key={review.id}
+                      className={`rounded-3xl border p-5 ${
+                        review.user_id === currentUserId
+                          ? "border-cyan-400/40 bg-cyan-500/10"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-xl">
+                              👤
+                            </div>
+
+                            <div>
+                              <h3 className="font-black">
+                                {review.user_id === currentUserId
+                                  ? "შენი შეფასება"
+                                  : "მომხმარებელი"}
+                              </h3>
+
+                              <p className="text-xs text-white/40">
+                                {formatDate(review.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <StarDisplay rating={review.rating} />
+                        </div>
+                      </div>
+
+                      {review.comment && (
+                        <p className="mt-5 whitespace-pre-line leading-7 text-white/70">
+                          {review.comment}
+                        </p>
+                      )}
+                    </article>
+                  ))
+                )}
+              </div>
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
@@ -799,6 +1248,28 @@ export default function BookTourPage() {
   );
 }
 
+function StarDisplay({ rating }: { rating: number }) {
+  return (
+    <div
+      className="flex gap-1"
+      aria-label={`${rating.toFixed(1)} ვარსკვლავი`}
+    >
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          className={
+            star <= Math.round(rating)
+              ? "text-amber-400"
+              : "text-white/20"
+          }
+        >
+          ★
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function OwnerCard({
   owner,
 }: {
@@ -996,4 +1467,20 @@ function getLocalToday() {
   return new Date(now.getTime() - timezoneOffset)
     .toISOString()
     .split("T")[0];
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ka-GE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
