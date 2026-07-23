@@ -1,12 +1,19 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import {
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 
 type Tour = {
-  id: number;
+  id: number | string;
+  user_id: string | null;
   title: string | null;
   description: string | null;
   location: string | null;
@@ -14,12 +21,14 @@ type Tour = {
   image_url: string | null;
   duration: string | null;
   max_people: number | null;
+  category: string | null;
   status: string | null;
+  created_at: string | null;
 };
 
 export default function BookTourPage() {
   const params = useParams<{ id: string }>();
-  const tourId = Number(params.id);
+  const tourId = params?.id;
 
   const [tour, setTour] = useState<Tour | null>(null);
   const [loadingTour, setLoadingTour] = useState(true);
@@ -39,7 +48,7 @@ export default function BookTourPage() {
       setLoadingTour(true);
       setErrorMessage("");
 
-      if (!Number.isInteger(tourId) || tourId < 1) {
+      if (!tourId) {
         setErrorMessage("ტურის ID არასწორია.");
         setLoadingTour(false);
         return;
@@ -50,6 +59,7 @@ export default function BookTourPage() {
         .select(
           `
             id,
+            user_id,
             title,
             description,
             location,
@@ -57,7 +67,9 @@ export default function BookTourPage() {
             image_url,
             duration,
             max_people,
-            status
+            category,
+            status,
+            created_at
           `
         )
         .eq("id", tourId)
@@ -66,13 +78,17 @@ export default function BookTourPage() {
 
       if (error) {
         console.error("Tour loading error:", error);
-        setErrorMessage(`ტურის ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
+        setErrorMessage(
+          `ტურის ჩატვირთვა ვერ მოხერხდა: ${error.message}`
+        );
         setLoadingTour(false);
         return;
       }
 
       if (!data) {
-        setErrorMessage("ტური ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული.");
+        setErrorMessage(
+          "ტური ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული."
+        );
         setLoadingTour(false);
         return;
       }
@@ -84,12 +100,51 @@ export default function BookTourPage() {
     loadTour();
   }, [tourId]);
 
-  const totalPrice =
-    tour?.price !== null && tour?.price !== undefined
-      ? Number(tour.price) * people
-      : 0;
+  useEffect(() => {
+    async function loadCurrentUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+      if (!user) {
+        return;
+      }
+
+      setGuestEmail(user.email || "");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile?.full_name) {
+        setGuestName(profile.full_name);
+      } else if (user.user_metadata?.full_name) {
+        setGuestName(user.user_metadata.full_name);
+      }
+
+      if (profile?.phone) {
+        setGuestPhone(profile.phone);
+      }
+    }
+
+    loadCurrentUser();
+  }, []);
+
+  const totalPrice = useMemo(() => {
+    if (tour?.price === null || tour?.price === undefined) {
+      return null;
+    }
+
+    return Number(tour.price) * people;
+  }, [tour?.price, people]);
+
+  const today = getLocalToday();
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     setErrorMessage("");
@@ -120,8 +175,15 @@ export default function BookTourPage() {
       return;
     }
 
+    if (bookingDate < today) {
+      setErrorMessage("გასული თარიღის არჩევა შეუძლებელია.");
+      return;
+    }
+
     if (!Number.isInteger(people) || people < 1) {
-      setErrorMessage("სტუმრების რაოდენობა უნდა იყოს მინიმუმ 1.");
+      setErrorMessage(
+        "სტუმრების რაოდენობა უნდა იყოს მინიმუმ 1."
+      );
       return;
     }
 
@@ -151,14 +213,18 @@ export default function BookTourPage() {
       guest_phone: guestPhone.trim(),
       booking_date: bookingDate,
       people,
-      total_price: tour.price !== null ? totalPrice : null,
+      total_price: totalPrice,
       notes: notes.trim() || null,
       status: "pending",
     });
 
     if (error) {
       console.error("Booking error:", error);
-      setErrorMessage(`დაჯავშნა ვერ გაიგზავნა: ${error.message}`);
+
+      setErrorMessage(
+        `დაჯავშნის მოთხოვნა ვერ გაიგზავნა: ${error.message}`
+      );
+
       setSubmitting(false);
       return;
     }
@@ -166,22 +232,25 @@ export default function BookTourPage() {
     setSuccess(true);
     setSubmitting(false);
 
-    setGuestName("");
-    setGuestEmail("");
-    setGuestPhone("");
     setBookingDate("");
     setPeople(1);
     setNotes("");
-  }
 
-  const today = new Date().toISOString().split("T")[0];
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
 
   if (loadingTour) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
-          <div className="mb-4 text-5xl">⏳</div>
-          <p className="text-lg">ტურის ინფორმაცია იტვირთება...</p>
+          <div className="text-6xl">⏳</div>
+
+          <p className="mt-4 text-lg font-semibold">
+            ტურის ინფორმაცია იტვირთება...
+          </p>
         </div>
       </main>
     );
@@ -191,81 +260,163 @@ export default function BookTourPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/10 p-8 text-center shadow-2xl backdrop-blur-xl">
-          <div className="mb-4 text-6xl">🏔️</div>
+          <div className="text-7xl">🏔️</div>
 
-          <h1 className="text-2xl font-bold">ტური ვერ მოიძებნა</h1>
+          <h1 className="mt-5 text-2xl font-black">
+            ტური ვერ მოიძებნა
+          </h1>
 
-          <p className="mt-3 text-white/70">{errorMessage}</p>
+          <p className="mt-3 leading-7 text-white/65">
+            {errorMessage}
+          </p>
 
-          <Link
-            href="/"
-            className="mt-6 inline-block rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
-          >
-            მთავარ გვერდზე დაბრუნება
-          </Link>
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/tours"
+              className="rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+            >
+              ყველა ტური
+            </Link>
+
+            <Link
+              href="/"
+              className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
+            >
+              მთავარი გვერდი
+            </Link>
+          </div>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-10 text-white sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
-        >
-          ← მთავარ გვერდზე დაბრუნება
-        </Link>
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <Link
+            href="/"
+            className="flex items-center gap-3 font-black"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500 text-2xl shadow-lg">
+              🏔️
+            </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_460px]">
-          <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl backdrop-blur-xl">
-            {tour.image_url ? (
-              <img
-                src={tour.image_url}
-                alt={tour.title || "Tour"}
-                className="h-[300px] w-full object-cover sm:h-[430px]"
-              />
-            ) : (
-              <div className="flex h-[300px] items-center justify-center bg-white/5 sm:h-[430px]">
-                <span className="text-8xl">🏔️</span>
+            <div>
+              <p>Georgia Travel Hub</p>
+              <p className="text-xs font-medium text-white/45">
+                ტურის დეტალები
+              </p>
+            </div>
+          </Link>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/tours"
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20"
+            >
+              ← ყველა ტური
+            </Link>
+
+            <Link
+              href="/dashboard"
+              className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold transition hover:bg-cyan-600"
+            >
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        {success && (
+          <div className="mb-8 rounded-3xl border border-emerald-400/30 bg-emerald-500/15 p-6 text-emerald-100 shadow-xl">
+            <p className="text-xl font-black">
+              ✅ დაჯავშნის მოთხოვნა წარმატებით გაიგზავნა
+            </p>
+
+            <p className="mt-2 leading-7 text-emerald-100/75">
+              მოთხოვნა მიღებულია. ადმინისტრატორი ან ტურის
+              ორგანიზატორი დაგიკავშირდება მითითებულ ტელეფონზე ან
+              ელფოსტაზე.
+            </p>
+          </div>
+        )}
+
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_430px]">
+          <div className="space-y-8">
+            <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl">
+              <div className="relative">
+                {tour.image_url ? (
+                  <img
+                    src={tour.image_url}
+                    alt={tour.title || "Tour"}
+                    className="h-[300px] w-full object-cover sm:h-[480px]"
+                  />
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900 sm:h-[480px]">
+                    <span className="text-9xl">🏔️</span>
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+                <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black shadow-lg">
+                      ✓ ხელმისაწვდომია
+                    </span>
+
+                    {tour.category && (
+                      <span className="rounded-full border border-white/20 bg-slate-950/60 px-4 py-2 text-xs font-bold backdrop-blur-md">
+                        {tour.category}
+                      </span>
+                    )}
+                  </div>
+
+                  <h1 className="mt-4 text-3xl font-black drop-shadow-xl sm:text-5xl">
+                    {tour.title || "უსახელო ტური"}
+                  </h1>
+
+                  <p className="mt-3 text-lg text-white/80">
+                    📍 {tour.location || "საქართველო"}
+                  </p>
+                </div>
               </div>
-            )}
+            </section>
 
-            <div className="p-6 sm:p-8">
-              <span className="inline-block rounded-full bg-emerald-500/20 px-4 py-2 text-sm font-bold text-emerald-300">
-                ხელმისაწვდომია
-              </span>
-
-              <h1 className="mt-5 text-3xl font-extrabold sm:text-4xl">
-                {tour.title || "ტური"}
-              </h1>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-7">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoBox
                   label="მდებარეობა"
-                  value={tour.location || "არ არის მითითებული"}
+                  value={
+                    tour.location || "არ არის მითითებული"
+                  }
                   icon="📍"
                 />
 
                 <InfoBox
                   label="ხანგრძლივობა"
-                  value={tour.duration || "არ არის მითითებული"}
+                  value={
+                    tour.duration || "არ არის მითითებული"
+                  }
                   icon="⏱️"
                 />
 
                 <InfoBox
-                  label="ფასი ერთ ადამიანზე"
+                  label="ფასი"
                   value={
                     tour.price !== null
-                      ? `${Number(tour.price).toLocaleString()} ₾`
-                      : "ფასი შეთანხმებით"
+                      ? `${Number(
+                          tour.price
+                        ).toLocaleString()} ₾`
+                      : "შეთანხმებით"
                   }
                   icon="💰"
                 />
 
                 <InfoBox
-                  label="მაქსიმალური რაოდენობა"
+                  label="მაქსიმუმ"
                   value={
                     tour.max_people
                       ? `${tour.max_people} ადამიანი`
@@ -274,58 +425,120 @@ export default function BookTourPage() {
                   icon="👥"
                 />
               </div>
+            </section>
 
-              <div className="mt-8">
-                <h2 className="text-2xl font-bold">ტურის აღწერა</h2>
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                Tour description
+              </p>
 
-                <p className="mt-4 whitespace-pre-line leading-8 text-white/70">
-                  {tour.description || "ტურის აღწერა არ არის დამატებული."}
-                </p>
+              <h2 className="mt-3 text-3xl font-black">
+                ტურის აღწერა
+              </h2>
+
+              <p className="mt-5 whitespace-pre-line leading-8 text-white/70">
+                {tour.description ||
+                  "ტურის სრული აღწერა ჯერ არ არის დამატებული."}
+              </p>
+            </section>
+
+            <section className="grid gap-5 md:grid-cols-2">
+              <DetailCard
+                icon="✅"
+                title="რა შეიძლება შედიოდეს ფასში"
+                items={[
+                  "პროფესიონალი გიდის მომსახურება",
+                  "მარშრუტის დაგეგმვა",
+                  "ტურის ორგანიზება",
+                  "ტურის დროს მხარდაჭერა",
+                ]}
+                note="ზუსტი მომსახურებები გადაამოწმე ორგანიზატორთან."
+              />
+
+              <DetailCard
+                icon="❌"
+                title="რა შეიძლება არ შედიოდეს ფასში"
+                items={[
+                  "კვება და სასმელი",
+                  "სასტუმროში განთავსება",
+                  "პირადი ხარჯები",
+                  "დამატებითი აქტივობები",
+                ]}
+                note="პირობები შეიძლება განსხვავდებოდეს კონკრეტული ტურის მიხედვით."
+              />
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                Important information
+              </p>
+
+              <h2 className="mt-3 text-3xl font-black">
+                მნიშვნელოვანი ინფორმაცია
+              </h2>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <NoticeCard
+                  icon="📅"
+                  title="წინასწარი დაჯავშნა"
+                  text="ტურის მოთხოვნა სასურველია წინასწარ გააგზავნო."
+                />
+
+                <NoticeCard
+                  icon="🌦️"
+                  title="ამინდი"
+                  text="მარშრუტი შეიძლება შეიცვალოს ამინდის პირობების მიხედვით."
+                />
+
+                <NoticeCard
+                  icon="🥾"
+                  title="ტანსაცმელი"
+                  text="თან იქონიე კომფორტული ფეხსაცმელი და შესაბამისი ტანსაცმელი."
+                />
+
+                <NoticeCard
+                  icon="📞"
+                  title="დადასტურება"
+                  text="დაჯავშნა საბოლოოდ დადასტურდება ორგანიზატორთან დაკავშირების შემდეგ."
+                />
               </div>
-            </div>
-          </section>
+            </section>
+          </div>
 
-          <section className="h-fit rounded-3xl border border-white/10 bg-white p-6 text-slate-900 shadow-2xl sm:p-8 lg:sticky lg:top-6">
-            <div className="mb-7">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-cyan-600">
+          <aside className="rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
                 Booking
               </p>
 
-              <h2 className="mt-2 text-3xl font-extrabold">
+              <h2 className="mt-2 text-3xl font-black">
                 ტურის დაჯავშნა
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                შეავსე მონაცემები. მოთხოვნა გაიგზავნება ადმინისტრატორთან
-                დასადასტურებლად.
+              <p className="mt-3 text-sm leading-6 text-slate-500">
+                შეავსე მონაცემები და გააგზავნე მოთხოვნა.
+                დაჯავშნა დადასტურდება ორგანიზატორთან შეთანხმების
+                შემდეგ.
               </p>
             </div>
 
-            {success && (
-              <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
-                <p className="font-bold">
-                  ✅ მოთხოვნა წარმატებით გაიგზავნა
-                </p>
-
-                <p className="mt-2 text-sm">
-                  ადმინისტრატორი დაგიკავშირდება მითითებულ ტელეფონზე ან
-                  ელფოსტაზე.
-                </p>
-              </div>
-            )}
-
-            {errorMessage && !success && (
-              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            {errorMessage && (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
                 {errorMessage}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form
+              onSubmit={handleSubmit}
+              className="mt-7 space-y-5"
+            >
               <FormField label="სახელი და გვარი">
                 <input
                   type="text"
                   value={guestName}
-                  onChange={(event) => setGuestName(event.target.value)}
+                  onChange={(event) =>
+                    setGuestName(event.target.value)
+                  }
                   placeholder="მაგალითად: Anna Brown"
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -336,7 +549,9 @@ export default function BookTourPage() {
                 <input
                   type="email"
                   value={guestEmail}
-                  onChange={(event) => setGuestEmail(event.target.value)}
+                  onChange={(event) =>
+                    setGuestEmail(event.target.value)
+                  }
                   placeholder="guest@example.com"
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -347,7 +562,9 @@ export default function BookTourPage() {
                 <input
                   type="tel"
                   value={guestPhone}
-                  onChange={(event) => setGuestPhone(event.target.value)}
+                  onChange={(event) =>
+                    setGuestPhone(event.target.value)
+                  }
                   placeholder="+995 5XX XX XX XX"
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -360,13 +577,15 @@ export default function BookTourPage() {
                     type="date"
                     value={bookingDate}
                     min={today}
-                    onChange={(event) => setBookingDate(event.target.value)}
+                    onChange={(event) =>
+                      setBookingDate(event.target.value)
+                    }
                     required
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                   />
                 </FormField>
 
-                <FormField label="სტუმრების რაოდენობა">
+                <FormField label="ადამიანების რაოდენობა">
                   <input
                     type="number"
                     min={1}
@@ -374,7 +593,12 @@ export default function BookTourPage() {
                     value={people}
                     onChange={(event) => {
                       const value = Number(event.target.value);
-                      setPeople(Number.isNaN(value) ? 1 : Math.max(1, value));
+
+                      setPeople(
+                        Number.isNaN(value)
+                          ? 1
+                          : Math.max(1, Math.floor(value))
+                      );
                     }}
                     required
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -385,7 +609,9 @@ export default function BookTourPage() {
               <FormField label="დამატებითი შეტყობინება">
                 <textarea
                   value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
+                  onChange={(event) =>
+                    setNotes(event.target.value)
+                  }
                   placeholder="მაგალითად: გვჭირდება სასტუმროდან აყვანა..."
                   rows={4}
                   className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -393,32 +619,30 @@ export default function BookTourPage() {
               </FormField>
 
               <div className="rounded-2xl bg-slate-100 p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-500">
-                    ფასი ერთ ადამიანზე
-                  </span>
+                <PriceRow
+                  label="ფასი ერთ ადამიანზე"
+                  value={
+                    tour.price !== null
+                      ? `${Number(
+                          tour.price
+                        ).toLocaleString()} ₾`
+                      : "შეთანხმებით"
+                  }
+                />
 
-                  <span className="font-bold">
-                    {tour.price !== null
-                      ? `${Number(tour.price).toLocaleString()} ₾`
-                      : "შეთანხმებით"}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-4">
-                  <span className="text-slate-500">
-                    სტუმრების რაოდენობა
-                  </span>
-
-                  <span className="font-bold">{people}</span>
-                </div>
+                <PriceRow
+                  label="ადამიანების რაოდენობა"
+                  value={String(people)}
+                />
 
                 <div className="mt-4 border-t border-slate-300 pt-4">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-lg font-bold">ჯამური ფასი</span>
+                    <span className="text-lg font-black">
+                      ჯამური ფასი
+                    </span>
 
-                    <span className="text-2xl font-extrabold text-cyan-700">
-                      {tour.price !== null
+                    <span className="text-2xl font-black text-cyan-700">
+                      {totalPrice !== null
                         ? `${totalPrice.toLocaleString()} ₾`
                         : "შეთანხმებით"}
                     </span>
@@ -429,19 +653,19 @@ export default function BookTourPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting
-                  ? "იგზავნება..."
+                  ? "მოთხოვნა იგზავნება..."
                   : "დაჯავშნის მოთხოვნის გაგზავნა"}
               </button>
 
               <p className="text-center text-xs leading-5 text-slate-400">
-                მოთხოვნის გაგზავნით ჯავშანი ჯერ არ არის ავტომატურად
-                დადასტურებული.
+                მოთხოვნის გაგზავნა ავტომატურად დადასტურებულ
+                ჯავშანს არ ნიშნავს.
               </p>
             </form>
-          </section>
+          </aside>
         </div>
       </div>
     </main>
@@ -462,14 +686,89 @@ function InfoBox({
       <div className="flex items-start gap-3">
         <span className="text-2xl">{icon}</span>
 
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-white/40">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-wide text-white/40">
             {label}
           </p>
 
-          <p className="mt-1 font-semibold text-white">{value}</p>
+          <p className="mt-1 break-words font-bold text-white">
+            {value}
+          </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DetailCard({
+  icon,
+  title,
+  items,
+  note,
+}: {
+  icon: string;
+  title: string;
+  items: string[];
+  note: string;
+}) {
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
+      <div className="text-4xl">{icon}</div>
+
+      <h2 className="mt-4 text-2xl font-black">{title}</h2>
+
+      <div className="mt-5 space-y-3">
+        {items.map((item) => (
+          <div
+            key={item}
+            className="flex items-start gap-3 text-white/70"
+          >
+            <span className="mt-1 text-cyan-300">•</span>
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-white/40">
+        {note}
+      </p>
+    </section>
+  );
+}
+
+function NoticeCard({
+  icon,
+  title,
+  text,
+}: {
+  icon: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/15 p-4">
+      <div className="text-3xl">{icon}</div>
+
+      <h3 className="mt-3 font-black">{title}</h3>
+
+      <p className="mt-2 text-sm leading-6 text-white/55">
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function PriceRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-4">
+      <span className="text-sm text-slate-500">{label}</span>
+      <span className="text-right font-bold">{value}</span>
     </div>
   );
 }
@@ -490,4 +789,12 @@ function FormField({
       {children}
     </label>
   );
+}
+
+function getLocalToday() {
+  const now = new Date();
+  const timezoneOffset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - timezoneOffset)
+    .toISOString()
+    .split("T")[0];
 }
