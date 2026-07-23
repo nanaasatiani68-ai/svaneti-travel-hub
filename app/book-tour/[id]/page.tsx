@@ -26,11 +26,24 @@ type Tour = {
   created_at: string | null;
 };
 
+type OwnerProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  country: string | null;
+  city: string | null;
+  bio: string | null;
+};
+
 export default function BookTourPage() {
   const params = useParams<{ id: string }>();
   const tourId = params?.id;
 
   const [tour, setTour] = useState<Tour | null>(null);
+  const [owner, setOwner] = useState<OwnerProfile | null>(null);
+  const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
+
   const [loadingTour, setLoadingTour] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -78,9 +91,11 @@ export default function BookTourPage() {
 
       if (error) {
         console.error("Tour loading error:", error);
+
         setErrorMessage(
           `ტურის ჩატვირთვა ვერ მოხერხდა: ${error.message}`
         );
+
         setLoadingTour(false);
         return;
       }
@@ -89,11 +104,76 @@ export default function BookTourPage() {
         setErrorMessage(
           "ტური ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული."
         );
+
         setLoadingTour(false);
         return;
       }
 
-      setTour(data as Tour);
+      const loadedTour = data as Tour;
+
+      setTour(loadedTour);
+
+      if (loadedTour.user_id) {
+        const { data: ownerData, error: ownerError } =
+          await supabase
+            .from("profiles")
+            .select(
+              `
+                id,
+                full_name,
+                avatar_url,
+                phone,
+                country,
+                city,
+                bio
+              `
+            )
+            .eq("id", loadedTour.user_id)
+            .maybeSingle();
+
+        if (ownerError) {
+          console.error("Owner loading error:", ownerError);
+        } else {
+          setOwner(ownerData as OwnerProfile | null);
+        }
+
+        const { data: ownerToursData, error: ownerToursError } =
+          await supabase
+            .from("tours")
+            .select(
+              `
+                id,
+                user_id,
+                title,
+                description,
+                location,
+                price,
+                image_url,
+                duration,
+                max_people,
+                category,
+                status,
+                created_at
+              `
+            )
+            .eq("user_id", loadedTour.user_id)
+            .eq("status", "approved")
+            .neq("id", loadedTour.id)
+            .order("created_at", { ascending: false })
+            .limit(3);
+
+        if (ownerToursError) {
+          console.error(
+            "Owner tours loading error:",
+            ownerToursError
+          );
+        } else {
+          setOwnerTours(
+            (ownerToursData as Tour[] | null) ?? []
+          );
+        }
+      }
+
       setLoadingTour(false);
     }
 
@@ -191,6 +271,7 @@ export default function BookTourPage() {
       setErrorMessage(
         `ამ ტურზე მაქსიმალური რაოდენობაა ${tour.max_people} ადამიანი.`
       );
+
       return;
     }
 
@@ -231,7 +312,6 @@ export default function BookTourPage() {
 
     setSuccess(true);
     setSubmitting(false);
-
     setBookingDate("");
     setPeople(1);
     setNotes("");
@@ -259,7 +339,7 @@ export default function BookTourPage() {
   if (!tour) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/10 p-8 text-center shadow-2xl backdrop-blur-xl">
+        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/10 p-8 text-center shadow-2xl">
           <div className="text-7xl">🏔️</div>
 
           <h1 className="mt-5 text-2xl font-black">
@@ -304,6 +384,7 @@ export default function BookTourPage() {
 
             <div>
               <p>Georgia Travel Hub</p>
+
               <p className="text-xs font-medium text-white/45">
                 ტურის დეტალები
               </p>
@@ -336,9 +417,8 @@ export default function BookTourPage() {
             </p>
 
             <p className="mt-2 leading-7 text-emerald-100/75">
-              მოთხოვნა მიღებულია. ადმინისტრატორი ან ტურის
-              ორგანიზატორი დაგიკავშირდება მითითებულ ტელეფონზე ან
-              ელფოსტაზე.
+              მოთხოვნა მიღებულია. ტურის ორგანიზატორი დაგიკავშირდება
+              ტელეფონზე ან ელფოსტაზე.
             </p>
           </div>
         )}
@@ -389,17 +469,13 @@ export default function BookTourPage() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoBox
                   label="მდებარეობა"
-                  value={
-                    tour.location || "არ არის მითითებული"
-                  }
+                  value={tour.location || "არ არის მითითებული"}
                   icon="📍"
                 />
 
                 <InfoBox
                   label="ხანგრძლივობა"
-                  value={
-                    tour.duration || "არ არის მითითებული"
-                  }
+                  value={tour.duration || "არ არის მითითებული"}
                   icon="⏱️"
                 />
 
@@ -407,9 +483,7 @@ export default function BookTourPage() {
                   label="ფასი"
                   value={
                     tour.price !== null
-                      ? `${Number(
-                          tour.price
-                        ).toLocaleString()} ₾`
+                      ? `${Number(tour.price).toLocaleString()} ₾`
                       : "შეთანხმებით"
                   }
                   icon="💰"
@@ -441,6 +515,8 @@ export default function BookTourPage() {
                   "ტურის სრული აღწერა ჯერ არ არის დამატებული."}
               </p>
             </section>
+
+            <OwnerCard owner={owner} />
 
             <section className="grid gap-5 md:grid-cols-2">
               <DetailCard
@@ -503,6 +579,64 @@ export default function BookTourPage() {
                 />
               </div>
             </section>
+
+            {ownerTours.length > 0 && (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                  More tours
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black">
+                  ორგანიზატორის სხვა ტურები
+                </h2>
+
+                <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {ownerTours.map((ownerTour) => (
+                    <Link
+                      key={ownerTour.id}
+                      href={`/book-tour/${ownerTour.id}`}
+                      className="group overflow-hidden rounded-3xl border border-white/10 bg-black/20 transition hover:-translate-y-1 hover:bg-white/10"
+                    >
+                      <div className="h-48 overflow-hidden">
+                        {ownerTour.image_url ? (
+                          <img
+                            src={ownerTour.image_url}
+                            alt={ownerTour.title || "Tour"}
+                            className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-slate-900 text-6xl">
+                            🏔️
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-5">
+                        <h3 className="text-xl font-black">
+                          {ownerTour.title || "უსახელო ტური"}
+                        </h3>
+
+                        <p className="mt-2 text-sm text-white/60">
+                          📍 {ownerTour.location || "საქართველო"}
+                        </p>
+
+                        <p className="mt-4 text-xl font-black text-cyan-300">
+                          {ownerTour.price !== null
+                            ? `${Number(
+                                ownerTour.price
+                              ).toLocaleString()} ₾`
+                            : "შეთანხმებით"}
+                        </p>
+
+                        <div className="mt-4 text-sm font-bold text-cyan-300">
+                          ტურის ნახვა →
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           <aside className="rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
@@ -517,8 +651,6 @@ export default function BookTourPage() {
 
               <p className="mt-3 text-sm leading-6 text-slate-500">
                 შეავსე მონაცემები და გააგზავნე მოთხოვნა.
-                დაჯავშნა დადასტურდება ორგანიზატორთან შეთანხმების
-                შემდეგ.
               </p>
             </div>
 
@@ -528,10 +660,7 @@ export default function BookTourPage() {
               </div>
             )}
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-7 space-y-5"
-            >
+            <form onSubmit={handleSubmit} className="mt-7 space-y-5">
               <FormField label="სახელი და გვარი">
                 <input
                   type="text"
@@ -623,9 +752,7 @@ export default function BookTourPage() {
                   label="ფასი ერთ ადამიანზე"
                   value={
                     tour.price !== null
-                      ? `${Number(
-                          tour.price
-                        ).toLocaleString()} ₾`
+                      ? `${Number(tour.price).toLocaleString()} ₾`
                       : "შეთანხმებით"
                   }
                 />
@@ -669,6 +796,77 @@ export default function BookTourPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function OwnerCard({
+  owner,
+}: {
+  owner: OwnerProfile | null;
+}) {
+  if (!owner) {
+    return (
+      <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+        <h2 className="text-2xl font-black">
+          👤 ტურის ორგანიზატორი
+        </h2>
+
+        <p className="mt-3 text-white/60">
+          ორგანიზატორის ინფორმაცია ჯერ არ არის დამატებული.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/15 to-white/5 p-6 shadow-xl sm:p-8">
+      <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+        Tour organizer
+      </p>
+
+      <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
+        {owner.avatar_url ? (
+          <img
+            src={owner.avatar_url}
+            alt={owner.full_name || "Organizer"}
+            className="h-28 w-28 shrink-0 rounded-3xl border-4 border-white/15 object-cover shadow-xl"
+          />
+        ) : (
+          <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-3xl bg-cyan-500 text-5xl shadow-xl">
+            👤
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <h2 className="text-3xl font-black">
+            {owner.full_name || "ტურის ორგანიზატორი"}
+          </h2>
+
+          {(owner.city || owner.country) && (
+            <p className="mt-2 text-white/65">
+              📍 {[owner.city, owner.country]
+                .filter(Boolean)
+                .join(", ")}
+            </p>
+          )}
+
+          {owner.bio && (
+            <p className="mt-4 whitespace-pre-line leading-7 text-white/65">
+              {owner.bio}
+            </p>
+          )}
+
+          {owner.phone && (
+            <a
+              href={`tel:${owner.phone}`}
+              className="mt-5 inline-flex rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
+            >
+              📞 {owner.phone}
+            </a>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -794,6 +992,7 @@ function FormField({
 function getLocalToday() {
   const now = new Date();
   const timezoneOffset = now.getTimezoneOffset() * 60_000;
+
   return new Date(now.getTime() - timezoneOffset)
     .toISOString()
     .split("T")[0];
