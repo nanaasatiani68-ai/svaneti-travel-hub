@@ -264,4 +264,11 @@ function DashboardCard({
       </div>
     </Link>
   );
-}
+}<DashboardCard
+  href="/hotels"
+  image="/dashboard/hotel.jpg"
+  icon="🏨"
+  title="ყველა სასტუმრო"
+  description="ნახე ყველა დამტკიცებული სასტუმრო და დაჯავშნე."
+  featured
+/>
