@@ -69,9 +69,7 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="text-6xl">⏳</div>
 
-          <p className="mt-4 font-semibold">
-            პროფილი იტვირთება...
-          </p>
+          <p className="mt-4 font-semibold">პროფილი იტვირთება...</p>
         </div>
       </main>
     );
@@ -123,6 +121,15 @@ export default function DashboardPage() {
             icon="🌍"
             title="ყველა ტური"
             description="ნახე ყველა დამტკიცებული ტური და დაჯავშნე."
+            featured
+          />
+
+          <DashboardCard
+            href="/transfers"
+            image="/dashboard/transfers.jpg"
+            icon="🚐"
+            title="ყველა ტრანსფერი"
+            description="ნახე ყველა დამტკიცებული ტრანსფერი და დაჯავშნე."
             featured
           />
 
@@ -222,9 +229,7 @@ function DashboardCard({
     <Link
       href={href}
       className={`group relative min-h-[185px] overflow-hidden rounded-2xl border shadow-xl transition duration-300 hover:-translate-y-1 ${
-        featured
-          ? "border-cyan-300/70"
-          : "border-white/15"
+        featured ? "border-cyan-300/70" : "border-white/15"
       }`}
     >
       <div
@@ -243,9 +248,7 @@ function DashboardCard({
       )}
 
       <div className="relative z-10 flex min-h-[185px] flex-col justify-end p-4">
-        <div className="text-3xl drop-shadow-lg">
-          {icon}
-        </div>
+        <div className="text-3xl drop-shadow-lg">{icon}</div>
 
         <h2 className="mt-2 text-lg font-extrabold leading-tight text-white drop-shadow-lg">
           {title}
