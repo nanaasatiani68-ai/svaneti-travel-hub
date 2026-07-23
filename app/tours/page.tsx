@@ -30,27 +30,14 @@ export default function PublicToursPage() {
 
       const { data, error } = await supabase
         .from("tours")
-        .select(
-          `
-            id,
-            title,
-            description,
-            location,
-            price,
-            image_url,
-            duration,
-            max_people,
-            category,
-            status,
-            created_at
-          `
-        )
+        .select("*")
         .eq("status", "approved")
         .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Tours loading error:", error);
         setErrorMessage(`ტურების ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
+        setTours([]);
         setLoading(false);
         return;
       }
@@ -67,7 +54,6 @@ export default function PublicToursPage() {
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
           <div className="mb-4 text-6xl">🏔️</div>
-
           <p className="text-xl font-semibold">ტურები იტვირთება...</p>
         </div>
       </main>
@@ -88,17 +74,25 @@ export default function PublicToursPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl text-white/60">
-              დაათვალიერეთ საქართველოში ხელმისაწვდომი ტურები და დაჯავშნეთ
-              სასურველი ტური რეგისტრაციის გარეშე.
+              აქ ჩანს ყველა მომხმარებლის დამტკიცებული ტური.
             </p>
           </div>
 
-          <Link
-            href="/"
-            className="inline-flex w-fit items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold text-white transition hover:bg-white/20"
-          >
-            ← მთავარ გვერდზე დაბრუნება
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
+            >
+              ← Dashboard
+            </Link>
+
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+            >
+              მთავარი გვერდი
+            </Link>
+          </div>
         </div>
 
         {errorMessage && (
@@ -108,7 +102,7 @@ export default function PublicToursPage() {
         )}
 
         {!errorMessage && tours.length === 0 && (
-          <div className="rounded-3xl border border-white/10 bg-white/10 p-10 text-center shadow-2xl backdrop-blur-xl">
+          <div className="rounded-3xl border border-white/10 bg-white/10 p-10 text-center shadow-2xl">
             <div className="mb-4 text-7xl">🏔️</div>
 
             <h2 className="text-2xl font-bold">
@@ -116,8 +110,7 @@ export default function PublicToursPage() {
             </h2>
 
             <p className="mt-3 text-white/60">
-              ახალი ტურები აქ გამოჩნდება ადმინისტრატორის მიერ დამტკიცების
-              შემდეგ.
+              Supabase-ში ტურის სტატუსი უნდა იყოს approved.
             </p>
           </div>
         )}
@@ -126,7 +119,7 @@ export default function PublicToursPage() {
           {tours.map((tour) => (
             <article
               key={tour.id}
-              className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/15"
+              className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl transition hover:-translate-y-1 hover:bg-white/15"
             >
               {tour.image_url ? (
                 <img
@@ -155,7 +148,7 @@ export default function PublicToursPage() {
                   </div>
 
                   <span className="shrink-0 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300">
-                    ხელმისაწვდომია
+                    დამტკიცებული
                   </span>
                 </div>
 
@@ -197,7 +190,7 @@ export default function PublicToursPage() {
 
                   <Link
                     href={`/book-tour/${tour.id}`}
-                    className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
+                    className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
                   >
                     დაჯავშნა
                   </Link>

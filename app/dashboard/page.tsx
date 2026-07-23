@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 
 type Profile = {
   full_name: string | null;
@@ -107,6 +107,14 @@ export default function DashboardPage() {
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           <DashboardCard
+            href="/tours"
+            icon="🌍"
+            title="ყველა ტური"
+            description="ნახე ყველა დამტკიცებული ტური და დაჯავშნე."
+            featured
+          />
+
+          <DashboardCard
             href="/profile"
             icon="👤"
             title="ჩემი პროფილი"
@@ -179,22 +187,34 @@ function DashboardCard({
   icon,
   title,
   description,
+  featured = false,
 }: {
   href: string;
   icon: string;
   title: string;
   description: string;
+  featured?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-xl transition hover:-translate-y-1 hover:bg-white/15"
+      className={`rounded-3xl border p-6 shadow-xl transition hover:-translate-y-1 ${
+        featured
+          ? "border-cyan-400/40 bg-cyan-500/20 hover:bg-cyan-500/30"
+          : "border-white/10 bg-white/10 hover:bg-white/15"
+      }`}
     >
       <div className="text-5xl">{icon}</div>
 
       <h2 className="mt-5 text-2xl font-extrabold">{title}</h2>
 
       <p className="mt-3 leading-7 text-white/60">{description}</p>
+
+      {featured && (
+        <div className="mt-5 inline-flex rounded-full bg-cyan-400/20 px-4 py-2 text-sm font-bold text-cyan-200">
+          ტურების ნახვა →
+        </div>
+      )}
     </Link>
   );
 }
