@@ -26,7 +26,7 @@ const translations = {
   ka: {
     betaTitle: "კეთილი იყოს თქვენი მობრძანება Public Beta-ზე",
     betaText:
-      "Georgia Travel Hub ყოველდღიურად ვითარდება. დაათვალიერე ტურები, ტრანსფერები, სასტუმროები და დაგეგმე მოგზაურობა საქართველოში.",
+      "Georgia Gateway Hub ყოველდღიურად ვითარდება. დაათვალიერე ტურები, ტრანსფერები, სასტუმროები და დაგეგმე მოგზაურობა საქართველოში.",
     exploreNow: "საიტის დათვალიერება",
 
     discoverGeorgia: "აღმოაჩინე საქართველო",
@@ -131,7 +131,7 @@ const translations = {
   en: {
     betaTitle: "Welcome to Public Beta",
     betaText:
-      "Georgia Travel Hub is growing every day. Explore tours, transfers and hotels, and plan your journey across Georgia.",
+      "Georgia Gateway Hub is growing every day. Explore tours, transfers and hotels, and plan your journey across Georgia.",
     exploreNow: "Explore Now",
 
     discoverGeorgia: "Discover Georgia",
@@ -418,7 +418,7 @@ export default function Home() {
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
         <div className="text-center">
           <div className="text-6xl">🏔️</div>
-          <p className="mt-4 font-semibold">Georgia Travel Hub</p>
+          <p className="mt-4 font-semibold">Georgia Gateway Hub</p>
         </div>
       </main>
     );
@@ -473,7 +473,7 @@ export default function Home() {
 
               <div>
                 <h1 className="text-lg font-extrabold sm:text-xl">
-                  Georgia Travel Hub
+                  Georgia Gateway Hub
                 </h1>
 
                 <p className="text-xs text-white/60">
@@ -557,7 +557,7 @@ export default function Home() {
             <aside className="fixed bottom-0 right-0 top-0 z-[9999] w-[300px] max-w-[85vw] overflow-y-auto border-l border-white/10 bg-slate-950 p-5 shadow-2xl lg:hidden">
               <div className="flex items-center justify-between">
                 <p className="font-extrabold">
-                  Georgia Travel Hub
+                  Georgia Gateway Hub
                 </p>
 
                 <button
@@ -1014,7 +1014,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
           <div>
             <h3 className="text-xl font-extrabold">
-              🏔️ Georgia Travel Hub
+              🏔️ Georgia Gateway Hub
             </h3>
 
             <p className="mt-3 max-w-sm leading-7 text-white/50">
@@ -1073,7 +1073,7 @@ export default function Home() {
 
         <div className="mx-auto mt-10 flex max-w-7xl flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-sm text-white/40 sm:flex-row">
           <div>
-            <p>© 2026 Georgia Travel Hub</p>
+            <p>© 2026 Georgia Gateway Hub</p>
             <p className="mt-1">{t.madeInGeorgia}</p>
           </div>
 
