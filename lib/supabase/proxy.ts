@@ -14,7 +14,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!supabaseUrl || !supabaseKey) {
     console.error(
-      "Supabase environment variables are missing in proxy."
+      "Supabase environment variables are missing."
     );
 
     return NextResponse.next({
@@ -60,26 +60,7 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  /*
-   * ეს მოთხოვნა ამოწმებს და საჭიროების შემთხვევაში
-   * აახლებს Supabase-ის ავტორიზაციის cookie-ს.
-   */
   await supabase.auth.getUser();
 
   return supabaseResponse;
-}import type { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
-
-export async function proxy(request: NextRequest) {
-  return updateSession(request);
 }
-
-export const config = {
-  matcher: [
-    /*
-     * Proxy გაეშვება ყველა საჭირო გვერდზე,
-     * გარდა Next.js-ის შიდა ფაილებისა და სურათებისა.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
-  ],
-};
