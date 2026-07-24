@@ -17,6 +17,18 @@ function getTourId(formData: FormData): string | null {
   return tourId.length > 0 ? tourId : null;
 }
 
+function getRejectionReason(formData: FormData): string | null {
+  const value = formData.get("rejectionReason");
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const rejectionReason = value.trim();
+
+  return rejectionReason.length > 0 ? rejectionReason : null;
+}
+
 async function requireAdmin() {
   const supabase = await createClient();
 
@@ -65,6 +77,8 @@ async function requireAdmin() {
 function refreshPages() {
   revalidatePath("/admin-v2");
   revalidatePath("/admin-v2/tours");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/my-tours");
   revalidatePath("/tours");
   revalidatePath("/");
 }
@@ -93,6 +107,7 @@ export async function approveTour(formData: FormData): Promise<void> {
     .update({
       status: "approved",
       approved_at: new Date().toISOString(),
+      rejection_reason: null,
     })
     .eq("id", tourId)
     .select("id");
@@ -115,9 +130,34 @@ export async function approveTour(formData: FormData): Promise<void> {
 
 export async function rejectTour(formData: FormData): Promise<void> {
   const tourId = getTourId(formData);
+  const rejectionReason = getRejectionReason(formData);
 
   if (!tourId) {
     redirect("/admin-v2/tours?error=missing-tour-id");
+  }
+
+  if (!rejectionReason) {
+    redirect(
+      `/admin-v2/tours?error=${encodeURIComponent(
+        "ტურის უარყოფის მიზეზი აუცილებლად უნდა მიუთითო."
+      )}`
+    );
+  }
+
+  if (rejectionReason.length < 5) {
+    redirect(
+      `/admin-v2/tours?error=${encodeURIComponent(
+        "უარყოფის მიზეზი ძალიან მოკლეა."
+      )}`
+    );
+  }
+
+  if (rejectionReason.length > 1000) {
+    redirect(
+      `/admin-v2/tours?error=${encodeURIComponent(
+        "უარყოფის მიზეზი მაქსიმუმ 1000 სიმბოლო უნდა იყოს."
+      )}`
+    );
   }
 
   const authorization = await requireAdmin();
@@ -136,6 +176,8 @@ export async function rejectTour(formData: FormData): Promise<void> {
     .from("tours")
     .update({
       status: "rejected",
+      rejection_reason: rejectionReason,
+      approved_at: null,
     })
     .eq("id", tourId)
     .select("id");

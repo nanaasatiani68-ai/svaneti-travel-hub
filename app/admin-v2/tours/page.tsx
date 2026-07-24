@@ -3,10 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import {
   approveTour,
   deleteTour,
-  rejectTour,
 } from "./actions";
+import RejectTourForm from "./RejectTourForm";
 
 type TourStatus = "pending" | "approved" | "rejected" | string;
+
+type SearchParams = {
+  success?: string;
+  error?: string;
+};
 
 type Tour = {
   id: number | string;
@@ -20,11 +25,20 @@ type Tour = {
   description: string | null;
   image_url: string | null;
   status: TourStatus | null;
+  rejection_reason: string | null;
   submitted_at: string | null;
   created_at: string | null;
 };
 
-export default async function AdminToursPage() {
+type AdminToursPageProps = {
+  searchParams?: Promise<SearchParams>;
+};
+
+export default async function AdminToursPage({
+  searchParams,
+}: AdminToursPageProps) {
+  const params = searchParams ? await searchParams : {};
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -42,6 +56,7 @@ export default async function AdminToursPage() {
         description,
         image_url,
         status,
+        rejection_reason,
         submitted_at,
         created_at
       `
@@ -94,8 +109,7 @@ export default async function AdminToursPage() {
             </h1>
 
             <p className="mt-3 text-lg text-slate-500">
-              დაამტკიცე, უარყავი ან წაშალე მომხმარებლების მიერ დამატებული
-              ტურები.
+              დაამტკიცე, უარყავი ან წაშალე მომხმარებლების მიერ დამატებული ტურები.
             </p>
           </div>
 
@@ -125,6 +139,20 @@ export default async function AdminToursPage() {
             />
           </div>
         </div>
+
+        {params.success && (
+          <SuccessMessage success={params.success} />
+        )}
+
+        {params.error && (
+          <div className="mb-8 rounded-3xl border border-red-200 bg-red-50 p-5 text-red-700 shadow-lg">
+            <p className="font-bold">⚠️ მოქმედება ვერ შესრულდა</p>
+
+            <p className="mt-2 break-words">
+              {decodeURIComponent(params.error)}
+            </p>
+          </div>
+        )}
 
         {tours.length === 0 && (
           <div className="rounded-3xl bg-white p-12 text-center shadow-xl">
@@ -209,7 +237,7 @@ export default async function AdminToursPage() {
                   <TourDetail
                     icon="🗓️"
                     label="დაწყების თარიღი"
-                    value={tour.start_date || "არ არის მითითებული"}
+                    value={formatDate(tour.start_date)}
                   />
 
                   <TourDetail
@@ -229,6 +257,19 @@ export default async function AdminToursPage() {
                   </p>
                 </div>
 
+                {tour.status === "rejected" &&
+                  tour.rejection_reason && (
+                    <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-6">
+                      <h3 className="text-xl font-bold text-red-700">
+                        ❌ უარყოფის მიზეზი
+                      </h3>
+
+                      <p className="mt-3 whitespace-pre-wrap leading-7 text-red-700">
+                        {tour.rejection_reason}
+                      </p>
+                    </div>
+                  )}
+
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   {tour.status !== "approved" && (
                     <form action={approveTour}>
@@ -247,31 +288,35 @@ export default async function AdminToursPage() {
                     </form>
                   )}
 
-                  {tour.status !== "rejected" && (
-                    <form action={rejectTour}>
-                      <input
-                        type="hidden"
-                        name="tourId"
-                        value={String(tour.id)}
-                      />
-
-                      <button
-                        type="submit"
-                        className="w-full rounded-2xl bg-amber-500 px-5 py-4 text-lg font-bold text-white transition hover:bg-amber-600"
-                      >
-                        ❌ უარყოფა
-                      </button>
-                    </form>
-                  )}
-
                   <Link
                     href={`/admin-v2/tours/${tour.id}`}
                     className="flex w-full items-center justify-center rounded-2xl bg-blue-600 px-5 py-4 text-center text-lg font-bold text-white transition hover:bg-blue-700"
                   >
                     👁️ დეტალურად ნახვა
                   </Link>
+                </div>
 
-                  <form action={deleteTour}>
+                {tour.status !== "rejected" && (
+                  <RejectTourForm tourId={String(tour.id)} />
+                )}
+
+                <details className="mt-4 overflow-hidden rounded-3xl border border-red-200 bg-red-50">
+                  <summary className="cursor-pointer list-none px-5 py-4 text-center text-lg font-bold text-red-700 transition hover:bg-red-100">
+                    🗑️ ტურის წაშლა
+                  </summary>
+
+                  <form
+                    action={deleteTour}
+                    className="border-t border-red-200 p-5"
+                  >
+                    <p className="text-center font-semibold text-red-700">
+                      ნამდვილად გინდა ამ ტურის სამუდამოდ წაშლა?
+                    </p>
+
+                    <p className="mt-2 text-center text-sm text-red-500">
+                      წაშლის შემდეგ ტურის აღდგენა შეუძლებელი იქნება.
+                    </p>
+
                     <input
                       type="hidden"
                       name="tourId"
@@ -280,21 +325,44 @@ export default async function AdminToursPage() {
 
                     <button
                       type="submit"
-                      className="w-full rounded-2xl bg-red-600 px-5 py-4 text-lg font-bold text-white transition hover:bg-red-700"
+                      className="mt-4 w-full rounded-2xl bg-red-600 px-5 py-4 text-lg font-bold text-white transition hover:bg-red-700"
                     >
-                      🗑️ ტურის წაშლა
+                      🗑️ დიახ, წაშალე ტური
                     </button>
                   </form>
-                </div>
-
-                <p className="mt-4 text-center text-xs leading-5 text-red-500">
-                  ყურადღება: წაშლის შემდეგ ტურის აღდგენა შეუძლებელი იქნება.
-                </p>
+                </details>
               </div>
             </article>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SuccessMessage({
+  success,
+}: {
+  success: string;
+}) {
+  let message = "მოქმედება წარმატებით შესრულდა.";
+
+  if (success === "approved") {
+    message = "ტური წარმატებით დამტკიცდა.";
+  }
+
+  if (success === "rejected") {
+    message = "ტური უარყოფილია და მიზეზი წარმატებით შეინახა.";
+  }
+
+  if (success === "deleted") {
+    message = "ტური წარმატებით წაიშალა.";
+  }
+
+  return (
+    <div className="mb-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-700 shadow-lg">
+      <p className="font-bold">✅ წარმატება</p>
+      <p className="mt-2">{message}</p>
     </div>
   );
 }
@@ -367,4 +435,22 @@ function TourDetail({
       </p>
     </div>
   );
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "არ არის მითითებული";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ka-GE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
 }

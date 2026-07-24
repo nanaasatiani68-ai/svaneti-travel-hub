@@ -18,6 +18,7 @@ type Tour = {
   max_people: number | null;
   category: string | null;
   status: string | null;
+  rejection_reason: string | null;
   created_at: string | null;
 };
 
@@ -69,6 +70,7 @@ export default function MyToursPage() {
           max_people,
           category,
           status,
+          rejection_reason,
           created_at
         `
       )
@@ -352,7 +354,7 @@ export default function MyToursPage() {
 
                   {tour.start_date && (
                     <div className="mt-4 rounded-xl bg-black/20 p-3 text-sm text-white/70">
-                      📅 დაწყება: {tour.start_date}
+                      📅 დაწყება: {formatDate(tour.start_date)}
                     </div>
                   )}
 
@@ -360,6 +362,38 @@ export default function MyToursPage() {
                     <p className="mt-5 line-clamp-3 leading-7 text-white/55">
                       {tour.description}
                     </p>
+                  )}
+
+                  {tour.status === "rejected" && (
+                    <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 p-4">
+                      <p className="font-black text-red-200">
+                        ❌ უარყოფის მიზეზი
+                      </p>
+
+                      <p className="mt-2 whitespace-pre-wrap break-words leading-7 text-red-100/90">
+                        {tour.rejection_reason ||
+                          "ადმინისტრატორს უარყოფის მიზეზი არ მიუთითებია."}
+                      </p>
+
+                      <p className="mt-3 text-sm text-red-200/70">
+                        შეცვალე ტურის ინფორმაცია და ხელახლა
+                        გაგზავნე დასამტკიცებლად.
+                      </p>
+                    </div>
+                  )}
+
+                  {tour.status === "pending" && (
+                    <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                      ⏳ ტური გაგზავნილია ადმინისტრატორთან და
+                      ელოდება დამტკიცებას.
+                    </div>
+                  )}
+
+                  {tour.status === "approved" && (
+                    <div className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                      ✅ ტური დამტკიცებულია და მომხმარებლებისთვის
+                      საჯაროდ ჩანს.
+                    </div>
                   )}
 
                   <div className="mt-7 grid gap-3 sm:grid-cols-3">
