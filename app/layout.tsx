@@ -14,43 +14,59 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Georgia Travel Hub",
-    template: "%s | Georgia Travel Hub",
+    default: "Georgia Gateway Hub",
+    template: "%s | Georgia Gateway Hub",
   },
+
   description:
     "აღმოაჩინე ტურები, სასტუმროები, ტრანსფერები და ადგილობრივი გიდები საქართველოში.",
+
   keywords: [
+    "Georgia Gateway Hub",
     "Georgia Travel",
     "Tours in Georgia",
     "Svaneti Tours",
     "Mestia Tours",
     "Hotels in Georgia",
     "Transfers in Georgia",
-    "Georgia Travel Hub",
+    "Georgia Guides",
+    "Travel Georgia",
   ],
+
   authors: [
     {
-      name: "Georgia Travel Hub",
+      name: "Georgia Gateway Hub",
     },
   ],
-  creator: "Georgia Travel Hub",
-  publisher: "Georgia Travel Hub",
-  metadataBase: new URL("https://www.georgia-travel-hub.com"),
+
+  creator: "Georgia Gateway Hub",
+  publisher: "Georgia Gateway Hub",
+
+  metadataBase: new URL(
+    "https://georgiagatewayhub.com"
+  ),
+
+  alternates: {
+    canonical: "/",
+  },
+
   openGraph: {
-    title: "Georgia Travel Hub",
+    title: "Georgia Gateway Hub",
     description:
       "ტურები, სასტუმროები, ტრანსფერები და ადგილობრივი გამოცდილებები საქართველოში.",
-    url: "https://www.georgia-travel-hub.com",
-    siteName: "Georgia Travel Hub",
+    url: "https://georgiagatewayhub.com",
+    siteName: "Georgia Gateway Hub",
     locale: "ka_GE",
     type: "website",
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "Georgia Travel Hub",
+    title: "Georgia Gateway Hub",
     description:
       "აღმოაჩინე საქართველო — ტურები, სასტუმროები, ტრანსფერები და გიდები.",
   },
+
   icons: {
     icon: "/favicon.ico",
   },
