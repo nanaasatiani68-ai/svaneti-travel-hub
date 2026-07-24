@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+
+  const supabase = useMemo(() => createClient(), []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,59 +22,116 @@ export default function LoginPage() {
     setErrorMessage("");
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const { data, error } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
-    if (error) {
-      console.error("Login error:", error);
+      if (error) {
+        console.error("Login error:", error);
 
-      if (error.message.toLowerCase().includes("invalid login credentials")) {
-        setErrorMessage("ელფოსტა ან პაროლი არასწორია.");
-      } else if (error.message.toLowerCase().includes("email not confirmed")) {
-        setErrorMessage(
-          "ელფოსტა ჯერ არ არის დადასტურებული. შეამოწმე ელფოსტაზე მიღებული წერილი."
-        );
-      } else {
-        setErrorMessage(`შესვლა ვერ მოხერხდა: ${error.message}`);
+        const errorText = error.message.toLowerCase();
+
+        if (errorText.includes("invalid login credentials")) {
+          setErrorMessage("ელფოსტა ან პაროლი არასწორია.");
+        } else if (errorText.includes("email not confirmed")) {
+          setErrorMessage(
+            "ელფოსტა ჯერ არ არის დადასტურებული. შეამოწმე ელფოსტაზე მიღებული წერილი."
+          );
+        } else {
+          setErrorMessage(
+            `შესვლა ვერ მოხერხდა: ${error.message}`
+          );
+        }
+
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
-      return;
-    }
+      const user = data.user;
 
-    const user = data.user;
+      if (!user) {
+        setErrorMessage("მომხმარებელი ვერ მოიძებნა.");
+        setLoading(false);
+        return;
+      }
 
-    if (!user) {
-      setErrorMessage("მომხმარებელი ვერ მოიძებნა.");
-      setLoading(false);
-      return;
-    }
+      /*
+       * Cookie-ის სესიის დასაფიქსირებლად ვამოწმებთ,
+       * რომ Login-ის შემდეგ Session ნამდვილად შეიქმნა.
+       */
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
+      if (sessionError || !session) {
+        console.error(
+          "Session creation error:",
+          sessionError
+        );
 
-    if (profileError) {
-      console.error("Profile loading error:", profileError);
-    }
+        setErrorMessage(
+          "სესიის შექმნა ვერ მოხერხდა. სცადე თავიდან შესვლა."
+        );
 
-    const role = String(profile?.role || "")
-      .trim()
-      .toLowerCase();
+        setLoading(false);
+        return;
+      }
 
-    if (role === "director" || role === "admin") {
-      router.replace("/admin-v2");
-    } else if (role === "staff") {
-      router.replace("/staff");
-    } else {
+      const { data: profile, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+      if (profileError) {
+        console.error(
+          "Profile loading error:",
+          profileError
+        );
+
+        setErrorMessage(
+          `პროფილის ჩატვირთვა ვერ მოხერხდა: ${profileError.message}`
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      const role = String(profile?.role ?? "")
+        .trim()
+        .toLowerCase();
+
+      /*
+       * ჯერ სერვერის კომპონენტებს ვაახლებთ,
+       * რათა ახალი cookie და სესია დაინახონ.
+       */
+      router.refresh();
+
+      if (role === "director" || role === "admin") {
+        router.replace("/admin-v2");
+        return;
+      }
+
+      if (role === "staff") {
+        router.replace("/staff");
+        return;
+      }
+
       router.replace("/dashboard");
-    }
+    } catch (error) {
+      console.error("Unexpected login error:", error);
 
-    router.refresh();
+      setErrorMessage(
+        "შესვლისას გაუთვალისწინებელი შეცდომა მოხდა."
+      );
+
+      setLoading(false);
+    }
   }
 
   return (
@@ -86,7 +145,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            შედი Georgia Travel Hub-ის ანგარიშზე
+            შედი Georgia Gateway Hub-ის ანგარიშზე
           </p>
         </div>
 
@@ -96,7 +155,10 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={login} className="mt-7 space-y-5">
+        <form
+          onSubmit={login}
+          className="mt-7 space-y-5"
+        >
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-slate-700">
               ელფოსტა
@@ -106,10 +168,13 @@ export default function LoginPage() {
               type="email"
               placeholder="example@email.com"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) =>
+                setEmail(event.target.value)
+              }
               autoComplete="email"
               required
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+              disabled={loading}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             />
           </label>
 
@@ -122,10 +187,13 @@ export default function LoginPage() {
               type="password"
               placeholder="შეიყვანე პაროლი"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) =>
+                setPassword(event.target.value)
+              }
               autoComplete="current-password"
               required
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+              disabled={loading}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             />
           </label>
 
@@ -134,7 +202,9 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "მიმდინარეობს შესვლა..." : "შესვლა"}
+            {loading
+              ? "მიმდინარეობს შესვლა..."
+              : "შესვლა"}
           </button>
         </form>
 
