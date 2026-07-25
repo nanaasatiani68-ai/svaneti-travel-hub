@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -77,6 +78,7 @@ export default function BookTourPage() {
   const [bookingDate, setBookingDate] = useState("");
   const [people, setPeople] = useState(1);
   const [notes, setNotes] = useState("");
+  const bookingRequestInProgress = useRef(false);
 
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -115,15 +117,16 @@ export default function BookTourPage() {
     setLoadingReviews(false);
   }, [tourId]);
 
-  useEffect(() => {
-    async function loadTour() {
-      setLoadingTour(true);
-      setErrorMessage("");
+  const loadTour = useCallback(async () => {
+    setLoadingTour(true);
+    setErrorMessage("");
+    setTour(null);
+    setOwner(null);
+    setOwnerTours([]);
 
+    try {
       if (!tourId) {
-        setErrorMessage("ტურის ID არასწორია.");
-        setLoadingTour(false);
-        return;
+        throw new Error("ტურის ID არასწორია.");
       }
 
       const { data, error } = await supabase
@@ -149,127 +152,161 @@ export default function BookTourPage() {
         .maybeSingle();
 
       if (error) {
-        console.error("Tour loading error:", error);
-
-        setErrorMessage(
-          `ტურის ჩატვირთვა ვერ მოხერხდა: ${error.message}`
-        );
-
-        setLoadingTour(false);
-        return;
+        throw error;
       }
 
       if (!data) {
-        setErrorMessage(
+        throw new Error(
           "ტური ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული."
         );
-
-        setLoadingTour(false);
-        return;
       }
 
       const loadedTour = data as Tour;
-
       setTour(loadedTour);
 
-      if (loadedTour.user_id) {
-        const { data: ownerData, error: ownerError } =
-          await supabase
-            .from("profiles")
-            .select(
-              `
-                id,
-                full_name,
-                avatar_url,
-                phone,
-                country,
-                city,
-                bio
-              `
-            )
-            .eq("id", loadedTour.user_id)
-            .maybeSingle();
-
-        if (ownerError) {
-          console.error("Owner loading error:", ownerError);
-        } else {
-          setOwner(ownerData as OwnerProfile | null);
-        }
-
-        const { data: ownerToursData, error: ownerToursError } =
-          await supabase
-            .from("tours")
-            .select(
-              `
-                id,
-                user_id,
-                title,
-                description,
-                location,
-                price,
-                image_url,
-                duration,
-                max_people,
-                category,
-                status,
-                created_at
-              `
-            )
-            .eq("user_id", loadedTour.user_id)
-            .eq("status", "approved")
-            .neq("id", loadedTour.id)
-            .order("created_at", { ascending: false })
-            .limit(3);
-
-        if (ownerToursError) {
-          console.error(
-            "Owner tours loading error:",
-            ownerToursError
-          );
-        } else {
-          setOwnerTours(
-            (ownerToursData as Tour[] | null) ?? []
-          );
-        }
-      }
-
-      setLoadingTour(false);
-    }
-
-    loadTour();
-  }, [tourId]);
-
-  useEffect(() => {
-    async function loadCurrentUser() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
+      if (!loadedTour.user_id) {
         return;
       }
 
-      setCurrentUserId(user.id);
-      setGuestEmail(user.email || "");
+      const [ownerResult, ownerToursResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            `
+              id,
+              full_name,
+              avatar_url,
+              phone,
+              country,
+              city,
+              bio
+            `
+          )
+          .eq("id", loadedTour.user_id)
+          .maybeSingle(),
+        supabase
+          .from("tours")
+          .select(
+            `
+              id,
+              user_id,
+              title,
+              description,
+              location,
+              price,
+              image_url,
+              duration,
+              max_people,
+              category,
+              status,
+              created_at
+            `
+          )
+          .eq("user_id", loadedTour.user_id)
+          .eq("status", "approved")
+          .neq("id", loadedTour.id)
+          .order("created_at", { ascending: false })
+          .limit(3),
+      ]);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, phone")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile?.full_name) {
-        setGuestName(profile.full_name);
-      } else if (user.user_metadata?.full_name) {
-        setGuestName(user.user_metadata.full_name);
+      if (ownerResult.error) {
+        console.error(
+          "Owner loading error:",
+          ownerResult.error
+        );
+      } else {
+        setOwner(
+          ownerResult.data as OwnerProfile | null
+        );
       }
 
-      if (profile?.phone) {
-        setGuestPhone(profile.phone);
+      if (ownerToursResult.error) {
+        console.error(
+          "Owner tours loading error:",
+          ownerToursResult.error
+        );
+      } else {
+        setOwnerTours(
+          (ownerToursResult.data as Tour[] | null) ?? []
+        );
+      }
+    } catch (error: unknown) {
+      console.error("Tour loading error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "ტურის ჩატვირთვისას უცნობი შეცდომა დაფიქსირდა.";
+
+      setErrorMessage(message);
+      setTour(null);
+    } finally {
+      setLoadingTour(false);
+    }
+  }, [tourId]);
+
+  useEffect(() => {
+    void loadTour();
+  }, [loadTour]);
+
+  useEffect(() => {
+    async function loadCurrentUser() {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error(
+            "Session loading error:",
+            sessionError
+          );
+          return;
+        }
+
+        const user = session?.user;
+
+        if (!user) {
+          setCurrentUserId("");
+          return;
+        }
+
+        setCurrentUserId(user.id);
+        setGuestEmail(user.email || "");
+
+        const { data: profile, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("full_name, phone")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (profileError) {
+          console.error(
+            "Profile loading error:",
+            profileError
+          );
+        }
+
+        if (profile?.full_name) {
+          setGuestName(profile.full_name);
+        } else if (user.user_metadata?.full_name) {
+          setGuestName(user.user_metadata.full_name);
+        }
+
+        if (profile?.phone) {
+          setGuestPhone(profile.phone);
+        }
+      } catch (error) {
+        console.error(
+          "Current user loading error:",
+          error
+        );
       }
     }
 
-    loadCurrentUser();
+    void loadCurrentUser();
   }, []);
 
   useEffect(() => {
@@ -323,6 +360,10 @@ export default function BookTourPage() {
   ) {
     event.preventDefault();
 
+    if (submitting || bookingRequestInProgress.current) {
+      return;
+    }
+
     setErrorMessage("");
     setSuccess(false);
 
@@ -367,55 +408,68 @@ export default function BookTourPage() {
       setErrorMessage(
         `ამ ტურზე მაქსიმალური რაოდენობაა ${tour.max_people} ადამიანი.`
       );
-
       return;
     }
 
+    bookingRequestInProgress.current = true;
     setSubmitting(true);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-    if (userError) {
-      console.error("User loading error:", userError);
-    }
+      if (sessionError) {
+        console.error(
+          "Session loading error:",
+          sessionError
+        );
+      }
 
-    const { error } = await supabase.from("bookings").insert({
-      tour_id: tour.id,
-      user_id: user?.id ?? null,
-      guest_name: guestName.trim(),
-      guest_email: guestEmail.trim(),
-      guest_phone: guestPhone.trim(),
-      booking_date: bookingDate,
-      people,
-      total_price: totalPrice,
-      notes: notes.trim() || null,
-      status: "pending",
-    });
+      const { error } = await supabase
+        .from("bookings")
+        .insert({
+          tour_id: tour.id,
+          user_id: session?.user?.id ?? null,
+          guest_name: guestName.trim(),
+          guest_email: guestEmail.trim().toLowerCase(),
+          guest_phone: guestPhone.trim(),
+          booking_date: bookingDate,
+          people,
+          total_price: totalPrice,
+          notes: notes.trim() || null,
+          status: "pending",
+        });
 
-    if (error) {
+      if (error) {
+        throw error;
+      }
+
+      setSuccess(true);
+      setBookingDate("");
+      setPeople(1);
+      setNotes("");
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (error: unknown) {
       console.error("Booking error:", error);
 
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა დაფიქსირდა.";
+
       setErrorMessage(
-        `დაჯავშნის მოთხოვნა ვერ გაიგზავნა: ${error.message}`
+        `დაჯავშნის მოთხოვნა ვერ გაიგზავნა: ${message}`
       );
-
+    } finally {
+      bookingRequestInProgress.current = false;
       setSubmitting(false);
-      return;
     }
-
-    setSuccess(true);
-    setSubmitting(false);
-    setBookingDate("");
-    setPeople(1);
-    setNotes("");
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
   }
 
   async function saveReview(
@@ -546,9 +600,9 @@ export default function BookTourPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
-          <div className="text-6xl">⏳</div>
+          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-cyan-400" />
 
-          <p className="mt-4 text-lg font-semibold">
+          <p className="mt-5 text-lg font-semibold">
             ტურის ინფორმაცია იტვირთება...
           </p>
         </div>
@@ -571,6 +625,14 @@ export default function BookTourPage() {
           </p>
 
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={loadTour}
+              className="rounded-2xl bg-emerald-500 px-6 py-3 font-bold transition hover:bg-emerald-600"
+            >
+              ხელახლა ცდა
+            </button>
+
             <Link
               href="/tours"
               className="rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
@@ -603,7 +665,7 @@ export default function BookTourPage() {
             </div>
 
             <div>
-              <p>Georgia Travel Hub</p>
+              <p>Georgia Gateway Hub</p>
 
               <p className="text-xs font-medium text-white/45">
                 ტურის დეტალები
@@ -719,7 +781,7 @@ export default function BookTourPage() {
                   label="ფასი"
                   value={
                     tour.price !== null
-                      ? `${Number(tour.price).toLocaleString()} ₾`
+                      ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
                       : "შეთანხმებით"
                   }
                   icon="💰"
@@ -1073,7 +1135,7 @@ export default function BookTourPage() {
                           {ownerTour.price !== null
                             ? `${Number(
                                 ownerTour.price
-                              ).toLocaleString()} ₾`
+                              ).toLocaleString("ka-GE")} ₾`
                             : "შეთანხმებით"}
                         </p>
 
@@ -1201,7 +1263,7 @@ export default function BookTourPage() {
                   label="ფასი ერთ ადამიანზე"
                   value={
                     tour.price !== null
-                      ? `${Number(tour.price).toLocaleString()} ₾`
+                      ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
                       : "შეთანხმებით"
                   }
                 />
@@ -1219,7 +1281,7 @@ export default function BookTourPage() {
 
                     <span className="text-2xl font-black text-cyan-700">
                       {totalPrice !== null
-                        ? `${totalPrice.toLocaleString()} ₾`
+                        ? `${totalPrice.toLocaleString("ka-GE")} ₾`
                         : "შეთანხმებით"}
                     </span>
                   </div>
