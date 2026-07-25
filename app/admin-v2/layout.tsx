@@ -9,7 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 
 type AdminLayoutProps = {
   children: ReactNode;
@@ -36,9 +36,14 @@ const menuItems: MenuItem[] = [
     icon: "🏠",
   },
   {
-    name: "Bookings",
+    name: "Tour Bookings",
     href: "/admin-v2/bookings",
     icon: "📋",
+  },
+  {
+    name: "Hotel Bookings",
+    href: "/admin-v2/hotel-bookings",
+    icon: "🛎️",
   },
   {
     name: "Tours",
@@ -114,95 +119,135 @@ export default function AdminV2Layout({
   const pathname = usePathname();
   const router = useRouter();
 
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
 
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [loggingOut, setLoggingOut] =
+    useState(false);
+
+  const [checkingAccess, setCheckingAccess] =
+    useState(true);
+
+  const [role, setRole] =
+    useState<UserRole | null>(null);
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
 
   const loadAdmin = useCallback(async () => {
     setCheckingAccess(true);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-    if (userError || !user) {
-      router.replace("/login");
-      return;
-    }
+      if (sessionError) {
+        throw sessionError;
+      }
 
-    setEmail(user.email || "");
+      const user = session?.user;
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("full_name, role")
-      .eq("id", user.id)
-      .maybeSingle();
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
 
-    if (profileError) {
-      console.error("Admin profile loading error:", profileError);
+      setEmail(user.email || "");
+
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select("full_name, role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const typedProfile =
+        profile as AdminProfile | null;
+
+      const normalizedRole = String(
+        typedProfile?.role || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      let resolvedRole: UserRole | null = null;
+
+      if (normalizedRole === "director") {
+        resolvedRole = "Director";
+      }
+
+      if (normalizedRole === "admin") {
+        resolvedRole = "Admin";
+      }
+
+      if (!resolvedRole) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setRole(resolvedRole);
+
+      setFullName(
+        typedProfile?.full_name ||
+          user.user_metadata?.full_name ||
+          (resolvedRole === "Director"
+            ? "Director"
+            : "Administrator")
+      );
+
+      const currentPathIsDirectorOnly =
+        directorOnlyPaths.some(
+          (protectedPath) =>
+            pathname === protectedPath ||
+            pathname.startsWith(
+              `${protectedPath}/`
+            )
+        );
+
+      if (
+        resolvedRole === "Admin" &&
+        currentPathIsDirectorOnly
+      ) {
+        router.replace("/admin-v2");
+        return;
+      }
+
+      setCheckingAccess(false);
+    } catch (error) {
+      console.error(
+        "Admin access loading error:",
+        error
+      );
+
       await supabase.auth.signOut();
       router.replace("/login");
-      return;
     }
-
-    const typedProfile = profile as AdminProfile | null;
-
-    const normalizedRole = String(typedProfile?.role || "")
-      .trim()
-      .toLowerCase();
-
-    let resolvedRole: UserRole | null = null;
-
-    if (normalizedRole === "director") {
-      resolvedRole = "Director";
-    }
-
-    if (normalizedRole === "admin") {
-      resolvedRole = "Admin";
-    }
-
-    if (!resolvedRole) {
-      router.replace("/dashboard");
-      return;
-    }
-
-    setRole(resolvedRole);
-
-    setFullName(
-      typedProfile?.full_name ||
-        user.user_metadata?.full_name ||
-        (resolvedRole === "Director" ? "Director" : "Administrator")
-    );
-
-    const currentPathIsDirectorOnly = directorOnlyPaths.some(
-      (protectedPath) =>
-        pathname === protectedPath ||
-        pathname.startsWith(`${protectedPath}/`)
-    );
-
-    if (resolvedRole === "Admin" && currentPathIsDirectorOnly) {
-      router.replace("/admin-v2");
-      return;
-    }
-
-    setCheckingAccess(false);
   }, [pathname, router]);
 
   useEffect(() => {
-    loadAdmin();
+    void loadAdmin();
   }, [loadAdmin]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const visibleMenuItems = useMemo(() => {
     if (role === "Director") {
       return menuItems;
     }
 
-    return menuItems.filter((item) => !item.directorOnly);
+    return menuItems.filter(
+      (item) => !item.directorOnly
+    );
   }, [role]);
 
   function isActive(href: string) {
@@ -210,7 +255,10 @@ export default function AdminV2Layout({
       return pathname === "/admin-v2";
     }
 
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return (
+      pathname === href ||
+      pathname.startsWith(`${href}/`)
+    );
   }
 
   function closeMobileMenu() {
@@ -224,17 +272,30 @@ export default function AdminV2Layout({
 
     setLoggingOut(true);
 
-    const { error } = await supabase.auth.signOut();
+    try {
+      const { error } =
+        await supabase.auth.signOut();
 
-    if (error) {
+      if (error) {
+        throw error;
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch (error: unknown) {
       console.error("Logout error:", error);
-      alert(`ანგარიშიდან გამოსვლა ვერ მოხერხდა: ${error.message}`);
-      setLoggingOut(false);
-      return;
-    }
 
-    router.replace("/login");
-    router.refresh();
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა დაფიქსირდა.";
+
+      alert(
+        `ანგარიშიდან გამოსვლა ვერ მოხერხდა: ${message}`
+      );
+
+      setLoggingOut(false);
+    }
   }
 
   if (checkingAccess) {
@@ -259,7 +320,6 @@ export default function AdminV2Layout({
 
   return (
     <div className="min-h-screen bg-[#07111d] text-white">
-      {/* Desktop sidebar */}
       <aside className="pointer-events-auto fixed bottom-0 left-0 top-0 z-[9999] hidden w-[285px] flex-col border-r border-white/10 bg-[#07101b] lg:flex">
         <div className="shrink-0 border-b border-white/10 px-6 py-6">
           <Link
@@ -270,9 +330,9 @@ export default function AdminV2Layout({
               🏔️
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl font-bold text-white">
-                Georgia Travel Hub
+                Georgia Gateway Hub
               </h1>
 
               <p className="mt-1 text-xs text-slate-400">
@@ -331,7 +391,9 @@ export default function AdminV2Layout({
                   : "bg-cyan-500/15 text-cyan-300"
               }`}
             >
-              {role === "Director" ? "👑 Director" : "🛡️ Admin"}
+              {role === "Director"
+                ? "👑 Director"
+                : "🛡️ Admin"}
             </span>
           </div>
 
@@ -346,7 +408,7 @@ export default function AdminV2Layout({
 
             <button
               type="button"
-              onClick={logout}
+              onClick={() => void logout()}
               disabled={loggingOut}
               className="flex w-full items-center gap-3 rounded-2xl bg-red-500/10 px-4 py-3 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -362,7 +424,6 @@ export default function AdminV2Layout({
         </div>
       </aside>
 
-      {/* Mobile overlay */}
       {mobileMenuOpen && (
         <button
           type="button"
@@ -372,10 +433,11 @@ export default function AdminV2Layout({
         />
       )}
 
-      {/* Mobile sidebar */}
       <aside
         className={`fixed bottom-0 left-0 top-0 z-[9999] flex w-[285px] flex-col border-r border-white/10 bg-[#07101b] transition-transform duration-300 lg:hidden ${
-          mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          mobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full"
         }`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-5">
@@ -388,13 +450,15 @@ export default function AdminV2Layout({
               🏔️
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h2 className="font-bold text-white">
-                Georgia Travel Hub
+                Georgia Gateway Hub
               </h2>
 
               <p className="text-xs text-slate-400">
-                {role === "Director" ? "Director" : "Admin"}
+                {role === "Director"
+                  ? "Director"
+                  : "Admin"}
               </p>
             </div>
           </Link>
@@ -451,7 +515,9 @@ export default function AdminV2Layout({
             </p>
 
             <p className="mt-2 text-xs font-bold text-cyan-300">
-              {role === "Director" ? "👑 Director" : "🛡️ Admin"}
+              {role === "Director"
+                ? "👑 Director"
+                : "🛡️ Admin"}
             </p>
           </div>
 
@@ -486,29 +552,30 @@ export default function AdminV2Layout({
         </div>
       </aside>
 
-      {/* Main area */}
       <div className="relative z-0 min-h-screen w-full lg:ml-[285px] lg:w-[calc(100%-285px)]">
         <header className="sticky top-0 z-[100] border-b border-white/10 bg-[#0a1726]/95 backdrop-blur-xl">
           <div className="flex min-h-[86px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(true)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl hover:bg-white/10 lg:hidden"
+                onClick={() =>
+                  setMobileMenuOpen(true)
+                }
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-xl hover:bg-white/10 lg:hidden"
                 aria-label="მენიუს გახსნა"
               >
                 ☰
               </button>
 
-              <div>
+              <div className="min-w-0">
                 <Link
                   href="/admin-v2"
-                  className="text-xl font-bold text-white sm:text-2xl"
+                  className="block truncate text-xl font-bold text-white sm:text-2xl"
                 >
-                  Georgia Travel Hub
+                  Georgia Gateway Hub
                 </Link>
 
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 hidden text-sm text-slate-400 sm:block">
                   {role === "Director"
                     ? "Director Panel — სრული წვდომა"
                     : "Admin Panel — შეზღუდული წვდომა"}
@@ -532,7 +599,10 @@ export default function AdminV2Layout({
                 className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 transition hover:bg-white/10"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 to-emerald-400 font-bold text-slate-950">
-                  {fullName.trim().charAt(0).toUpperCase() || "A"}
+                  {fullName
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase() || "A"}
                 </div>
 
                 <div className="hidden max-w-[180px] text-left sm:block">
@@ -548,13 +618,17 @@ export default function AdminV2Layout({
 
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => void logout()}
                 disabled={loggingOut}
                 className="hidden items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:bg-red-500/20 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-60 sm:flex"
               >
                 <span>🚪</span>
 
-                <span>{loggingOut ? "გამოდის..." : "გამოსვლა"}</span>
+                <span>
+                  {loggingOut
+                    ? "გამოდის..."
+                    : "გამოსვლა"}
+                </span>
               </button>
             </div>
           </div>
