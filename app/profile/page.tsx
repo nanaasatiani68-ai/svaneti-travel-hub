@@ -396,6 +396,13 @@ export default function ProfilePage() {
       return;
     }
 
+    if (!profile.phone.trim()) {
+      setMessage("ჩაწერე ტელეფონის ნომერი.");
+      setMessageType("error");
+      setSaving(false);
+      return;
+    }
+
     let finalAvatarUrl = profile.avatar_url;
 
     if (avatarFile) {
@@ -642,15 +649,20 @@ export default function ProfilePage() {
                 />
               </ProfileField>
 
-              <ProfileField label="ტელეფონის ნომერი">
+              <ProfileField label="ტელეფონის ნომერი *">
                 <input
                   type="tel"
                   name="phone"
                   value={profile.phone}
                   onChange={updateField}
                   placeholder="+995 5XX XX XX XX"
+                  required
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                 />
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  ეს ნომერი გამოჩნდება ადმინისთვის და ტურის მომხმარებლისთვის, რათა ორგანიზატორთან დაკავშირება შეძლონ.
+                </p>
               </ProfileField>
 
               <div className="grid gap-5 sm:grid-cols-2">
