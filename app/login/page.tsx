@@ -1,135 +1,167 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
-  const router = useRouter();
+type UserProfile = {
+  role: string | null;
+};
 
-  const supabase = useMemo(() => createClient(), []);
+export default function LoginPage() {
+  const supabase = useMemo(
+    () => createClient(),
+    []
+  );
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] =
+    useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] =
+    useState(false);
 
-  async function login(event: FormEvent<HTMLFormElement>) {
+  const [errorMessage, setErrorMessage] =
+    useState("");
+
+  async function login(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
+
+    if (loading) {
+      return;
+    }
 
     setErrorMessage("");
     setLoading(true);
 
     try {
-      const { data, error } =
+      const normalizedEmail = email
+        .trim()
+        .toLowerCase();
+
+      if (!normalizedEmail) {
+        setErrorMessage(
+          "ჩაწერე ელფოსტის მისამართი."
+        );
+        return;
+      }
+
+      if (!password) {
+        setErrorMessage("ჩაწერე პაროლი.");
+        return;
+      }
+
+      const {
+        data,
+        error: loginError,
+      } =
         await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: normalizedEmail,
           password,
         });
 
-      if (error) {
-        console.error("Login error:", error);
+      if (loginError) {
+        const errorText =
+          loginError.message.toLowerCase();
 
-        const errorText = error.message.toLowerCase();
-
-        if (errorText.includes("invalid login credentials")) {
-          setErrorMessage("ელფოსტა ან პაროლი არასწორია.");
-        } else if (errorText.includes("email not confirmed")) {
+        if (
+          errorText.includes(
+            "invalid login credentials"
+          )
+        ) {
+          setErrorMessage(
+            "ელფოსტა ან პაროლი არასწორია."
+          );
+        } else if (
+          errorText.includes(
+            "email not confirmed"
+          )
+        ) {
           setErrorMessage(
             "ელფოსტა ჯერ არ არის დადასტურებული. შეამოწმე ელფოსტაზე მიღებული წერილი."
           );
         } else {
           setErrorMessage(
-            `შესვლა ვერ მოხერხდა: ${error.message}`
+            `შესვლა ვერ მოხერხდა: ${loginError.message}`
           );
         }
 
-        setLoading(false);
         return;
       }
 
       const user = data.user;
+      const session = data.session;
 
-      if (!user) {
-        setErrorMessage("მომხმარებელი ვერ მოიძებნა.");
-        setLoading(false);
-        return;
-      }
-
-      /*
-       * Cookie-ის სესიის დასაფიქსირებლად ვამოწმებთ,
-       * რომ Login-ის შემდეგ Session ნამდვილად შეიქმნა.
-       */
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError || !session) {
-        console.error(
-          "Session creation error:",
-          sessionError
-        );
-
+      if (!user || !session) {
         setErrorMessage(
-          "სესიის შექმნა ვერ მოხერხდა. სცადე თავიდან შესვლა."
+          "სესიის შექმნა ვერ მოხერხდა. სცადე თავიდან."
         );
-
-        setLoading(false);
         return;
       }
 
-      const { data: profile, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
 
       if (profileError) {
         console.error(
           "Profile loading error:",
           profileError
         );
-
-        setErrorMessage(
-          `პროფილის ჩატვირთვა ვერ მოხერხდა: ${profileError.message}`
-        );
-
-        setLoading(false);
-        return;
       }
 
-      const role = String(profile?.role ?? "")
+      const profile =
+        profileData as UserProfile | null;
+
+      const role = String(
+        profile?.role ?? ""
+      )
         .trim()
         .toLowerCase();
 
+      let destination = "/dashboard";
+
+      if (
+        role === "director" ||
+        role === "admin"
+      ) {
+        destination = "/admin-v2";
+      } else if (role === "staff") {
+        destination = "/staff";
+      }
+
       /*
-       * ჯერ სერვერის კომპონენტებს ვაახლებთ,
-       * რათა ახალი cookie და სესია დაინახონ.
+       * სრული გვერდის ჩატვირთვა საჭიროა,
+       * რათა ახალი Supabase cookie სერვერმა
+       * აუცილებლად დაინახოს.
        */
-      router.refresh();
-
-      if (role === "director" || role === "admin") {
-        router.replace("/admin-v2");
-        return;
-      }
-
-      if (role === "staff") {
-        router.replace("/staff");
-        return;
-      }
-
-      router.replace("/dashboard");
-    } catch (error) {
-      console.error("Unexpected login error:", error);
-
-      setErrorMessage(
-        "შესვლისას გაუთვალისწინებელი შეცდომა მოხდა."
+      window.location.assign(destination);
+    } catch (error: unknown) {
+      console.error(
+        "Unexpected login error:",
+        error
       );
 
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა დაფიქსირდა.";
+
+      setErrorMessage(
+        `შესვლისას შეცდომა მოხდა: ${message}`
+      );
+    } finally {
       setLoading(false);
     }
   }
@@ -145,13 +177,14 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            შედი Georgia Gateway Hub-ის ანგარიშზე
+            შედი Georgia Gateway Hub-ის
+            ანგარიშზე
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-            {errorMessage}
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold leading-6 text-red-700">
+            ⚠️ {errorMessage}
           </div>
         )}
 
@@ -172,16 +205,27 @@ export default function LoginPage() {
                 setEmail(event.target.value)
               }
               autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
               required
               disabled={loading}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             />
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-bold text-slate-700">
-              პაროლი
-            </span>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-sm font-bold text-slate-700">
+                პაროლი
+              </span>
+
+              <Link
+                href="/forgot-password"
+                className="text-sm font-bold text-cyan-700 transition hover:text-cyan-800"
+              >
+                დაგავიწყდა პაროლი?
+              </Link>
+            </div>
 
             <input
               type="password"
@@ -193,7 +237,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               required
               disabled={loading}
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100"
             />
           </label>
 
