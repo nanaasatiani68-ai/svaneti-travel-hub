@@ -350,8 +350,8 @@ export default function BookTourPage() {
       return null;
     }
 
-    return Number(tour.price) * people;
-  }, [tour?.price, people]);
+    return Number(tour.price);
+  }, [tour?.price]);
 
   const today = getLocalToday();
 
@@ -778,7 +778,7 @@ export default function BookTourPage() {
                 />
 
                 <InfoBox
-                  label="ფასი"
+                  label="მანქანის სრული ფასი"
                   value={
                     tour.price !== null
                       ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
@@ -1260,7 +1260,7 @@ export default function BookTourPage() {
 
               <div className="rounded-2xl bg-slate-100 p-5">
                 <PriceRow
-                  label="ფასი ერთ ადამიანზე"
+                  label="მანქანის სრული ფასი"
                   value={
                     tour.price !== null
                       ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
@@ -1273,10 +1273,15 @@ export default function BookTourPage() {
                   value={String(people)}
                 />
 
+                <p className="mt-3 rounded-xl bg-cyan-50 p-3 text-xs font-semibold leading-5 text-cyan-800">
+                  ადამიანების რაოდენობა ფასს არ ცვლის — მითითებული თანხა
+                  არის ერთი მანქანის სრული ფასი.
+                </p>
+
                 <div className="mt-4 border-t border-slate-300 pt-4">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-lg font-black">
-                      ჯამური ფასი
+                      გადასახდელი სრული ფასი
                     </span>
 
                     <span className="text-2xl font-black text-cyan-700">
@@ -1389,13 +1394,17 @@ function OwnerCard({
             </p>
           )}
 
-          {owner.phone && (
+          {owner.phone ? (
             <a
               href={`tel:${owner.phone}`}
               className="mt-5 inline-flex rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
             >
               📞 {owner.phone}
             </a>
+          ) : (
+            <div className="mt-5 inline-flex rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 font-bold text-amber-200">
+              ⚠️ ორგანიზატორს ტელეფონის ნომერი ჯერ არ მიუთითებია
+            </div>
           )}
         </div>
       </div>

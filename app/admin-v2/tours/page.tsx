@@ -15,6 +15,7 @@ type SearchParams = {
 
 type Tour = {
   id: number | string;
+  user_id: string | null;
   title: string | null;
   location: string | null;
   price: number | null;
@@ -28,6 +29,20 @@ type Tour = {
   rejection_reason: string | null;
   submitted_at: string | null;
   created_at: string | null;
+};
+
+type OwnerProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  country: string | null;
+  city: string | null;
+  bio: string | null;
+};
+
+type TourWithOwner = Tour & {
+  owner: OwnerProfile | null;
 };
 
 type AdminToursPageProps = {
@@ -46,6 +61,7 @@ export default async function AdminToursPage({
     .select(
       `
         id,
+        user_id,
         title,
         location,
         price,
@@ -63,7 +79,50 @@ export default async function AdminToursPage({
     )
     .order("created_at", { ascending: false });
 
-  const tours = (data as Tour[] | null) ?? [];
+  const rawTours = (data as Tour[] | null) ?? [];
+
+  const ownerIds = Array.from(
+    new Set(
+      rawTours
+        .map((tour) => tour.user_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  let ownerProfiles: OwnerProfile[] = [];
+  let profilesErrorMessage = "";
+
+  if (ownerIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select(
+        `
+          id,
+          full_name,
+          avatar_url,
+          phone,
+          country,
+          city,
+          bio
+        `
+      )
+      .in("id", ownerIds);
+
+    if (profilesError) {
+      profilesErrorMessage = profilesError.message;
+    } else {
+      ownerProfiles = (profilesData as OwnerProfile[] | null) ?? [];
+    }
+  }
+
+  const profileMap = new Map(
+    ownerProfiles.map((profile) => [profile.id, profile])
+  );
+
+  const tours: TourWithOwner[] = rawTours.map((tour) => ({
+    ...tour,
+    owner: tour.user_id ? profileMap.get(tour.user_id) ?? null : null,
+  }));
 
   const pendingCount = tours.filter(
     (tour) => tour.status === "pending"
@@ -154,6 +213,22 @@ export default async function AdminToursPage({
           </div>
         )}
 
+        {profilesErrorMessage && (
+          <div className="mb-8 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-800 shadow-lg">
+            <p className="font-bold">
+              ⚠️ ტურის ავტორების პროფილები ვერ ჩაიტვირთა
+            </p>
+
+            <p className="mt-2 break-words text-sm">
+              {profilesErrorMessage}
+            </p>
+
+            <p className="mt-2 text-sm">
+              შეამოწმე profiles ცხრილის SELECT RLS Policy.
+            </p>
+          </div>
+        )}
+
         {tours.length === 0 && (
           <div className="rounded-3xl bg-white p-12 text-center shadow-xl">
             <div className="text-7xl">🏔️</div>
@@ -201,6 +276,11 @@ export default async function AdminToursPage({
                   {tour.title || "უსახელო ტური"}
                 </h2>
 
+                <OwnerInformation
+                  owner={tour.owner}
+                  userId={tour.user_id}
+                />
+
                 <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <TourDetail
                     icon="📍"
@@ -210,10 +290,10 @@ export default async function AdminToursPage({
 
                   <TourDetail
                     icon="💰"
-                    label="ფასი"
+                    label="მანქანის სრული ფასი"
                     value={
                       tour.price !== null
-                        ? `${Number(tour.price).toLocaleString()} GEL`
+                        ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
                         : "შეთანხმებით"
                     }
                   />
@@ -412,6 +492,73 @@ function StatusBadge({
     <span className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-semibold text-yellow-700">
       🟡 დასამტკიცებელი
     </span>
+  );
+}
+
+function OwnerInformation({
+  owner,
+  userId,
+}: {
+  owner: OwnerProfile | null;
+  userId: string | null;
+}) {
+  return (
+    <section className="mt-6 rounded-3xl border border-cyan-200 bg-cyan-50 p-5 sm:p-6">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+        {owner?.avatar_url ? (
+          <img
+            src={owner.avatar_url}
+            alt={owner.full_name || "ტურის ავტორი"}
+            className="h-24 w-24 shrink-0 rounded-3xl border-4 border-white object-cover shadow-lg"
+          />
+        ) : (
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-cyan-600 text-4xl text-white shadow-lg">
+            👤
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">
+            ტურის ავტორი
+          </p>
+
+          <h3 className="mt-2 break-words text-2xl font-black text-slate-900">
+            {owner?.full_name || "სახელი არ არის მითითებული"}
+          </h3>
+
+          {(owner?.city || owner?.country) && (
+            <p className="mt-2 text-slate-600">
+              📍 {[owner.city, owner.country].filter(Boolean).join(", ")}
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            {owner?.phone ? (
+              <a
+                href={`tel:${owner.phone}`}
+                className="inline-flex items-center justify-center rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700"
+              >
+                📞 {owner.phone}
+              </a>
+            ) : (
+              <span className="inline-flex items-center rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 font-bold text-amber-700">
+                ⚠️ ტელეფონი არ არის მითითებული
+              </span>
+            )}
+          </div>
+
+          {owner?.bio && (
+            <p className="mt-4 whitespace-pre-wrap leading-7 text-slate-600">
+              {owner.bio}
+            </p>
+          )}
+
+          <p className="mt-4 break-all text-xs text-slate-400">
+            მომხმარებლის ID: {userId || "ტურს მომხმარებელი არ ჰყავს დაკავშირებული"}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
