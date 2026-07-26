@@ -8,7 +8,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type UserRole = "Director" | "Admin";
 
@@ -115,6 +115,7 @@ const initialStats: DashboardStats = {
 
 export default function AdminV2Page() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<UserRole | null>(null);
@@ -151,12 +152,29 @@ export default function AdminV2Page() {
       setErrorMessage("");
 
       const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (userError || !user) {
-        router.replace("/login");
+      if (sessionError) {
+        console.error(
+          "Session loading error:",
+          sessionError
+        );
+
+        setErrorMessage(
+          `სესიის შემოწმება ვერ მოხერხდა: ${sessionError.message}`
+        );
+
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      const user = session?.user;
+
+      if (!user) {
+        window.location.replace("/login");
         return;
       }
 
@@ -526,7 +544,7 @@ export default function AdminV2Page() {
       setLoading(false);
       setRefreshing(false);
     },
-    [router]
+    [supabase]
   );
 
   useEffect(() => {
