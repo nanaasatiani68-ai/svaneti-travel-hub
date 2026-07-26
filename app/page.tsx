@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import WeatherCard from "./components/WeatherCard";
 
 type Language = "ka" | "en";
@@ -269,6 +269,7 @@ const categoryOptions = [
 
 export default function Home() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [language, setLanguage] = useState<Language>("ka");
   const [languageLoaded, setLanguageLoaded] = useState(false);
