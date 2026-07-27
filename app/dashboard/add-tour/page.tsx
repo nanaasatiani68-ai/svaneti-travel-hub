@@ -39,6 +39,10 @@ export default function AddTourPage() {
   const [maxPeople, setMaxPeople] = useState("");
   const [category, setCategory] = useState("");
 
+  const [contactPhone, setContactPhone] = useState("");
+  const [hasWhatsapp, setHasWhatsapp] = useState(false);
+  const [hasViber, setHasViber] = useState(false);
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<
     "success" | "error"
@@ -59,6 +63,25 @@ export default function AddTourPage() {
       }
 
       setUserId(user.id);
+
+      const { data: profile, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("phone")
+          .eq("id", user.id)
+          .maybeSingle();
+
+      if (profileError) {
+        console.error(
+          "Profile phone loading error:",
+          profileError
+        );
+      }
+
+      if (profile?.phone) {
+        setContactPhone(profile.phone);
+      }
+
       setCheckingUser(false);
     }
 
@@ -135,10 +158,10 @@ export default function AddTourPage() {
     }
 
     const extension = getFileExtension(imageFile);
-
     const randomPart = crypto.randomUUID();
 
-    const fileName = `tour-${Date.now()}-${randomPart}.${extension}`;
+    const fileName =
+      `tour-${Date.now()}-${randomPart}.${extension}`;
 
     const filePath = `${userId}/${fileName}`;
 
@@ -230,6 +253,22 @@ export default function AddTourPage() {
       return;
     }
 
+    if (!contactPhone.trim()) {
+      setMessage(
+        "ჩაწერე ტურის ორგანიზატორის ტელეფონის ნომერი."
+      );
+      setMessageType("error");
+      return;
+    }
+
+    if (!isValidPhone(contactPhone)) {
+      setMessage(
+        "ტელეფონის ნომერი ჩაწერე საერთაშორისო ფორმატში, მაგალითად: +995555123456"
+      );
+      setMessageType("error");
+      return;
+    }
+
     setSaving(true);
 
     let uploadedFilePath = "";
@@ -255,6 +294,9 @@ export default function AddTourPage() {
           image_url: uploadedImage.publicUrl || null,
           user_id: userId,
           status: "pending",
+          contact_phone: normalizePhone(contactPhone),
+          has_whatsapp: hasWhatsapp,
+          has_viber: hasViber,
         });
 
       if (insertError) {
@@ -517,6 +559,117 @@ export default function AddTourPage() {
 
           <section className="border-t border-slate-200 pt-8">
             <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
+              Contact information
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black">
+              საკონტაქტო ინფორმაცია
+            </h2>
+
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
+              ჩაწერე საერთაშორისო ფორმატის ნომერი. უცხოელი
+              ტურისტი ამ ნომრით შეძლებს WhatsApp-ზე ან Viber-ზე
+              დაკავშირებას.
+            </p>
+
+            <div className="mt-7">
+              <FormField
+                label="ტურის ორგანიზატორის ტელეფონის ნომერი"
+                required
+              >
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(event) =>
+                    setContactPhone(event.target.value)
+                  }
+                  placeholder="+995555123456"
+                  required
+                  className="input"
+                />
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  გამოიყენე ქვეყნის კოდი, მაგალითად:
+                  +995555123456
+                </p>
+              </FormField>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label
+                className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                  hasWhatsapp
+                    ? "border-emerald-500 bg-emerald-50"
+                    : "border-slate-200 bg-slate-50 hover:border-emerald-300"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={hasWhatsapp}
+                  onChange={(event) =>
+                    setHasWhatsapp(event.target.checked)
+                  }
+                  className="h-5 w-5 accent-emerald-600"
+                />
+
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-2xl text-white">
+                  ☎
+                </div>
+
+                <div>
+                  <p className="font-black text-slate-900">
+                    WhatsApp
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    ამ ნომერზე WhatsApp ხელმისაწვდომია
+                  </p>
+                </div>
+              </label>
+
+              <label
+                className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                  hasViber
+                    ? "border-violet-500 bg-violet-50"
+                    : "border-slate-200 bg-slate-50 hover:border-violet-300"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={hasViber}
+                  onChange={(event) =>
+                    setHasViber(event.target.checked)
+                  }
+                  className="h-5 w-5 accent-violet-600"
+                />
+
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500 text-2xl text-white">
+                  📞
+                </div>
+
+                <div>
+                  <p className="font-black text-slate-900">
+                    Viber
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    ამ ნომერზე Viber ხელმისაწვდომია
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {!hasWhatsapp && !hasViber && (
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800">
+                ℹ️ WhatsApp ან Viber მონიშნული არ არის.
+                მომხმარებელი მხოლოდ ჩვეულებრივი ზარით შეძლებს
+                დაკავშირებას.
+              </div>
+            )}
+          </section>
+
+          <section className="border-t border-slate-200 pt-8">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
               Cover image
             </p>
 
@@ -646,7 +799,10 @@ function getFileExtension(file: File) {
     .pop()
     ?.toLowerCase();
 
-  if (extension && ["jpg", "jpeg", "png", "webp"].includes(extension)) {
+  if (
+    extension &&
+    ["jpg", "jpeg", "png", "webp"].includes(extension)
+  ) {
     return extension === "jpeg" ? "jpg" : extension;
   }
 
@@ -663,9 +819,25 @@ function getFileExtension(file: File) {
 
 function getLocalToday() {
   const now = new Date();
-  const timezoneOffset = now.getTimezoneOffset() * 60_000;
+  const timezoneOffset =
+    now.getTimezoneOffset() * 60_000;
 
   return new Date(now.getTime() - timezoneOffset)
     .toISOString()
     .split("T")[0];
+}
+
+function normalizePhone(phone: string) {
+  const trimmedPhone = phone.trim();
+  const hasPlus = trimmedPhone.startsWith("+");
+
+  const digits = trimmedPhone.replace(/\D/g, "");
+
+  return hasPlus ? `+${digits}` : digits;
+}
+
+function isValidPhone(phone: string) {
+  const normalizedPhone = normalizePhone(phone);
+
+  return /^\+\d{8,15}$/.test(normalizedPhone);
 }
