@@ -1,0 +1,107 @@
+[33m725e116[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix dashboard login redirect loop
+[33m354fccf[m Make dashboard cards smaller
+[33mbcef8e0[m Allow admins to add their own tours
+[33mf9a0ecc[m Show tour author names
+[33mfcb9b7e[m Update add tour price label
+[33m29d6c7c[m Update tour price labels
+[33ma6c7e7d[m Fix bookings page prerender error
+[33m21aef7e[m Fix booking notification links
+[33m9f174ed[m Add WhatsApp and Viber contact options
+[33m120149f[m Add booking email notifications
+[33m3d7f60d[m Add notification bell with unread count
+[33mc0dc9b5[m Require tour owner phone in profile
+[33mece6917[m Fix tour owner info and vehicle pricing
+[33m9a18dd4[m Add forgot password page
+[33ma8201e7[m Fix admin dashboard session
+[33m0d0e690[m Fix admin authentication session
+[33m8af2801[m Fix homepage Supabase client
+[33m5778003[m Fix proxy authentication
+[33m88ccbc8[m Fix authentication sessions and password reset link
+[33ma5e52ca[m Fix hotels page
+[33m64ffd78[m Add hotel bookings to admin menu
+[33m9bd5348[m Add hotel bookings admin page
+[33m13f77e9[m Fix public transfers page
+[33mf580be1[m Fix tour details and booking page
+[33m47ae25f[m Fix public tours loading
+[33md2a8bed[m Fix Supabase proxy server error
+[33m9d08791[m Fix duplicate proxy imports
+[33m0f171ca[m Fix admin server session proxy
+[33m653c6e6[m Fix Supabase admin session
+[33mf43e437[m Add tour rejection reason
+[33m058f055[m Complete Georgia Gateway Hub rebrand
+[33m0cf26fa[m Rename site to Georgia Gateway Hub
+[33md471101[m Fix admin tour deletion
+[33m390ab80[m Fix tour server actions error handling
+[33md8eb85f[m Fix admin tour delete action
+[33m929bc08[m Fix admin statistics status types
+[33m42ca51e[m Add real admin statistics dashboard
+[33m059469d[m Add tour editing and deletion
+[33m70eb60f[m Add tour image upload
+[33m6791783[m Add profile avatar upload
+[33mae9557e[m Fix ReactNode profile error
+[33m18872b2[m Add tour reviews and ratings
+[33m2751365[m Add tour owner profile section
+[33ma99593a[m Complete booking management system
+[33md327997[m Complete booking management system
+[33md95a583[m Add notifications dashboard card
+[33m37ffac5[m Add tour favorites
+[33m3beebcc[m Add tour search and filters
+[33me7278f2[m Improve tour details and booking page
+[33m6d6218d[m Add public hotels page
+[33mbf34fdf[m Add all transfers card
+[33m10dff85[m Add compact dashboard cards
+[33mac8fe70[m Fix incorrect tours page
+[33m1d0dfac[m Add all tours to user dashboard
+[33m0a1dc23[m Add personalized admin greeting
+[33m6971819[m Add Director and Admin permissions
+[33m789d2a3[m Allow users to delete own tours
+[33mc59f1e5[m Add tour delete action
+[33ma30aaec[m Add logout button to admin panel
+[33m1078533[m Add logout page
+[33md4a6079[m Show current user on dashboard
+[33m63f2077[m Fix user login and role redirect
+[33meca82a2[m Add guides and guide reviews pages
+[33mbe77243[m Add hotel submission page
+[33m991c8db[m Add public hotels page
+[33ma877add[m Add public transfers page
+[33m6ed7567[m Add weather card to homepage
+[33me6668a9[m Fix signup form visibility
+[33mfdf4af4[m Redeploy fixed booking page
+[33ma7c622d[m Add Georgian and English homepage
+[33m4c4379a[m Update site layout and metadata
+[33ma483372[m Create tourist homepage
+[33m8e55bcb[m Add mobile tour owners page
+[33m304396b[m Add tour owners menu item
+[33m2a43ffd[m Add tours and owners table
+[33m48a07e4[m Add admin bookings management
+[33mabd7e7b[m Add booking approve and reject buttons
+[33mc7ebd5e[m Show bookings to tour owners
+[33m2a160d9[m Add public tours page
+[33me6a9197[m Add favorites page
+[33m733b32a[m Add dashboard bookings page
+[33m982e2a5[m Fix book tour page
+[33me77cfc2[m Fix my tours page
+[33m1f467ca[m Add public tour booking page
+[33m3821113[m Add public tour booking page
+[33m5051faa[m Make dashboard cards clickable
+[33m03f459d[m Fix admin sidebar navigation
+[33m1e6c84f[m Fix admin navigation links
+[33ma4f89f3[m Add admin transfers management
+[33m6567769[m Add My Transfers page
+[33mcc11c7c[m Add transfer page
+[33m76e364f[m Fix Supabase client and My Tours
+[33m31ff808[m Move add-tour page
+[33m3f7b758[m Add Tour system
+[33md09cbc9[m Fix login page
+[33m7ca451d[m Add signup and dashboard pages
+[33m94a7cf8[m Add env config
+[33mf5ecb0b[m fix build
+[33m9b97f14[m Final build fix
+[33mc39e5b4[m fix admin
+[33m474ebec[m Remove old admin users
+[33m8929023[m Remove old admin users
+[33m80faa35[m Final admin v2
+[33m724f4c6[m Svaneti Travel Hub Public Beta v1.0
+[33m0cd200d[m Svaneti Travel Hub
+[33mfe55a74[m Working homepage
+[33m2f1f789[m First version
