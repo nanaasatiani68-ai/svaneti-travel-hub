@@ -434,7 +434,7 @@ export default function AddTourPage() {
               </FormField>
 
               <FormField
-                label="ფასი ერთ ადამიანზე"
+                label="ფასი"
                 required
               >
                 <div className="relative">
