@@ -35,6 +35,16 @@ const menuItems: MenuItem[] = [
   { name: "Hotel Bookings", href: "/admin-v2/hotel-bookings", icon: "🛎️" },
   { name: "Tours", href: "/admin-v2/tours", icon: "🏔️" },
   {
+    name: "➕ ჩემი ტურის დამატება",
+    href: "/dashboard/add-tour",
+    icon: "➕",
+  },
+  {
+    name: "🏔️ ჩემი ტურები",
+    href: "/dashboard/my-tours",
+    icon: "👤",
+  },
+  {
     name: "ტურები და მფლობელები",
     href: "/admin-v2/tour-owners",
     icon: "📊",
