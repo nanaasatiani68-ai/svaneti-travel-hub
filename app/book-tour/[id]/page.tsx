@@ -795,7 +795,7 @@ export default function BookTourPage() {
                 />
 
                 <InfoBox
-                  label="მანქანის სრული ფასი"
+                  label="ფასი"
                   value={
                     tour.price !== null
                       ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
@@ -1277,7 +1277,7 @@ export default function BookTourPage() {
 
               <div className="rounded-2xl bg-slate-100 p-5">
                 <PriceRow
-                  label="მანქანის სრული ფასი"
+                  label="ფასი"
                   value={
                     tour.price !== null
                       ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
@@ -1298,7 +1298,7 @@ export default function BookTourPage() {
                 <div className="mt-4 border-t border-slate-300 pt-4">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-lg font-black">
-                      გადასახდელი სრული ფასი
+                      ფასი
                     </span>
 
                     <span className="text-2xl font-black text-cyan-700">
