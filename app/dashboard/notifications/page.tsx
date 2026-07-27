@@ -78,7 +78,7 @@ export default function NotificationsPage() {
 
   async function markAsRead(notification: Notification) {
     if (notification.is_read) {
-      return;
+      return true;
     }
 
     setUpdatingId(notification.id);
@@ -97,7 +97,7 @@ export default function NotificationsPage() {
       );
       setMessageType("error");
       setUpdatingId(null);
-      return;
+      return false;
     }
 
     setNotifications((currentNotifications) =>
@@ -108,7 +108,40 @@ export default function NotificationsPage() {
       )
     );
 
+    window.dispatchEvent(new Event("notifications-updated"));
     setUpdatingId(null);
+    return true;
+  }
+
+  async function openNotification(notification: Notification) {
+    const marked = await markAsRead(notification);
+
+    if (!marked) {
+      return;
+    }
+
+    if (notification.type === "new_booking") {
+      router.push("/dashboard/bookings?tab=received-bookings");
+      return;
+    }
+
+    if (
+      notification.type === "tour_approved" ||
+      notification.type === "tour_rejected"
+    ) {
+      router.push("/dashboard/my-tours");
+      return;
+    }
+
+    if (
+      notification.type === "transfer_approved" ||
+      notification.type === "transfer_rejected"
+    ) {
+      router.push("/dashboard/my-transfers");
+      return;
+    }
+
+    router.push("/dashboard");
   }
 
   async function markAllAsRead() {
@@ -158,6 +191,7 @@ export default function NotificationsPage() {
       }))
     );
 
+    window.dispatchEvent(new Event("notifications-updated"));
     setMessage("ყველა შეტყობინება მონიშნულია წაკითხულად.");
     setMessageType("success");
     setMarkingAll(false);
@@ -258,69 +292,93 @@ export default function NotificationsPage() {
           </section>
         ) : (
           <section className="mt-8 space-y-4">
-            {notifications.map((notification) => (
-              <article
-                key={notification.id}
-                className={`rounded-3xl border p-5 shadow-xl transition ${
-                  notification.is_read
-                    ? "border-white/10 bg-white/5"
-                    : "border-violet-400/40 bg-violet-500/15"
-                }`}
-              >
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                  <div className="flex min-w-0 items-start gap-4">
-                    <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl ${
-                        notification.is_read
-                          ? "bg-white/10"
-                          : "bg-violet-500"
-                      }`}
-                    >
-                      {getNotificationIcon(notification.type)}
-                    </div>
+            {notifications.map((notification) => {
+              const isUpdating = updatingId === notification.id;
 
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-xl font-black">
-                          {notification.title}
-                        </h2>
-
-                        {!notification.is_read && (
-                          <span className="rounded-full bg-violet-400 px-3 py-1 text-xs font-black text-slate-950">
-                            ახალი
-                          </span>
-                        )}
-                      </div>
-
-                      {notification.message && (
-                        <p className="mt-2 whitespace-pre-line leading-7 text-white/65">
-                          {notification.message}
-                        </p>
-                      )}
-
-                      <p className="mt-3 text-xs text-white/35">
-                        {formatNotificationDate(
-                          notification.created_at
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  {!notification.is_read && (
+              return (
+                <article
+                  key={notification.id}
+                  className={`rounded-3xl border p-5 shadow-xl transition ${
+                    notification.is_read
+                      ? "border-white/10 bg-white/5"
+                      : "border-violet-400/40 bg-violet-500/15"
+                  }`}
+                >
+                  <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
                     <button
                       type="button"
-                      onClick={() => markAsRead(notification)}
-                      disabled={updatingId === notification.id}
-                      className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => openNotification(notification)}
+                      disabled={isUpdating}
+                      className="flex min-w-0 flex-1 items-start gap-4 text-left disabled:cursor-wait disabled:opacity-60"
                     >
-                      {updatingId === notification.id
-                        ? "ინიშნება..."
-                        : "წაკითხულად მონიშვნა"}
+                      <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl ${
+                          notification.is_read
+                            ? "bg-white/10"
+                            : "bg-violet-500"
+                        }`}
+                      >
+                        {getNotificationIcon(notification.type)}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h2 className="text-xl font-black">
+                            {notification.title}
+                          </h2>
+
+                          {!notification.is_read && (
+                            <span className="rounded-full bg-violet-400 px-3 py-1 text-xs font-black text-slate-950">
+                              ახალი
+                            </span>
+                          )}
+                        </div>
+
+                        {notification.message && (
+                          <p className="mt-2 whitespace-pre-line leading-7 text-white/65">
+                            {notification.message}
+                          </p>
+                        )}
+
+                        <p className="mt-3 text-xs text-white/35">
+                          {formatNotificationDate(
+                            notification.created_at
+                          )}
+                        </p>
+
+                        <p className="mt-3 text-sm font-black text-violet-300">
+                          {isUpdating
+                            ? "იხსნება..."
+                            : getOpenLabel(notification.type)}
+                        </p>
+                      </div>
                     </button>
-                  )}
-                </div>
-              </article>
-            ))}
+
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openNotification(notification)}
+                        disabled={isUpdating}
+                        className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-bold transition hover:bg-violet-600 disabled:cursor-wait disabled:opacity-50"
+                      >
+                        {isUpdating ? "იხსნება..." : "გახსნა"}
+                      </button>
+
+                      {!notification.is_read && (
+                        <button
+                          type="button"
+                          onClick={() => markAsRead(notification)}
+                          disabled={isUpdating}
+                          className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          წაკითხულად მონიშვნა
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </section>
         )}
       </div>
@@ -358,6 +416,28 @@ function getNotificationIcon(type: string | null) {
   }
 
   return "🔔";
+}
+
+function getOpenLabel(type: string | null) {
+  if (type === "new_booking") {
+    return "ჯავშნის ნახვა →";
+  }
+
+  if (
+    type === "tour_approved" ||
+    type === "tour_rejected"
+  ) {
+    return "ჩემი ტურების ნახვა →";
+  }
+
+  if (
+    type === "transfer_approved" ||
+    type === "transfer_rejected"
+  ) {
+    return "ჩემი ტრანსფერების ნახვა →";
+  }
+
+  return "Dashboard-ის გახსნა →";
 }
 
 function formatNotificationDate(dateValue: string) {

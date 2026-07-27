@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 
 type Booking = {
@@ -38,6 +38,7 @@ type ActiveTab = "my-bookings" | "received-bookings";
 
 export default function DashboardBookingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] =
     useState<ActiveTab>("my-bookings");
@@ -226,6 +227,19 @@ export default function DashboardBookingsPage() {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+
+    if (requestedTab === "received-bookings") {
+      setActiveTab("received-bookings");
+      return;
+    }
+
+    if (requestedTab === "my-bookings") {
+      setActiveTab("my-bookings");
+    }
+  }, [searchParams]);
 
   async function updateReceivedBookingStatus(
     bookingId: string,
