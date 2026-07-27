@@ -7,6 +7,7 @@ import { supabase } from "@/app/lib/supabase";
 
 type Tour = {
   id: string | number;
+  user_id: string | null;
   title: string | null;
   description: string | null;
   location: string | null;
@@ -23,6 +24,11 @@ type FavoriteRow = {
   tour_id: string | number;
 };
 
+type Profile = {
+  id: string;
+  full_name: string | null;
+};
+
 type SortOption =
   | "newest"
   | "price-low"
@@ -33,6 +39,7 @@ export default function PublicToursPage() {
   const router = useRouter();
 
   const [tours, setTours] = useState<Tour[]>([]);
+  const [authorNames, setAuthorNames] = useState<Record<string, string>>({});
   const [favoriteTourIds, setFavoriteTourIds] = useState<Set<string>>(
     new Set()
   );
@@ -66,6 +73,7 @@ export default function PublicToursPage() {
         .select(
           `
             id,
+            user_id,
             title,
             description,
             location,
@@ -85,7 +93,44 @@ export default function PublicToursPage() {
         throw error;
       }
 
-      setTours((data as Tour[] | null) ?? []);
+      const loadedTours = (data as Tour[] | null) ?? [];
+      setTours(loadedTours);
+
+      const ownerIds = Array.from(
+        new Set(
+          loadedTours
+            .map((tour) => tour.user_id)
+            .filter((userId): userId is string => Boolean(userId))
+        )
+      );
+
+      if (ownerIds.length === 0) {
+        setAuthorNames({});
+        return;
+      }
+
+      const { data: profilesData, error: profilesError } =
+        await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", ownerIds);
+
+      if (profilesError) {
+        console.error("Tour authors loading error:", profilesError);
+        setAuthorNames({});
+        return;
+      }
+
+      const profiles = (profilesData as Profile[] | null) ?? [];
+
+      setAuthorNames(
+        Object.fromEntries(
+          profiles.map((profile) => [
+            profile.id,
+            profile.full_name?.trim() || "ტურის ორგანიზატორი",
+          ])
+        )
+      );
     } catch (error: unknown) {
       console.error("Tours loading error:", error);
 
@@ -193,13 +238,17 @@ export default function PublicToursPage() {
       const category = String(
         tour.category ?? ""
       ).toLowerCase();
+      const authorName = String(
+        tour.user_id ? authorNames[tour.user_id] ?? "" : ""
+      ).toLowerCase();
 
       const matchesSearch =
         normalizedSearch === "" ||
         title.includes(normalizedSearch) ||
         location.includes(normalizedSearch) ||
         description.includes(normalizedSearch) ||
-        category.includes(normalizedSearch);
+        category.includes(normalizedSearch) ||
+        authorName.includes(normalizedSearch);
 
       const matchesCategory =
         selectedCategory === "all" ||
@@ -285,6 +334,7 @@ export default function PublicToursPage() {
     maxPrice,
     people,
     sortBy,
+    authorNames,
   ]);
 
   const hasActiveFilters =
@@ -710,6 +760,25 @@ export default function PublicToursPage() {
                       />
                     </div>
 
+                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-500 text-lg">
+                        👤
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
+                          ტურის ავტორი
+                        </p>
+
+                        <p className="truncate font-bold text-white">
+                          {tour.user_id
+                            ? authorNames[tour.user_id] ||
+                              "ტურის ორგანიზატორი"
+                            : "ტურის ორგანიზატორი"}
+                        </p>
+                      </div>
+                    </div>
+
                     {tour.description && (
                       <p className="mt-4 line-clamp-3 leading-7 text-white/60">
                         {tour.description}
@@ -719,7 +788,7 @@ export default function PublicToursPage() {
                     <div className="mt-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-white/40">
-                          ფასი ერთ ადამიანზე
+                          ფასი
                         </p>
 
                         <p className="mt-1 text-2xl font-extrabold text-cyan-300">
