@@ -42,9 +42,7 @@ export const metadata: Metadata = {
   creator: "Georgia Gateway Hub",
   publisher: "Georgia Gateway Hub",
 
-  metadataBase: new URL(
-    "https://georgiagatewayhub.com"
-  ),
+  metadataBase: new URL("https://georgiagatewayhub.com"),
 
   alternates: {
     canonical: "/",
@@ -58,6 +56,14 @@ export const metadata: Metadata = {
     siteName: "Georgia Gateway Hub",
     locale: "ka_GE",
     type: "website",
+    images: [
+      {
+        url: "/georgia-gateway-logo.png",
+        width: 1200,
+        height: 1200,
+        alt: "Georgia Gateway Hub",
+      },
+    ],
   },
 
   twitter: {
@@ -65,10 +71,13 @@ export const metadata: Metadata = {
     title: "Georgia Gateway Hub",
     description:
       "აღმოაჩინე საქართველო — ტურები, სასტუმროები, ტრანსფერები და გიდები.",
+    images: ["/georgia-gateway-logo.png"],
   },
 
   icons: {
-    icon: "/favicon.ico",
+    icon: "/georgia-gateway-logo.png",
+    shortcut: "/georgia-gateway-logo.png",
+    apple: "/georgia-gateway-logo.png",
   },
 };
 
