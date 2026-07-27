@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -12,9 +13,132 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
 
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+
+  const loadUnreadNotifications = useCallback(async () => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setUnreadCount(0);
+      setNotificationsLoading(false);
+      return;
+    }
+
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("user_id", user.id)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Unread notifications loading error:", error);
+      setUnreadCount(0);
+      setNotificationsLoading(false);
+      return;
+    }
+
+    setUnreadCount(count ?? 0);
+    setNotificationsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadUnreadNotifications();
+  }, [loadUnreadNotifications, pathname]);
+
+  useEffect(() => {
+    let channelName = "";
+    let isMounted = true;
+
+    async function subscribeToNotifications() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || !isMounted) {
+        return;
+      }
+
+      channelName = `dashboard-notifications-${user.id}`;
+
+      supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            loadUnreadNotifications();
+          }
+        )
+        .subscribe();
+    }
+
+    subscribeToNotifications();
+
+    return () => {
+      isMounted = false;
+
+      if (channelName) {
+        const channel = supabase.getChannels().find(
+          (currentChannel) => currentChannel.topic === `realtime:${channelName}`
+        );
+
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
+      }
+    };
+  }, [loadUnreadNotifications]);
+
+  useEffect(() => {
+    function refreshNotifications() {
+      loadUnreadNotifications();
+    }
+
+    window.addEventListener("focus", refreshNotifications);
+    window.addEventListener(
+      "notifications-updated",
+      refreshNotifications as EventListener
+    );
+
+    const interval = window.setInterval(() => {
+      loadUnreadNotifications();
+    }, 30000);
+
+    return () => {
+      window.removeEventListener("focus", refreshNotifications);
+      window.removeEventListener(
+        "notifications-updated",
+        refreshNotifications as EventListener
+      );
+      window.clearInterval(interval);
+    };
+  }, [loadUnreadNotifications]);
+
   async function logout() {
+    setUnreadCount(0);
     await supabase.auth.signOut();
     router.push("/login");
+    router.refresh();
+  }
+
+  function isMenuActive(href: string) {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   const menu = [
@@ -51,82 +175,125 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 flex">
-
+    <div className="flex min-h-screen bg-slate-100">
       {/* Sidebar */}
-
-      <aside className="w-72 bg-slate-900 text-white flex flex-col">
-
-        <div className="p-6 border-b border-slate-700">
-
-          <h1 className="text-2xl font-bold">
-            Georgia Travel Hub
+      <aside className="hidden w-72 shrink-0 flex-col bg-slate-900 text-white md:flex">
+        <div className="border-b border-slate-700 p-6">
+          <h1 className="text-2xl font-bold leading-tight">
+            Georgia Gateway Hub
           </h1>
 
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="mt-1 text-sm text-slate-400">
             User Dashboard
           </p>
-
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 space-y-2 p-4">
+          {menu.map((item) => {
+            const active = isMenuActive(item.href);
 
-          {menu.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition ${
-                pathname === item.href
-                  ? "bg-sky-500 text-white"
-                  : "hover:bg-slate-800 text-slate-300"
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.name}</span>
-            </Link>
-          ))}
-
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 transition ${
+                  active
+                    ? "bg-sky-500 text-white"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <span className="text-lg">{item.icon}</span>
+                <span className="font-medium">{item.name}</span>
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
-
+        <div className="border-t border-slate-700 p-4">
           <button
+            type="button"
             onClick={logout}
-            className="w-full rounded-xl bg-red-500 py-3 hover:bg-red-600 transition"
+            className="w-full rounded-xl bg-red-500 py-3 font-semibold transition hover:bg-red-600"
           >
             🚪 Logout
           </button>
-
         </div>
-
       </aside>
 
       {/* Content */}
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+          <div className="flex min-h-20 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-bold text-slate-900 sm:text-2xl">
+                Dashboard
+              </h2>
 
-      <div className="flex-1">
+              <p className="hidden text-sm text-slate-500 sm:block">
+                Welcome to Georgia Gateway Hub
+              </p>
+            </div>
 
-        <header className="bg-white shadow px-8 py-5 flex items-center justify-between">
+            <div className="flex shrink-0 items-center gap-3">
+              <Link
+                href="/dashboard/notifications"
+                aria-label={
+                  unreadCount > 0
+                    ? `${unreadCount} წაუკითხავი შეტყობინება`
+                    : "შეტყობინებები"
+                }
+                title="შეტყობინებები"
+                className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl shadow-sm transition ${
+                  pathname.startsWith("/dashboard/notifications")
+                    ? "border-violet-500 bg-violet-500 text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-violet-300 hover:bg-violet-50"
+                }`}
+              >
+                <span aria-hidden="true">🔔</span>
 
-          <div>
+                {!notificationsLoading && unreadCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1.5 text-xs font-black leading-none text-white shadow-lg">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </Link>
 
-            <h2 className="text-2xl font-bold">
-              Dashboard
-            </h2>
-
-            <p className="text-gray-500 text-sm">
-              Welcome to Georgia Travel Hub
-            </p>
-
+              <Link
+                href="/dashboard"
+                className="flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-slate-800 md:hidden"
+              >
+                🏠
+              </Link>
+            </div>
           </div>
 
+          {/* Mobile navigation */}
+          <nav className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 py-3 md:hidden">
+            {menu.map((item) => {
+              const active = isMenuActive(item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                    active
+                      ? "bg-sky-500 text-white"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </header>
 
-        <main className="p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           {children}
         </main>
-
       </div>
-
     </div>
   );
 }
