@@ -96,7 +96,7 @@ export default function DashboardPage() {
                   მომხმარებლის პანელი
                 </p>
 
-                <h1 className="mt-3 text-3xl font-black sm:text-4xl">
+                <h1 className="mt-2 text-2xl font-black sm:text-3xl">
                   👋 გამარჯობა, {fullName}
                 </h1>
 
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                 {isAdmin && (
                   <Link
                     href="/admin-v2"
-                    className="w-fit rounded-2xl bg-violet-600 px-6 py-3 font-bold text-white shadow-lg transition hover:bg-violet-700"
+                    className="w-fit rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-violet-700"
                   >
                     🛡️ Admin Panel
                   </Link>
@@ -120,7 +120,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={logout}
-                  className="w-fit rounded-2xl bg-red-500 px-6 py-3 font-bold text-white shadow-lg transition hover:bg-red-600"
+                  className="w-fit rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-red-600"
                 >
                   🚪 გამოსვლა
                 </button>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <DashboardCard href="/tours" image="/dashboard/all-tours.jpg" icon="🌍" title="ყველა ტური" description="ნახე ყველა დამტკიცებული ტური და დაჯავშნე." featured />
           <DashboardCard href="/transfers" image="/dashboard/transfers.jpg" icon="🚐" title="ყველა ტრანსფერი" description="ნახე ყველა დამტკიცებული ტრანსფერი და დაჯავშნე." featured />
           <DashboardCard href="/hotels" image="/dashboard/hotel.jpg" icon="🏨" title="ყველა სასტუმრო" description="ნახე ყველა დამტკიცებული სასტუმრო და დაჯავშნე." featured />
@@ -178,7 +178,7 @@ function DashboardCard({
   return (
     <Link
       href={href}
-      className={`group relative min-h-[185px] overflow-hidden rounded-2xl border shadow-xl transition duration-300 hover:-translate-y-1 ${
+      className={`group relative min-h-[150px] overflow-hidden rounded-2xl border shadow-lg transition duration-300 hover:-translate-y-1 ${
         featured ? "border-cyan-300/70" : "border-white/15"
       }`}
     >
@@ -190,23 +190,23 @@ function DashboardCard({
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-900/25" />
 
       {featured && (
-        <div className="absolute right-3 top-3 z-10 rounded-full bg-cyan-400 px-3 py-1 text-[10px] font-black text-slate-950 shadow-lg">
+        <div className="absolute right-3 top-3 z-10 rounded-full bg-cyan-400 px-2.5 py-1 text-[9px] font-black text-slate-950 shadow-lg">
           პოპულარული
         </div>
       )}
 
-      <div className="relative z-10 flex min-h-[185px] flex-col justify-end p-4">
-        <div className="text-3xl drop-shadow-lg">{icon}</div>
+      <div className="relative z-10 flex min-h-[150px] flex-col justify-end p-3.5">
+        <div className="text-2xl drop-shadow-lg">{icon}</div>
 
-        <h2 className="mt-2 text-lg font-extrabold leading-tight text-white drop-shadow-lg">
+        <h2 className="mt-1.5 text-base font-extrabold leading-tight text-white drop-shadow-lg">
           {title}
         </h2>
 
-        <p className="mt-2 line-clamp-2 text-sm leading-5 text-white/75">
+        <p className="mt-1.5 line-clamp-2 text-xs leading-4 text-white/75">
           {description}
         </p>
 
-        <div className="mt-3 inline-flex w-fit items-center rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md transition group-hover:bg-cyan-500">
+        <div className="mt-2.5 inline-flex w-fit items-center rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-md transition group-hover:bg-cyan-500">
           გახსნა →
         </div>
       </div>
