@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+type Profile = {
+  role: string | null;
+};
+
 export default function DashboardLayout({
   children,
 }: {
@@ -15,14 +19,43 @@ export default function DashboardLayout({
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [role, setRole] = useState("");
 
-  const loadUnreadNotifications = useCallback(async () => {
+  const isAdmin =
+    role.toLowerCase() === "admin" ||
+    role.toLowerCase() === "director";
+
+  const loadCurrentUser = useCallback(async () => {
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
+      router.replace("/login");
+      return null;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Profile loading error:", profileError);
+    }
+
+    const typedProfile = profile as Profile | null;
+    setRole(String(typedProfile?.role ?? "").trim());
+
+    return user;
+  }, [router]);
+
+  const loadUnreadNotifications = useCallback(async () => {
+    const user = await loadCurrentUser();
+
+    if (!user) {
       setUnreadCount(0);
       setNotificationsLoading(false);
       return;
@@ -46,10 +79,10 @@ export default function DashboardLayout({
 
     setUnreadCount(count ?? 0);
     setNotificationsLoading(false);
-  }, []);
+  }, [loadCurrentUser]);
 
   useEffect(() => {
-    loadUnreadNotifications();
+    void loadUnreadNotifications();
   }, [loadUnreadNotifications, pathname]);
 
   useEffect(() => {
@@ -78,24 +111,27 @@ export default function DashboardLayout({
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            loadUnreadNotifications();
+            void loadUnreadNotifications();
           }
         )
         .subscribe();
     }
 
-    subscribeToNotifications();
+    void subscribeToNotifications();
 
     return () => {
       isMounted = false;
 
       if (channelName) {
-        const channel = supabase.getChannels().find(
-          (currentChannel) => currentChannel.topic === `realtime:${channelName}`
-        );
+        const channel = supabase
+          .getChannels()
+          .find(
+            (currentChannel) =>
+              currentChannel.topic === `realtime:${channelName}`
+          );
 
         if (channel) {
-          supabase.removeChannel(channel);
+          void supabase.removeChannel(channel);
         }
       }
     };
@@ -103,7 +139,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     function refreshNotifications() {
-      loadUnreadNotifications();
+      void loadUnreadNotifications();
     }
 
     window.addEventListener("focus", refreshNotifications);
@@ -113,7 +149,7 @@ export default function DashboardLayout({
     );
 
     const interval = window.setInterval(() => {
-      loadUnreadNotifications();
+      void loadUnreadNotifications();
     }, 30000);
 
     return () => {
@@ -142,41 +178,25 @@ export default function DashboardLayout({
   }
 
   const menu = [
-    {
-      name: "Dashboard",
-      href: "/dashboard",
-      icon: "🏠",
-    },
-    {
-      name: "Add Tour",
-      href: "/dashboard/add-tour",
-      icon: "➕",
-    },
-    {
-      name: "My Tours",
-      href: "/dashboard/my-tours",
-      icon: "🏔️",
-    },
-    {
-      name: "Bookings",
-      href: "/dashboard/bookings",
-      icon: "📅",
-    },
-    {
-      name: "Favorites",
-      href: "/dashboard/favorites",
-      icon: "❤️",
-    },
-    {
-      name: "Profile",
-      href: "/profile",
-      icon: "👤",
-    },
+    { name: "Dashboard", href: "/dashboard", icon: "🏠" },
+    { name: "Add Tour", href: "/dashboard/add-tour", icon: "➕" },
+    { name: "My Tours", href: "/dashboard/my-tours", icon: "🏔️" },
+    { name: "Bookings", href: "/dashboard/bookings", icon: "📅" },
+    { name: "Favorites", href: "/dashboard/favorites", icon: "❤️" },
+    { name: "Profile", href: "/profile", icon: "👤" },
+    ...(isAdmin
+      ? [
+          {
+            name: "Admin Panel",
+            href: "/admin-v2",
+            icon: "🛡️",
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      {/* Sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col bg-slate-900 text-white md:flex">
         <div className="border-b border-slate-700 p-6">
           <h1 className="text-2xl font-bold leading-tight">
@@ -220,7 +240,6 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
           <div className="flex min-h-20 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
@@ -258,6 +277,15 @@ export default function DashboardLayout({
                 )}
               </Link>
 
+              {isAdmin && (
+                <Link
+                  href="/admin-v2"
+                  className="hidden h-12 items-center justify-center rounded-2xl bg-violet-600 px-4 text-sm font-bold text-white transition hover:bg-violet-700 sm:flex"
+                >
+                  🛡️ Admin
+                </Link>
+              )}
+
               <Link
                 href="/dashboard"
                 className="flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-slate-800 md:hidden"
@@ -267,7 +295,6 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Mobile navigation */}
           <nav className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 py-3 md:hidden">
             {menu.map((item) => {
               const active = isMenuActive(item.href);
@@ -290,9 +317,7 @@ export default function DashboardLayout({
           </nav>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

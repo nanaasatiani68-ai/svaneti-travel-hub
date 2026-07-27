@@ -1,36 +1,18 @@
 "use client";
 
-import {
-  FormEvent,
-  useMemo,
-  useState,
-} from "react";
+import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-type UserProfile = {
-  role: string | null;
-};
-
 export default function LoginPage() {
-  const supabase = useMemo(
-    () => createClient(),
-    []
-  );
+  const supabase = useMemo(() => createClient(), []);
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  async function login(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (loading) {
@@ -41,14 +23,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const normalizedEmail = email
-        .trim()
-        .toLowerCase();
+      const normalizedEmail = email.trim().toLowerCase();
 
       if (!normalizedEmail) {
-        setErrorMessage(
-          "ჩაწერე ელფოსტის მისამართი."
-        );
+        setErrorMessage("ჩაწერე ელფოსტის მისამართი.");
         return;
       }
 
@@ -57,32 +35,18 @@ export default function LoginPage() {
         return;
       }
 
-      const {
-        data,
-        error: loginError,
-      } =
+      const { data, error: loginError } =
         await supabase.auth.signInWithPassword({
           email: normalizedEmail,
           password,
         });
 
       if (loginError) {
-        const errorText =
-          loginError.message.toLowerCase();
+        const errorText = loginError.message.toLowerCase();
 
-        if (
-          errorText.includes(
-            "invalid login credentials"
-          )
-        ) {
-          setErrorMessage(
-            "ელფოსტა ან პაროლი არასწორია."
-          );
-        } else if (
-          errorText.includes(
-            "email not confirmed"
-          )
-        ) {
+        if (errorText.includes("invalid login credentials")) {
+          setErrorMessage("ელფოსტა ან პაროლი არასწორია.");
+        } else if (errorText.includes("email not confirmed")) {
           setErrorMessage(
             "ელფოსტა ჯერ არ არის დადასტურებული. შეამოწმე ელფოსტაზე მიღებული წერილი."
           );
@@ -95,72 +59,28 @@ export default function LoginPage() {
         return;
       }
 
-      const user = data.user;
-      const session = data.session;
-
-      if (!user || !session) {
+      if (!data.user || !data.session) {
         setErrorMessage(
           "სესიის შექმნა ვერ მოხერხდა. სცადე თავიდან."
         );
         return;
       }
 
-      const {
-        data: profileData,
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error(
-          "Profile loading error:",
-          profileError
-        );
-      }
-
-      const profile =
-        profileData as UserProfile | null;
-
-      const role = String(
-        profile?.role ?? ""
-      )
-        .trim()
-        .toLowerCase();
-
-      let destination = "/dashboard";
-
-      if (
-        role === "director" ||
-        role === "admin"
-      ) {
-        destination = "/admin-v2";
-      } else if (role === "staff") {
-        destination = "/staff";
-      }
-
       /*
-       * სრული გვერდის ჩატვირთვა საჭიროა,
-       * რათა ახალი Supabase cookie სერვერმა
-       * აუცილებლად დაინახოს.
+       * ყველა მომხმარებელი, მათ შორის Admin და Director,
+       * ჯერ შედის ჩვეულებრივ Dashboard-ში.
+       * Admin Panel-ზე გადასასვლელი ღილაკი Dashboard-ში გამოჩნდება.
        */
-      window.location.assign(destination);
+      window.location.assign("/dashboard");
     } catch (error: unknown) {
-      console.error(
-        "Unexpected login error:",
-        error
-      );
+      console.error("Unexpected login error:", error);
 
       const message =
         error instanceof Error
           ? error.message
           : "უცნობი შეცდომა დაფიქსირდა.";
 
-      setErrorMessage(
-        `შესვლისას შეცდომა მოხდა: ${message}`
-      );
+      setErrorMessage(`შესვლისას შეცდომა მოხდა: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -177,8 +97,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            შედი Georgia Gateway Hub-ის
-            ანგარიშზე
+            შედი Georgia Gateway Hub-ის ანგარიშზე
           </p>
         </div>
 
@@ -188,10 +107,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form
-          onSubmit={login}
-          className="mt-7 space-y-5"
-        >
+        <form onSubmit={login} className="mt-7 space-y-5">
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-slate-700">
               ელფოსტა
@@ -201,9 +117,7 @@ export default function LoginPage() {
               type="email"
               placeholder="example@email.com"
               value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
+              onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
               autoCapitalize="none"
               spellCheck={false}
@@ -231,9 +145,7 @@ export default function LoginPage() {
               type="password"
               placeholder="შეიყვანე პაროლი"
               value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
+              onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               required
               disabled={loading}
@@ -246,9 +158,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading
-              ? "მიმდინარეობს შესვლა..."
-              : "შესვლა"}
+            {loading ? "მიმდინარეობს შესვლა..." : "შესვლა"}
           </button>
         </form>
 
