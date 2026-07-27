@@ -427,23 +427,40 @@ export default function BookTourPage() {
         );
       }
 
-      const { error } = await supabase
-        .from("bookings")
-        .insert({
-          tour_id: tour.id,
-          user_id: session?.user?.id ?? null,
-          guest_name: guestName.trim(),
-          guest_email: guestEmail.trim().toLowerCase(),
-          guest_phone: guestPhone.trim(),
-          booking_date: bookingDate,
+      const response = await fetch("/api/bookings/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
+        body: JSON.stringify({
+          tourId: tour.id,
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim().toLowerCase(),
+          guestPhone: guestPhone.trim(),
+          bookingDate,
           people,
-          total_price: totalPrice,
           notes: notes.trim() || null,
-          status: "pending",
-        });
+        }),
+      });
 
-      if (error) {
-        throw error;
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        emailWarning?: string | null;
+      };
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error ||
+            "დაჯავშნის მოთხოვნა ვერ გაიგზავნა."
+        );
+      }
+
+      if (result.emailWarning) {
+        console.warn("Booking email warning:", result.emailWarning);
       }
 
       setSuccess(true);
