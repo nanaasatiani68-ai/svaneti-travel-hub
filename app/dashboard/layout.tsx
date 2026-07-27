@@ -25,16 +25,18 @@ export default function DashboardLayout({
     role.toLowerCase() === "admin" ||
     role.toLowerCase() === "director";
 
-  const loadCurrentUser = useCallback(async () => {
+  const loadProfileRole = useCallback(async () => {
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (userError || !user) {
-      router.replace("/login");
+    if (sessionError || !session?.user) {
+      setRole("");
       return null;
     }
+
+    const user = session.user;
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -50,10 +52,10 @@ export default function DashboardLayout({
     setRole(String(typedProfile?.role ?? "").trim());
 
     return user;
-  }, [router]);
+  }, []);
 
   const loadUnreadNotifications = useCallback(async () => {
-    const user = await loadCurrentUser();
+    const user = await loadProfileRole();
 
     if (!user) {
       setUnreadCount(0);
@@ -79,7 +81,7 @@ export default function DashboardLayout({
 
     setUnreadCount(count ?? 0);
     setNotificationsLoading(false);
-  }, [loadCurrentUser]);
+  }, [loadProfileRole]);
 
   useEffect(() => {
     void loadUnreadNotifications();
