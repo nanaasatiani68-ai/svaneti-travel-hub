@@ -74,10 +74,10 @@ export const metadata: Metadata = {
     images: ["/georgia-gateway-logo.png"],
   },
 
-  icons: {
-    icon: "/georgia-gateway-logo.png",
-    shortcut: "/georgia-gateway-logo.png",
-    apple: "/georgia-gateway-logo.png",
+    icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
   },
 };
 
