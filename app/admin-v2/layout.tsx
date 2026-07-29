@@ -31,6 +31,12 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
   { name: "Dashboard", href: "/admin-v2", icon: "🏠" },
+  {
+    name: "➕ Director Tour",
+    href: "/admin-v2/add-tour",
+    icon: "➕",
+    directorOnly: true,
+  },
   { name: "Tour Bookings", href: "/admin-v2/bookings", icon: "📋" },
   { name: "Hotel Bookings", href: "/admin-v2/hotel-bookings", icon: "🛎️" },
   { name: "Tours", href: "/admin-v2/tours", icon: "🏔️" },
@@ -81,6 +87,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const directorOnlyPaths = [
+  "/admin-v2/add-tour",
   "/admin-v2/users",
   "/admin-v2/staff",
   "/admin-v2/payments",
