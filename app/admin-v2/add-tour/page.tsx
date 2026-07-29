@@ -4,11 +4,12 @@ import {
   ChangeEvent,
   FormEvent,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -20,6 +21,7 @@ const ALLOWED_IMAGE_TYPES = [
 
 export default function AddTourPage() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [userId, setUserId] = useState("");
   const [checkingUser, setCheckingUser] = useState(true);
@@ -49,16 +51,28 @@ export default function AddTourPage() {
   >("success");
 
   useEffect(() => {
+    let active = true;
+
     async function checkUser() {
       setCheckingUser(true);
 
       const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (error || !user) {
-        router.replace("/login");
+      if (!active) {
+        return;
+      }
+
+      if (sessionError) {
+        console.error("Session loading error:", sessionError);
+      }
+
+      const user = session?.user;
+
+      if (!user) {
+        window.location.replace("/login");
         return;
       }
 
@@ -70,6 +84,10 @@ export default function AddTourPage() {
           .select("phone, role")
           .eq("id", user.id)
           .maybeSingle();
+
+      if (!active) {
+        return;
+      }
 
       if (profileError) {
         console.error(
@@ -83,7 +101,7 @@ export default function AddTourPage() {
         .toLowerCase();
 
       if (normalizedRole !== "director") {
-        router.replace("/admin-v2");
+        window.location.replace("/admin-v2");
         return;
       }
 
@@ -94,8 +112,12 @@ export default function AddTourPage() {
       setCheckingUser(false);
     }
 
-    checkUser();
-  }, [router]);
+    void checkUser();
+
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     return () => {
