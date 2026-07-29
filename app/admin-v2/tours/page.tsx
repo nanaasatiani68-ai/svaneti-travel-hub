@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import {
-  approveTour,
-  deleteTour,
-} from "./actions";
+import { approveTour } from "./actions";
 import RejectTourForm from "./RejectTourForm";
+import DeleteTourButton from "./DeleteTourButton";
 
 type TourStatus = "pending" | "approved" | "rejected" | string;
 
@@ -380,37 +378,10 @@ export default async function AdminToursPage({
                   <RejectTourForm tourId={String(tour.id)} />
                 )}
 
-                <details className="mt-4 overflow-hidden rounded-3xl border border-red-200 bg-red-50">
-                  <summary className="cursor-pointer list-none px-5 py-4 text-center text-lg font-bold text-red-700 transition hover:bg-red-100">
-                    🗑️ ტურის წაშლა
-                  </summary>
-
-                  <form
-                    action={deleteTour}
-                    className="border-t border-red-200 p-5"
-                  >
-                    <p className="text-center font-semibold text-red-700">
-                      ნამდვილად გინდა ამ ტურის სამუდამოდ წაშლა?
-                    </p>
-
-                    <p className="mt-2 text-center text-sm text-red-500">
-                      წაშლის შემდეგ ტურის აღდგენა შეუძლებელი იქნება.
-                    </p>
-
-                    <input
-                      type="hidden"
-                      name="tourId"
-                      value={String(tour.id)}
-                    />
-
-                    <button
-                      type="submit"
-                      className="mt-4 w-full rounded-2xl bg-red-600 px-5 py-4 text-lg font-bold text-white transition hover:bg-red-700"
-                    >
-                      🗑️ დიახ, წაშალე ტური
-                    </button>
-                  </form>
-                </details>
+                <DeleteTourButton
+                  tourId={String(tour.id)}
+                  tourTitle={tour.title || "უსახელო ტური"}
+                />
               </div>
             </article>
           ))}

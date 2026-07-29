@@ -1412,12 +1412,35 @@ function OwnerCard({
           )}
 
           {owner.phone ? (
-            <a
-              href={`tel:${owner.phone}`}
-              className="mt-5 inline-flex rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
-            >
-              📞 {owner.phone}
-            </a>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href={`tel:${owner.phone}`}
+                className="inline-flex items-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
+              >
+                <span aria-hidden="true">📞</span>
+                <span>{owner.phone}</span>
+              </a>
+
+              <a
+                href={getWhatsAppUrl(owner.phone)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 font-bold text-white transition hover:bg-emerald-600"
+                aria-label={`WhatsApp-ზე დაკავშირება: ${owner.phone}`}
+              >
+                <span aria-hidden="true">💬</span>
+                <span>WhatsApp</span>
+              </a>
+
+              <a
+                href={getViberUrl(owner.phone)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
+                aria-label={`Viber-ზე დაკავშირება: ${owner.phone}`}
+              >
+                <span aria-hidden="true">📲</span>
+                <span>Viber</span>
+              </a>
+            </div>
           ) : (
             <div className="mt-5 inline-flex rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 font-bold text-amber-200">
               ⚠️ ორგანიზატორს ტელეფონის ნომერი ჯერ არ მიუთითებია
@@ -1546,6 +1569,38 @@ function FormField({
       {children}
     </label>
   );
+}
+
+
+function normalizePhoneForMessenger(value: string) {
+  const trimmedValue = value.trim();
+  const hasPlus = trimmedValue.startsWith("+");
+  const digits = trimmedValue.replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  return hasPlus ? `+${digits}` : digits;
+}
+
+function getWhatsAppUrl(phone: string) {
+  const normalizedPhone = normalizePhoneForMessenger(phone).replace(
+    /^\+/,
+    ""
+  );
+
+  return normalizedPhone
+    ? `https://wa.me/${normalizedPhone}`
+    : "https://www.whatsapp.com/";
+}
+
+function getViberUrl(phone: string) {
+  const normalizedPhone = normalizePhoneForMessenger(phone);
+
+  return normalizedPhone
+    ? `viber://chat?number=${encodeURIComponent(normalizedPhone)}`
+    : "viber://chat";
 }
 
 function getLocalToday() {
