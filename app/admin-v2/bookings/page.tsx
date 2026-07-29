@@ -273,47 +273,89 @@ export default function AdminBookingsPage() {
       | "pending"
       | "cancelled"
   ) {
+    const actionLabels = {
+      confirmed: "დადასტურება",
+      rejected: "უარყოფა",
+      pending: "მოლოდინში დაბრუნება",
+      cancelled: "გაუქმება",
+    } as const;
+
+    const confirmed = window.confirm(
+      `ნამდვილად გინდა ჯავშნის ${actionLabels[newStatus]}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     setUpdatingId(bookingId);
     setErrorMessage("");
     setSuccessMessage("");
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: newStatus })
-      .eq("id", bookingId);
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
 
-    if (error) {
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        router.replace("/login");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/admin/bookings/${encodeURIComponent(bookingId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        emailWarning?: string | null;
+      };
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error || "ჯავშნის სტატუსის შეცვლა ვერ მოხერხდა."
+        );
+      }
+
+      setBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === bookingId
+            ? { ...booking, status: newStatus }
+            : booking
+        )
+      );
+
+      setSuccessMessage(
+        result.emailWarning
+          ? `${result.message || "სტატუსი შეიცვალა."} ელფოსტის გაფრთხილება: ${result.emailWarning}`
+          : result.message || "ჯავშნის სტატუსი წარმატებით შეიცვალა."
+      );
+    } catch (error: unknown) {
       console.error("Booking update error:", error);
 
       setErrorMessage(
-        `ჯავშნის სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+        error instanceof Error
+          ? error.message
+          : "ჯავშნის სტატუსის შეცვლა ვერ მოხერხდა."
       );
-
+    } finally {
       setUpdatingId(null);
-      return;
     }
-
-    setBookings((currentBookings) =>
-      currentBookings.map((booking) =>
-        booking.id === bookingId
-          ? { ...booking, status: newStatus }
-          : booking
-      )
-    );
-
-    if (newStatus === "confirmed") {
-      setSuccessMessage("ჯავშანი დადასტურდა.");
-    } else if (newStatus === "rejected") {
-      setSuccessMessage("ჯავშანი უარყოფილია.");
-    } else if (newStatus === "cancelled") {
-      setSuccessMessage("ჯავშანი გაუქმდა.");
-    } else {
-      setSuccessMessage(
-        "ჯავშანი დაბრუნდა მოლოდინის სტატუსზე."
-      );
-    }
-
-    setUpdatingId(null);
   }
 
   const pendingCount = bookings.filter(
