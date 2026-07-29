@@ -32,6 +32,12 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { name: "Dashboard", href: "/admin-v2", icon: "🏠" },
   {
+    name: "Analytics",
+    href: "/admin-v2/analytics",
+    icon: "📊",
+    directorOnly: true,
+  },
+  {
     name: "➕ Director Tour",
     href: "/admin-v2/add-tour",
     icon: "➕",
@@ -87,6 +93,7 @@ const menuItems: MenuItem[] = [
 ];
 
 const directorOnlyPaths = [
+  "/admin-v2/analytics",
   "/admin-v2/add-tour",
   "/admin-v2/users",
   "/admin-v2/staff",
