@@ -4,11 +4,12 @@ import {
   ChangeEvent,
   FormEvent,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -20,6 +21,7 @@ const ALLOWED_IMAGE_TYPES = [
 
 export default function AddTourPage() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [userId, setUserId] = useState("");
   const [checkingUser, setCheckingUser] = useState(true);
@@ -53,22 +55,41 @@ export default function AddTourPage() {
       setCheckingUser(true);
 
       const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (error || !user) {
+      if (sessionError) {
+        console.error("Session loading error:", sessionError);
+      }
+
+      let authenticatedUser = session?.user ?? null;
+
+      if (!authenticatedUser) {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("User loading error:", userError);
+        }
+
+        authenticatedUser = user;
+      }
+
+      if (!authenticatedUser) {
         router.replace("/login");
         return;
       }
 
-      setUserId(user.id);
+      setUserId(authenticatedUser.id);
 
       const { data: profile, error: profileError } =
         await supabase
           .from("profiles")
           .select("phone")
-          .eq("id", user.id)
+          .eq("id", authenticatedUser.id)
           .maybeSingle();
 
       if (profileError) {
@@ -86,7 +107,7 @@ export default function AddTourPage() {
     }
 
     checkUser();
-  }, [router]);
+  }, [router, supabase]);
 
   useEffect(() => {
     return () => {
