@@ -679,12 +679,12 @@ export default function AdminV2Page() {
 
   return (
     <main className="min-h-screen bg-[#07111d]">
-      <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-        <section className="relative overflow-hidden rounded-[32px] border border-cyan-300/20 bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-violet-500/15 p-6 shadow-2xl backdrop-blur-xl sm:p-8 lg:p-10">
+      <div className="space-y-6 p-3 sm:p-5 lg:p-6">
+        <section className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-violet-500/15 p-5 shadow-2xl backdrop-blur-xl sm:p-6 lg:p-7">
           <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-violet-500/15 blur-3xl" />
 
-          <div className="relative grid gap-8 xl:grid-cols-[1.4fr_1fr] xl:items-center">
+          <div className="relative grid gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-center">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-black text-cyan-100">
@@ -704,7 +704,7 @@ export default function AdminV2Page() {
                 </span>
               </div>
 
-              <h1 className="mt-6 max-w-3xl text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
                 კეთილი იყოს შენი დაბრუნება,{" "}
                 <span className="text-cyan-300">{firstName}</span> 👋
               </h1>
@@ -778,12 +778,12 @@ export default function AdminV2Page() {
           </div>
         )}
 
-        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {visibleStatCards.map((card) => (
             <Link
               key={card.title}
               href={card.href}
-              className={`group rounded-3xl bg-gradient-to-br p-6 text-white shadow-2xl transition duration-300 hover:-translate-y-1 ${card.color}`}
+              className={`group rounded-2xl bg-gradient-to-br p-5 text-white shadow-2xl transition duration-300 hover:-translate-y-1 ${card.color}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -791,7 +791,7 @@ export default function AdminV2Page() {
                     {card.title}
                   </p>
 
-                  <h2 className="mt-3 text-4xl font-black">
+                  <h2 className="mt-2 text-3xl font-black">
                     {card.value}
                   </h2>
 
@@ -800,7 +800,7 @@ export default function AdminV2Page() {
                   </p>
                 </div>
 
-                <div className="text-5xl transition group-hover:scale-110">
+                <div className="text-4xl transition group-hover:scale-110">
                   {card.icon}
                 </div>
               </div>
@@ -808,11 +808,11 @@ export default function AdminV2Page() {
           ))}
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+        <section className="grid gap-5 xl:grid-cols-[2fr_1fr]">
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
-                <h2 className="text-2xl font-black text-white">
+                <h2 className="text-xl font-black text-white">
                   📈 ბოლო 6 თვის შემოსავალი
                 </h2>
 
@@ -826,7 +826,7 @@ export default function AdminV2Page() {
               </p>
             </div>
 
-            <div className="mt-8 flex h-80 items-end gap-3">
+            <div className="mt-6 flex h-64 items-end gap-2">
               {monthlyRevenue.map((item) => {
                 const heightPercentage =
                   item.revenue > 0
@@ -853,7 +853,7 @@ export default function AdminV2Page() {
                       </p>
                     </div>
 
-                    <div className="flex h-[220px] items-end">
+                    <div className="flex h-[170px] items-end">
                       <div
                         style={{
                           height: `${heightPercentage}%`,
@@ -871,12 +871,12 @@ export default function AdminV2Page() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
-            <h2 className="text-2xl font-black text-white">
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
+            <h2 className="text-xl font-black text-white">
               📅 დღევანდელი შედეგები
             </h2>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-5 space-y-3">
               <TodayItem
                 icon="📋"
                 label="ახალი ჯავშნები"
@@ -912,7 +912,7 @@ export default function AdminV2Page() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
           <StatusCard
             title="ტურები"
             icon="🏔️"
@@ -964,10 +964,10 @@ export default function AdminV2Page() {
           />
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+        <section className="grid gap-5 xl:grid-cols-2">
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-xl font-black text-white">
                 📋 ბოლო ჯავშნები
               </h2>
 
@@ -985,11 +985,11 @@ export default function AdminV2Page() {
                 text="ჯავშნები ჯერ არ არის"
               />
             ) : (
-              <div className="mt-6 space-y-4">
+              <div className="mt-5 space-y-3">
                 {latestBookings.map((booking) => (
                   <div
                     key={booking.id}
-                    className="rounded-2xl bg-white/5 p-4 transition hover:bg-white/10"
+                    className="rounded-xl bg-white/5 p-3.5 transition hover:bg-white/10"
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                       <div className="min-w-0">
@@ -1026,9 +1026,9 @@ export default function AdminV2Page() {
             )}
           </div>
 
-          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-black text-white">
+              <h2 className="text-xl font-black text-white">
                 🏔️ ბოლო დამატებული ტურები
               </h2>
 
@@ -1046,11 +1046,11 @@ export default function AdminV2Page() {
                 text="ტურები ჯერ არ არის"
               />
             ) : (
-              <div className="mt-6 space-y-4">
+              <div className="mt-5 space-y-3">
                 {latestTours.map((tour) => (
                   <div
                     key={tour.id}
-                    className="rounded-2xl bg-white/5 p-4 transition hover:bg-white/10"
+                    className="rounded-xl bg-white/5 p-3.5 transition hover:bg-white/10"
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                       <div className="min-w-0">
@@ -1080,12 +1080,12 @@ export default function AdminV2Page() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
-          <h2 className="text-2xl font-black text-white">
+        <section className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
+          <h2 className="text-xl font-black text-white">
             ⚡ სწრაფი მოქმედებები
           </h2>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <QuickLink
               href="/dashboard/add-tour"
               icon="➕"
@@ -1146,10 +1146,10 @@ export default function AdminV2Page() {
           </div>
         </section>
 
-        <footer className="rounded-3xl bg-gradient-to-r from-cyan-600 to-blue-600 p-8 shadow-2xl">
+        <footer className="rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 p-6 shadow-2xl">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
             <div>
-              <h2 className="text-3xl font-black text-white">
+              <h2 className="text-2xl font-black text-white">
                 🚀 Georgia Gateway Hub
               </h2>
 
@@ -1243,7 +1243,7 @@ function StatusCard({
   return (
     <Link
       href={href}
-      className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/15"
+      className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/15"
     >
       <div className="flex items-center justify-between">
         <div>
@@ -1251,12 +1251,12 @@ function StatusCard({
             {title}
           </p>
 
-          <p className="mt-2 text-4xl font-black text-white">
+          <p className="mt-2 text-3xl font-black text-white">
             {formatNumber(total)}
           </p>
         </div>
 
-        <div className="text-5xl">{icon}</div>
+        <div className="text-3xl">{icon}</div>
       </div>
 
       <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
@@ -1337,7 +1337,7 @@ function TodayItem({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-white/5 p-4">
+    <div className="flex items-center justify-between rounded-xl bg-white/5 p-3.5">
       <div className="flex items-center gap-3">
         <span className="text-2xl">{icon}</span>
 
@@ -1363,9 +1363,9 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="rounded-2xl bg-white/5 p-5 text-center font-bold text-white transition hover:-translate-y-1 hover:bg-cyan-500"
+      className="rounded-xl bg-white/5 p-4 text-center font-bold text-white transition hover:-translate-y-1 hover:bg-cyan-500"
     >
-      <div className="text-4xl">{icon}</div>
+      <div className="text-3xl">{icon}</div>
 
       <p className="mt-3">{title}</p>
     </Link>
@@ -1448,8 +1448,8 @@ function EmptyBox({
   text: string;
 }) {
   return (
-    <div className="mt-6 rounded-2xl bg-white/5 p-10 text-center">
-      <div className="text-5xl">{icon}</div>
+    <div className="mt-5 rounded-xl bg-white/5 p-7 text-center">
+      <div className="text-3xl">{icon}</div>
 
       <p className="mt-4 font-bold text-white/55">
         {text}
