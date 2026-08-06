@@ -459,7 +459,7 @@ export default function Home() {
       )}
 
       <section
-        className="relative min-h-screen bg-cover bg-center bg-no-repeat"
+        className="relative min-h-[620px] bg-cover bg-center bg-no-repeat sm:min-h-[660px] lg:min-h-[700px]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(2,6,23,.62), rgba(2,6,23,.88)), url('/hero.jpg')",
@@ -635,7 +635,7 @@ export default function Home() {
           </>
         )}
 
-        <div className="mx-auto flex min-h-[calc(100vh-89px)] max-w-7xl items-center px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-[530px] max-w-7xl items-center px-4 py-10 sm:min-h-[570px] sm:px-6 sm:py-12 lg:min-h-[610px] lg:px-8">
           <div className="w-full max-w-5xl">
             <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-semibold backdrop-blur-xl">
               {t.heroBadge}
