@@ -26,16 +26,10 @@ type Tour = {
   category: string | null;
   status: string | null;
   created_at: string | null;
-};
-
-type OwnerProfile = {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  phone: string | null;
-  country: string | null;
-  city: string | null;
-  bio: string | null;
+  organizer_name: string | null;
+  contact_phone: string | null;
+  has_whatsapp: boolean | null;
+  has_viber: boolean | null;
 };
 
 type Review = {
@@ -54,7 +48,6 @@ export default function BookTourPage() {
   const tourId = params?.id;
 
   const [tour, setTour] = useState<Tour | null>(null);
-  const [owner, setOwner] = useState<OwnerProfile | null>(null);
   const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
 
@@ -121,7 +114,6 @@ export default function BookTourPage() {
     setLoadingTour(true);
     setErrorMessage("");
     setTour(null);
-    setOwner(null);
     setOwnerTours([]);
 
     try {
@@ -144,7 +136,11 @@ export default function BookTourPage() {
             max_people,
             category,
             status,
-            created_at
+            created_at,
+            organizer_name,
+            contact_phone,
+            has_whatsapp,
+            has_viber
           `
         )
         .eq("id", tourId)
@@ -168,57 +164,33 @@ export default function BookTourPage() {
         return;
       }
 
-      const [ownerResult, ownerToursResult] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select(
-            `
-              id,
-              full_name,
-              avatar_url,
-              phone,
-              country,
-              city,
-              bio
-            `
-          )
-          .eq("id", loadedTour.user_id)
-          .maybeSingle(),
-        supabase
-          .from("tours")
-          .select(
-            `
-              id,
-              user_id,
-              title,
-              description,
-              location,
-              price,
-              image_url,
-              duration,
-              max_people,
-              category,
-              status,
-              created_at
-            `
-          )
-          .eq("user_id", loadedTour.user_id)
-          .eq("status", "approved")
-          .neq("id", loadedTour.id)
-          .order("created_at", { ascending: false })
-          .limit(3),
-      ]);
-
-      if (ownerResult.error) {
-        console.error(
-          "Owner loading error:",
-          ownerResult.error
-        );
-      } else {
-        setOwner(
-          ownerResult.data as OwnerProfile | null
-        );
-      }
+      const ownerToursResult = await supabase
+        .from("tours")
+        .select(
+          `
+            id,
+            user_id,
+            title,
+            description,
+            location,
+            price,
+            image_url,
+            duration,
+            max_people,
+            category,
+            status,
+            created_at,
+            organizer_name,
+            contact_phone,
+            has_whatsapp,
+            has_viber
+          `
+        )
+        .eq("user_id", loadedTour.user_id)
+        .eq("status", "approved")
+        .neq("id", loadedTour.id)
+        .order("created_at", { ascending: false })
+        .limit(3);
 
       if (ownerToursResult.error) {
         console.error(
@@ -831,7 +803,7 @@ export default function BookTourPage() {
               </p>
             </section>
 
-            <OwnerCard owner={owner} />
+            <OwnerCard tour={tour} />
 
             <section className="grid gap-5 md:grid-cols-2">
               <DetailCard
@@ -1115,7 +1087,7 @@ export default function BookTourPage() {
                 </p>
 
                 <h2 className="mt-3 text-3xl font-black">
-                  ორგანიზატორის სხვა ტურები
+                  სხვა ტურები
                 </h2>
 
                 <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -1355,23 +1327,14 @@ function StarDisplay({ rating }: { rating: number }) {
 }
 
 function OwnerCard({
-  owner,
+  tour,
 }: {
-  owner: OwnerProfile | null;
+  tour: Tour;
 }) {
-  if (!owner) {
-    return (
-      <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
-        <h2 className="text-2xl font-black">
-          👤 ტურის ორგანიზატორი
-        </h2>
+  const organizerName =
+    tour.organizer_name?.trim() || "ტურის ორგანიზატორი";
 
-        <p className="mt-3 text-white/60">
-          ორგანიზატორის ინფორმაცია ჯერ არ არის დამატებული.
-        </p>
-      </section>
-    );
-  }
+  const phone = tour.contact_phone?.trim() || "";
 
   return (
     <section className="rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/15 to-white/5 p-6 shadow-xl sm:p-8">
@@ -1380,70 +1343,56 @@ function OwnerCard({
       </p>
 
       <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
-        {owner.avatar_url ? (
-          <img
-            src={owner.avatar_url}
-            alt={owner.full_name || "Organizer"}
-            className="h-28 w-28 shrink-0 rounded-3xl border-4 border-white/15 object-cover shadow-xl"
-          />
-        ) : (
-          <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-3xl bg-cyan-500 text-5xl shadow-xl">
-            👤
-          </div>
-        )}
+        <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-3xl bg-cyan-500 text-5xl shadow-xl">
+          👤
+        </div>
 
         <div className="min-w-0 flex-1">
           <h2 className="text-3xl font-black">
-            {owner.full_name || "ტურის ორგანიზატორი"}
+            {organizerName}
           </h2>
 
-          {(owner.city || owner.country) && (
-            <p className="mt-2 text-white/65">
-              📍 {[owner.city, owner.country]
-                .filter(Boolean)
-                .join(", ")}
-            </p>
-          )}
+          <p className="mt-2 text-sm leading-6 text-white/55">
+            ამ ტურის საჯარო ორგანიზატორი
+          </p>
 
-          {owner.bio && (
-            <p className="mt-4 whitespace-pre-line leading-7 text-white/65">
-              {owner.bio}
-            </p>
-          )}
-
-          {owner.phone ? (
+          {phone ? (
             <div className="mt-5 flex flex-wrap gap-3">
               <a
-                href={`tel:${owner.phone}`}
+                href={`tel:${phone}`}
                 className="inline-flex items-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
               >
                 <span aria-hidden="true">📞</span>
-                <span>{owner.phone}</span>
+                <span>{phone}</span>
               </a>
 
-              <a
-                href={getWhatsAppUrl(owner.phone)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 font-bold text-white transition hover:bg-emerald-600"
-                aria-label={`WhatsApp-ზე დაკავშირება: ${owner.phone}`}
-              >
-                <span aria-hidden="true">💬</span>
-                <span>WhatsApp</span>
-              </a>
+              {tour.has_whatsapp && (
+                <a
+                  href={getWhatsAppUrl(phone)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 font-bold text-white transition hover:bg-emerald-600"
+                  aria-label={`WhatsApp-ზე დაკავშირება: ${phone}`}
+                >
+                  <span aria-hidden="true">💬</span>
+                  <span>WhatsApp</span>
+                </a>
+              )}
 
-              <a
-                href={getViberUrl(owner.phone)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
-                aria-label={`Viber-ზე დაკავშირება: ${owner.phone}`}
-              >
-                <span aria-hidden="true">📲</span>
-                <span>Viber</span>
-              </a>
+              {tour.has_viber && (
+                <a
+                  href={getViberUrl(phone)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
+                  aria-label={`Viber-ზე დაკავშირება: ${phone}`}
+                >
+                  <span aria-hidden="true">📲</span>
+                  <span>Viber</span>
+                </a>
+              )}
             </div>
           ) : (
             <div className="mt-5 inline-flex rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 font-bold text-amber-200">
-              ⚠️ ორგანიზატორს ტელეფონის ნომერი ჯერ არ მიუთითებია
+              ⚠️ ორგანიზატორის ტელეფონის ნომერი ჯერ არ არის მითითებული
             </div>
           )}
         </div>
