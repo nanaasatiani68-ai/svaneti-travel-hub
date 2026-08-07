@@ -20,6 +20,11 @@ type Tour = {
   status: string | null;
   rejection_reason: string | null;
   created_at: string | null;
+
+  organizer_name: string | null;
+  contact_phone: string | null;
+  whatsapp_phone: string | null;
+  viber_phone: string | null;
 };
 
 export default function MyToursPage() {
@@ -71,7 +76,11 @@ export default function MyToursPage() {
           category,
           status,
           rejection_reason,
-          created_at
+          created_at,
+          organizer_name,
+          contact_phone,
+          whatsapp_phone,
+          viber_phone
         `
       )
       .eq("user_id", user.id)
@@ -209,9 +218,11 @@ export default function MyToursPage() {
               🏔️ ჩემი ტურები
             </h1>
 
-            <p className="mt-3 text-white/60">
+            <p className="mt-3 max-w-3xl text-white/60">
               აქ შეგიძლია ნახო, შეცვალო ან წაშალო შენ მიერ
-              დამატებული ტურები.
+              დამატებული ტურები. თითოეულ ტურს შეიძლება ჰქონდეს
+              განსხვავებული ორგანიზატორის სახელი და ტელეფონის
+              ნომერი.
             </p>
           </div>
 
@@ -255,8 +266,9 @@ export default function MyToursPage() {
             </h2>
 
             <p className="mt-3 text-white/55">
-              დაამატე შენი პირველი ტური და გაუგზავნე
-              ადმინისტრატორს დასამტკიცებლად.
+              დაამატე შენი პირველი ტური. ყოველ ახალ ტურზე
+              განსხვავებული ორგანიზატორის სახელისა და ნომრების
+              მითითებას შეძლებ.
             </p>
 
             <Link
@@ -363,6 +375,56 @@ export default function MyToursPage() {
                       {tour.description}
                     </p>
                   )}
+
+                  <div className="mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-cyan-300">
+                      საჯარო საკონტაქტო ინფორმაცია
+                    </p>
+
+                    <div className="mt-3 space-y-2 text-sm">
+                      <ContactRow
+                        icon="👤"
+                        label="ორგანიზატორი"
+                        value={
+                          tour.organizer_name ||
+                          "ორგანიზატორი არ არის მითითებული"
+                        }
+                      />
+
+                      <ContactRow
+                        icon="📞"
+                        label="ტელეფონი"
+                        value={
+                          tour.contact_phone ||
+                          "ნომერი არ არის მითითებული"
+                        }
+                      />
+
+                      <ContactRow
+                        icon="🟢"
+                        label="WhatsApp"
+                        value={
+                          tour.whatsapp_phone ||
+                          "ნომერი არ არის მითითებული"
+                        }
+                      />
+
+                      <ContactRow
+                        icon="🟣"
+                        label="Viber"
+                        value={
+                          tour.viber_phone ||
+                          "ნომერი არ არის მითითებული"
+                        }
+                      />
+                    </div>
+
+                    <p className="mt-3 text-xs leading-5 text-white/45">
+                      ეს ინფორმაცია ტურის საჯარო გვერდზე გამოჩნდება.
+                      შენი ანგარიშის სახელი და ელფოსტა საჯაროდ არ
+                      გამოჩნდება.
+                    </p>
+                  </div>
 
                   {tour.status === "rejected" && (
                     <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 p-4">
@@ -471,6 +533,30 @@ function InfoBox({
     <div className="rounded-xl bg-black/20 p-3 text-white/70">
       <span className="mr-2">{icon}</span>
       <span>{value}</span>
+    </div>
+  );
+}
+
+function ContactRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl bg-black/20 px-3 py-2">
+      <span>{icon}</span>
+
+      <div className="min-w-0">
+        <p className="text-xs text-white/40">{label}</p>
+
+        <p className="mt-0.5 break-words font-semibold text-white/80">
+          {value}
+        </p>
+      </div>
     </div>
   );
 }

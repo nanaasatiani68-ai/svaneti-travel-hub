@@ -41,6 +41,7 @@ export default function AddTourPage() {
   const [maxPeople, setMaxPeople] = useState("");
   const [category, setCategory] = useState("");
 
+  const [organizerName, setOrganizerName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [hasWhatsapp, setHasWhatsapp] = useState(false);
   const [hasViber, setHasViber] = useState(false);
@@ -274,6 +275,12 @@ export default function AddTourPage() {
       return;
     }
 
+    if (!organizerName.trim()) {
+      setMessage("ჩაწერე ტურის ავტორის / ორგანიზატორის სახელი.");
+      setMessageType("error");
+      return;
+    }
+
     if (!contactPhone.trim()) {
       setMessage(
         "ჩაწერე ტურის ორგანიზატორის ტელეფონის ნომერი."
@@ -315,6 +322,7 @@ export default function AddTourPage() {
           image_url: uploadedImage.publicUrl || null,
           user_id: userId,
           status: "pending",
+          organizer_name: organizerName.trim(),
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,
@@ -593,7 +601,28 @@ export default function AddTourPage() {
               დაკავშირებას.
             </p>
 
-            <div className="mt-7">
+            <div className="mt-7 grid gap-5 md:grid-cols-2">
+              <FormField
+                label="ტურის ავტორი / ორგანიზატორი"
+                required
+              >
+                <input
+                  type="text"
+                  value={organizerName}
+                  onChange={(event) =>
+                    setOrganizerName(event.target.value)
+                  }
+                  placeholder="მაგალითად: Ushguli Travel ან Giorgi"
+                  required
+                  className="input"
+                />
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  ეს სახელი გამოჩნდება საჯაროდ ტურის ავტორად.
+                  შენი ანგარიშის სახელი მომხმარებლებისთვის არ გამოჩნდება.
+                </p>
+              </FormField>
+
               <FormField
                 label="ტურის ორგანიზატორის ტელეფონის ნომერი"
                 required
