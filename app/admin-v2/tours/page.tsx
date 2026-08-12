@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { approveTour } from "./actions";
 import RejectTourForm from "./RejectTourForm";
 import DeleteTourButton from "./DeleteTourButton";
+import { revalidatePath } from "next/cache";
 
 type TourStatus = "pending" | "approved" | "rejected" | string;
 
@@ -27,6 +28,9 @@ type Tour = {
   rejection_reason: string | null;
   submitted_at: string | null;
   created_at: string | null;
+  is_popular: boolean | null;
+  is_recommended: boolean | null;
+  is_editors_pick: boolean | null;
 };
 
 type OwnerProfile = {
@@ -54,6 +58,46 @@ export default async function AdminToursPage({
 
   const supabase = await createClient();
 
+  async function toggleTourBadge(formData: FormData) {
+    "use server";
+
+    const tourId = String(formData.get("tourId") || "");
+    const field = String(formData.get("field") || "");
+    const currentValue =
+      String(formData.get("currentValue") || "") === "true";
+
+    const allowedFields = [
+      "is_popular",
+      "is_recommended",
+      "is_editors_pick",
+    ] as const;
+
+    if (
+      !tourId ||
+      !allowedFields.includes(
+        field as (typeof allowedFields)[number]
+      )
+    ) {
+      return;
+    }
+
+    const serverSupabase = await createClient();
+
+    const { error } = await serverSupabase
+      .from("tours")
+      .update({
+        [field]: !currentValue,
+      })
+      .eq("id", tourId);
+
+    if (error) {
+      console.error("Tour badge update error:", error);
+      return;
+    }
+
+    revalidatePath("/admin-v2/tours");
+  }
+
   const { data, error } = await supabase
     .from("tours")
     .select(
@@ -72,7 +116,10 @@ export default async function AdminToursPage({
         status,
         rejection_reason,
         submitted_at,
-        created_at
+        created_at,
+        is_popular,
+        is_recommended,
+        is_editors_pick
       `
     )
     .order("created_at", { ascending: false });
@@ -348,6 +395,49 @@ export default async function AdminToursPage({
                     </div>
                   )}
 
+                <div className="mt-8 rounded-3xl border border-violet-200 bg-violet-50 p-5 sm:p-6">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-700">
+                    Public badges
+                  </p>
+
+                  <h3 className="mt-2 text-2xl font-black text-slate-900">
+                    ⭐ ტურის გამორჩეული ნიშნები
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    მონიშნე რომელი ნიშანი გამოჩნდეს ამ ტურზე საჯაროდ.
+                  </p>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <BadgeToggleButton
+                      tourId={tour.id}
+                      field="is_popular"
+                      currentValue={Boolean(tour.is_popular)}
+                      label="🔥 Popular"
+                      activeClassName="border-orange-500 bg-orange-500 text-white"
+                      action={toggleTourBadge}
+                    />
+
+                    <BadgeToggleButton
+                      tourId={tour.id}
+                      field="is_recommended"
+                      currentValue={Boolean(tour.is_recommended)}
+                      label="✅ Recommended"
+                      activeClassName="border-emerald-600 bg-emerald-600 text-white"
+                      action={toggleTourBadge}
+                    />
+
+                    <BadgeToggleButton
+                      tourId={tour.id}
+                      field="is_editors_pick"
+                      currentValue={Boolean(tour.is_editors_pick)}
+                      label="🏆 Editor’s Pick"
+                      activeClassName="border-violet-600 bg-violet-600 text-white"
+                      action={toggleTourBadge}
+                    />
+                  </div>
+                </div>
+
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
                   {tour.status !== "approved" && (
                     <form action={approveTour}>
@@ -530,6 +620,57 @@ function OwnerInformation({
         </div>
       </div>
     </section>
+  );
+}
+
+
+function BadgeToggleButton({
+  tourId,
+  field,
+  currentValue,
+  label,
+  activeClassName,
+  action,
+}: {
+  tourId: number | string;
+  field: "is_popular" | "is_recommended" | "is_editors_pick";
+  currentValue: boolean;
+  label: string;
+  activeClassName: string;
+  action: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <form action={action}>
+      <input
+        type="hidden"
+        name="tourId"
+        value={String(tourId)}
+      />
+
+      <input
+        type="hidden"
+        name="field"
+        value={field}
+      />
+
+      <input
+        type="hidden"
+        name="currentValue"
+        value={String(currentValue)}
+      />
+
+      <button
+        type="submit"
+        className={`w-full rounded-2xl border px-4 py-3 text-sm font-black transition ${
+          currentValue
+            ? activeClassName
+            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+        }`}
+      >
+        {currentValue ? "✓ " : ""}
+        {label}
+      </button>
+    </form>
   );
 }
 
