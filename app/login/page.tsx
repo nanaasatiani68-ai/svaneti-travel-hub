@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  Suspense,
   useMemo,
   useState,
 } from "react";
@@ -21,6 +22,25 @@ const ALLOWED_NEXT_PATHS = new Set([
 ]);
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-10">
+          <div className="text-center text-white">
+            <div className="text-6xl">🔐</div>
+            <p className="mt-4 font-semibold">
+              შესვლის გვერდი იტვირთება...
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const supabase = useMemo(
     () => createClient(),
     []
