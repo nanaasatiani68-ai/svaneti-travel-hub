@@ -24,6 +24,8 @@ export default function AddTourPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [userId, setUserId] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [returnPath, setReturnPath] = useState("/dashboard");
   const [checkingUser, setCheckingUser] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -52,23 +54,14 @@ export default function AddTourPage() {
   >("success");
 
   useEffect(() => {
+    let mounted = true;
+
     async function checkUser() {
       setCheckingUser(true);
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error("Session loading error:", sessionError);
-      }
-
-      let authenticatedUser = session?.user ?? null;
-
-      if (!authenticatedUser) {
-        const {
-          data: { user },
+      try {
+        let {
+          data: { user: authenticatedUser },
           error: userError,
         } = await supabase.auth.getUser();
 
@@ -76,39 +69,110 @@ export default function AddTourPage() {
           console.error("User loading error:", userError);
         }
 
-        authenticatedUser = user;
-      }
+        if (!authenticatedUser) {
+          const {
+            data: refreshData,
+            error: refreshError,
+          } = await supabase.auth.refreshSession();
 
-      if (!authenticatedUser) {
-        router.replace("/login");
-        return;
-      }
+          if (refreshError) {
+            console.error(
+              "Session refresh error:",
+              refreshError
+            );
+          }
 
-      setUserId(authenticatedUser.id);
+          authenticatedUser =
+            refreshData.user ?? null;
+        }
 
-      const { data: profile, error: profileError } =
-        await supabase
+        if (!authenticatedUser) {
+          const nextPath =
+            encodeURIComponent(
+              "/dashboard/add-tour"
+            );
+
+          window.location.replace(
+            `/login?next=${nextPath}`
+          );
+          return;
+        }
+
+        if (!mounted) {
+          return;
+        }
+
+        setUserId(authenticatedUser.id);
+
+        const {
+          data: profile,
+          error: profileError,
+        } = await supabase
           .from("profiles")
-          .select("phone")
+          .select("phone, role")
           .eq("id", authenticatedUser.id)
           .maybeSingle();
 
-      if (profileError) {
+        if (profileError) {
+          console.error(
+            "Profile loading error:",
+            profileError
+          );
+        }
+
+        if (!mounted) {
+          return;
+        }
+
+        if (profile?.phone) {
+          setContactPhone(profile.phone);
+        }
+
+        const normalizedRole = String(
+          profile?.role ?? ""
+        )
+          .trim()
+          .toLowerCase();
+
+        setUserRole(normalizedRole);
+
+        if (
+          normalizedRole === "director" ||
+          normalizedRole === "admin"
+        ) {
+          setReturnPath("/admin-v2");
+        } else if (
+          normalizedRole === "staff"
+        ) {
+          setReturnPath("/staff");
+        } else {
+          setReturnPath("/dashboard");
+        }
+
+        setCheckingUser(false);
+      } catch (error) {
         console.error(
-          "Profile phone loading error:",
-          profileError
+          "Authentication check error:",
+          error
+        );
+
+        const nextPath =
+          encodeURIComponent(
+            "/dashboard/add-tour"
+          );
+
+        window.location.replace(
+          `/login?next=${nextPath}`
         );
       }
-
-      if (profile?.phone) {
-        setContactPhone(profile.phone);
-      }
-
-      setCheckingUser(false);
     }
 
     checkUser();
-  }, [router, supabase]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     return () => {
@@ -345,8 +409,13 @@ export default function AddTourPage() {
       );
       setMessageType("success");
 
-      router.push("/dashboard/my-tours");
-      router.refresh();
+      const destination =
+        userRole === "director" ||
+        userRole === "admin"
+          ? "/admin-v2/tours"
+          : "/dashboard/my-tours";
+
+      window.location.assign(destination);
     } catch (error) {
       console.error("Add tour error:", error);
 
@@ -396,7 +465,7 @@ export default function AddTourPage() {
           </div>
 
           <Link
-            href="/dashboard"
+            href={returnPath}
             className="w-fit rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
           >
             ← Dashboard
@@ -796,7 +865,7 @@ export default function AddTourPage() {
           <div className="flex flex-col-reverse gap-4 border-t border-slate-200 pt-8 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push(returnPath)}
               disabled={saving}
               className="rounded-2xl bg-slate-200 px-7 py-4 font-bold text-slate-700 transition hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
             >

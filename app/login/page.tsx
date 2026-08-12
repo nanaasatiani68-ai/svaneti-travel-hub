@@ -179,12 +179,7 @@ function LoginForm() {
         destination = "/staff";
       }
 
-      /*
-       * სრული გვერდის ჩატვირთვა საჭიროა,
-       * რათა ახალი Supabase cookie სერვერმა
-       * აუცილებლად დაინახოს.
-       */
-      window.location.assign(destination);
+      window.location.replace(destination);
     } catch (error: unknown) {
       console.error(
         "Unexpected login error:",
