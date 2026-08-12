@@ -50,6 +50,9 @@ const translations = {
     search: "ძებნა",
     viewAllTours: "ყველა ტურის ნახვა",
     addYourTour: "დაამატე შენი ტური",
+    addYourTransfer: "დაამატე შენი ტრანსფერი",
+    addYourHotel: "დაამატე შენი სასტუმრო",
+    addYourGuide: "დაამატე შენი გიდი",
 
     availableTours: "ხელმისაწვდომი ტური",
     locations: "მდებარეობა",
@@ -155,6 +158,9 @@ const translations = {
     search: "Search",
     viewAllTours: "View All Tours",
     addYourTour: "Add Your Tour",
+    addYourTransfer: "Add Your Transfer",
+    addYourHotel: "Add Your Hotel",
+    addYourGuide: "Add Your Guide",
 
     availableTours: "Available tours",
     locations: "Locations",
@@ -364,6 +370,19 @@ export default function Home() {
     }
 
     router.push("/dashboard/add-tour");
+  }
+
+  async function goToAddService(path: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    router.push(path);
   }
 
   const locations = useMemo(() => {
@@ -709,6 +728,30 @@ export default function Home() {
                 className="rounded-2xl bg-emerald-500 px-7 py-3.5 font-bold shadow-xl transition hover:bg-emerald-600"
               >
                 ➕ {t.addYourTour}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => goToAddService("/dashboard/add-transfer")}
+                className="rounded-2xl bg-sky-500 px-7 py-3.5 font-bold shadow-xl transition hover:bg-sky-600"
+              >
+                🚐 {t.addYourTransfer}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => goToAddService("/dashboard/add-hotel")}
+                className="rounded-2xl bg-amber-500 px-7 py-3.5 font-bold text-slate-950 shadow-xl transition hover:bg-amber-400"
+              >
+                🏨 {t.addYourHotel}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => goToAddService("/dashboard/add-guide")}
+                className="rounded-2xl bg-violet-500 px-7 py-3.5 font-bold shadow-xl transition hover:bg-violet-600"
+              >
+                🧑‍💼 {t.addYourGuide}
               </button>
             </div>
 
