@@ -6,17 +6,27 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type UserProfile = {
   role: string | null;
 };
 
+const ALLOWED_NEXT_PATHS = new Set([
+  "/dashboard/add-tour",
+  "/dashboard/add-transfer",
+  "/dashboard/add-hotel",
+  "/dashboard/add-guide",
+]);
+
 export default function LoginPage() {
   const supabase = useMemo(
     () => createClient(),
     []
   );
+
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] =
@@ -130,9 +140,17 @@ export default function LoginPage() {
         .trim()
         .toLowerCase();
 
+      const requestedNext =
+        searchParams.get("next");
+
       let destination = "/dashboard";
 
       if (
+        requestedNext &&
+        ALLOWED_NEXT_PATHS.has(requestedNext)
+      ) {
+        destination = requestedNext;
+      } else if (
         role === "director" ||
         role === "admin"
       ) {

@@ -360,16 +360,18 @@ export default function Home() {
   }
 
   async function goToAddTour() {
+    const path = "/dashboard/add-tour";
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      router.push("/login");
+      router.push(`/login?next=${encodeURIComponent(path)}`);
       return;
     }
 
-    router.push("/dashboard/add-tour");
+    router.push(path);
   }
 
   async function goToAddService(path: string) {
@@ -378,7 +380,7 @@ export default function Home() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      router.push("/login");
+      router.push(`/login?next=${encodeURIComponent(path)}`);
       return;
     }
 
