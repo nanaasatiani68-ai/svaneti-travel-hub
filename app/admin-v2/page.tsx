@@ -723,6 +723,27 @@ export default function AdminV2Page() {
                 </Link>
 
                 <Link
+                  href="/dashboard/add-transfer"
+                  className="rounded-2xl bg-blue-500 px-6 py-3.5 font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-400"
+                >
+                  🚐 ახალი ტრანსფერის დამატება
+                </Link>
+
+                <Link
+                  href="/dashboard/add-hotel"
+                  className="rounded-2xl bg-emerald-500 px-6 py-3.5 font-black text-white shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 hover:bg-emerald-400"
+                >
+                  🏨 ახალი სასტუმროს დამატება
+                </Link>
+
+                <Link
+                  href="/dashboard/add-guide"
+                  className="rounded-2xl bg-violet-500 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-500/20 transition hover:-translate-y-0.5 hover:bg-violet-400"
+                >
+                  🧑‍💼 ახალი გიდის დამატება
+                </Link>
+
+                <Link
                   href="/admin-v2/bookings"
                   className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3.5 font-black text-white transition hover:bg-white/15"
                 >
@@ -1090,6 +1111,24 @@ export default function AdminV2Page() {
               href="/dashboard/add-tour"
               icon="➕"
               title="ტურის დამატება"
+            />
+
+            <QuickLink
+              href="/dashboard/add-transfer"
+              icon="🚐"
+              title="ტრანსფერის დამატება"
+            />
+
+            <QuickLink
+              href="/dashboard/add-hotel"
+              icon="🏨"
+              title="სასტუმროს დამატება"
+            />
+
+            <QuickLink
+              href="/dashboard/add-guide"
+              icon="🧑‍💼"
+              title="გიდის დამატება"
             />
 
             <QuickLink
