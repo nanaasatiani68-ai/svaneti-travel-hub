@@ -121,22 +121,70 @@ export default function AdminV2Layout({
 
     try {
       const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+        data: sessionData,
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (userError) {
-        console.error("User loading error:", userError);
+      if (sessionError) {
+        console.error(
+          "Session loading error:",
+          sessionError
+        );
+      }
+
+      let user =
+        sessionData.session?.user ?? null;
+
+      if (!user) {
+        const {
+          data: userData,
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error(
+            "User loading error:",
+            userError
+          );
+        }
+
+        user = userData.user;
       }
 
       if (!user) {
-        window.location.replace("/login");
+        const {
+          data: refreshData,
+          error: refreshError,
+        } = await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error(
+            "Session refresh error:",
+            refreshError
+          );
+        }
+
+        user = refreshData.user ?? null;
+      }
+
+      if (!user) {
+        const nextPath =
+          encodeURIComponent(
+            pathname || "/admin-v2"
+          );
+
+        window.location.replace(
+          `/login?next=${nextPath}`
+        );
         return;
       }
 
       setEmail(user.email || "");
 
-      const { data: profile, error: profileError } = await supabase
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
         .from("profiles")
         .select("full_name, role")
         .eq("id", user.id)
@@ -148,8 +196,12 @@ export default function AdminV2Layout({
         );
       }
 
-      const typedProfile = profile as AdminProfile | null;
-      const normalizedRole = String(typedProfile?.role || "")
+      const typedProfile =
+        profile as AdminProfile | null;
+
+      const normalizedRole = String(
+        typedProfile?.role || ""
+      )
         .trim()
         .toLowerCase();
 
@@ -166,26 +218,39 @@ export default function AdminV2Layout({
         return;
       }
 
-      const currentPathIsDirectorOnly = directorOnlyPaths.some(
-        (protectedPath) =>
-          pathname === protectedPath ||
-          pathname.startsWith(`${protectedPath}/`)
-      );
+      const currentPathIsDirectorOnly =
+        directorOnlyPaths.some(
+          (protectedPath) =>
+            pathname === protectedPath ||
+            pathname.startsWith(
+              `${protectedPath}/`
+            )
+        );
 
-      if (resolvedRole === "Admin" && currentPathIsDirectorOnly) {
+      if (
+        resolvedRole === "Admin" &&
+        currentPathIsDirectorOnly
+      ) {
         window.location.replace("/admin-v2");
         return;
       }
 
       setRole(resolvedRole);
+
       setFullName(
         typedProfile?.full_name ||
           user.user_metadata?.full_name ||
-          (resolvedRole === "Director" ? "Director" : "Administrator")
+          (resolvedRole === "Director"
+            ? "Director"
+            : "Administrator")
       );
+
       setCheckingAccess(false);
     } catch (error: unknown) {
-      console.error("Admin access loading error:", error);
+      console.error(
+        "Admin access loading error:",
+        error
+      );
 
       const message =
         error instanceof Error
@@ -200,6 +265,27 @@ export default function AdminV2Layout({
   useEffect(() => {
     void loadAdmin();
   }, [loadAdmin]);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (
+          event === "SIGNED_OUT" ||
+          !session?.user
+        ) {
+          return;
+        }
+
+        setEmail(session.user.email || "");
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -229,7 +315,12 @@ export default function AdminV2Layout({
     setLoggingOut(true);
 
     try {
-      const { error } = await supabase.auth.signOut();
+      setRole(null);
+      setFullName("");
+      setEmail("");
+
+      const { error } =
+        await supabase.auth.signOut();
 
       if (error) {
         throw error;
@@ -244,7 +335,10 @@ export default function AdminV2Layout({
           ? error.message
           : "უცნობი შეცდომა დაფიქსირდა.";
 
-      alert(`ანგარიშიდან გამოსვლა ვერ მოხერხდა: ${message}`);
+      alert(
+        `ანგარიშიდან გამოსვლა ვერ მოხერხდა: ${message}`
+      );
+
       setLoggingOut(false);
     }
   }
