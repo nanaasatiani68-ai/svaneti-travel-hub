@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type Booking = {
   id: string;
@@ -44,7 +43,7 @@ type StatusFilter =
   | "cancelled";
 
 export default function AdminBookingsPage() {
-  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,12 +62,46 @@ export default function AdminBookingsPage() {
     setSuccessMessage("");
 
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+      data: sessionData,
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (userError || !user) {
-      router.replace("/login");
+    if (sessionError) {
+      console.error("Session loading error:", sessionError);
+    }
+
+    let user = sessionData.session?.user ?? null;
+
+    if (!user) {
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("User loading error:", userError);
+      }
+
+      user = userData.user;
+    }
+
+    if (!user) {
+      const {
+        data: refreshData,
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error("Session refresh error:", refreshError);
+      }
+
+      user = refreshData.user ?? null;
+    }
+
+    if (!user) {
+      window.location.replace(
+        `/login?next=${encodeURIComponent("/admin-v2/bookings")}`
+      );
       return;
     }
 
@@ -228,7 +261,7 @@ export default function AdminBookingsPage() {
 
     setBookings(preparedBookings);
     setLoading(false);
-  }, [router]);
+  }, [supabase]);
 
   useEffect(() => {
     loadAllBookings();
@@ -293,17 +326,36 @@ export default function AdminBookingsPage() {
     setSuccessMessage("");
 
     try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
+      const {
+        data: sessionData,
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
       if (sessionError) {
         throw new Error(sessionError.message);
       }
 
-      const accessToken = sessionData.session?.access_token;
+      let accessToken =
+        sessionData.session?.access_token ?? null;
 
       if (!accessToken) {
-        router.replace("/login");
+        const {
+          data: refreshData,
+          error: refreshError,
+        } = await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          throw new Error(refreshError.message);
+        }
+
+        accessToken =
+          refreshData.session?.access_token ?? null;
+      }
+
+      if (!accessToken) {
+        window.location.replace(
+          `/login?next=${encodeURIComponent("/admin-v2/bookings")}`
+        );
         return;
       }
 
