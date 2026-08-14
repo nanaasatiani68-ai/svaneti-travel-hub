@@ -29,7 +29,7 @@ export async function proxy(
     });
   }
 
-  let response = NextResponse.next({
+  let supabaseResponse = NextResponse.next({
     request,
   });
 
@@ -45,17 +45,25 @@ export async function proxy(
         setAll(cookiesToSet) {
           cookiesToSet.forEach(
             ({ name, value }) => {
-              request.cookies.set(name, value);
+              request.cookies.set(
+                name,
+                value
+              );
             }
           );
 
-          response = NextResponse.next({
-            request,
-          });
+          supabaseResponse =
+            NextResponse.next({
+              request,
+            });
 
           cookiesToSet.forEach(
-            ({ name, value, options }) => {
-              response.cookies.set(
+            ({
+              name,
+              value,
+              options,
+            }) => {
+              supabaseResponse.cookies.set(
                 name,
                 value,
                 options
@@ -68,15 +76,15 @@ export async function proxy(
   );
 
   try {
-    await supabase.auth.getUser();
+    await supabase.auth.getClaims();
   } catch (error) {
     console.error(
-      "Supabase session refresh error:",
+      "Supabase auth refresh error:",
       error
     );
   }
 
-  return response;
+  return supabaseResponse;
 }
 
 export const config = {
