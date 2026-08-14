@@ -14,7 +14,8 @@ type BookingStatus =
   | "pending"
   | "confirmed"
   | "rejected"
-  | "cancelled";
+  | "cancelled"
+  | "completed";
 
 type RequestBody = {
   status?: BookingStatus;
@@ -31,6 +32,7 @@ type BookingRecord = {
   total_price: number | null;
   notes: string | null;
   status: string | null;
+  completed_at: string | null;
 };
 
 type TourRecord = {
@@ -53,6 +55,7 @@ const ALLOWED_STATUSES: BookingStatus[] = [
   "confirmed",
   "rejected",
   "cancelled",
+  "completed",
 ];
 
 export async function PATCH(
@@ -234,7 +237,8 @@ export async function PATCH(
           people,
           total_price,
           notes,
-          status
+          status,
+          completed_at
         `
       )
       .eq("id", bookingId)
@@ -268,14 +272,22 @@ export async function PATCH(
       );
     }
 
+    const updatePayload = {
+      status: newStatus,
+      completed_at:
+        newStatus === "completed"
+          ? new Date().toISOString()
+          : null,
+    };
+
     const {
       data: updatedBooking,
       error: updateError,
     } = await supabaseAdmin
       .from("bookings")
-      .update({ status: newStatus })
+      .update(updatePayload)
       .eq("id", bookingId)
-      .select("id, status")
+      .select("id, status, completed_at")
       .single();
 
     if (updateError) {
@@ -463,6 +475,10 @@ function buildEmailSubject(
     return `Booking cancelled: ${tourTitle}`;
   }
 
+  if (status === "completed") {
+    return `Tour completed: ${tourTitle}`;
+  }
+
   return `Booking status updated: ${tourTitle}`;
 }
 
@@ -559,6 +575,18 @@ function statusEmailContent(
     };
   }
 
+  if (status === "completed") {
+    return {
+      title: "Your tour is completed",
+      description:
+        "your tour has been marked as completed.",
+      notice:
+        "Thank you for travelling with Georgia Gateway Hub. You can now leave a review for this completed tour.",
+      background: "#eef2ff",
+      color: "#3730a3",
+    };
+  }
+
   return {
     title: "Your booking is pending",
     description:
@@ -583,6 +611,10 @@ function statusSuccessMessage(
 
   if (status === "cancelled") {
     return "ჯავშანი წარმატებით გაუქმდა.";
+  }
+
+  if (status === "completed") {
+    return "ტური წარმატებით მოინიშნა შესრულებულად.";
   }
 
   return "ჯავშანი მოლოდინის სტატუსზე დაბრუნდა.";

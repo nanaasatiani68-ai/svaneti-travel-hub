@@ -17,6 +17,7 @@ type Booking = {
   notes: string | null;
   status: string | null;
   created_at: string | null;
+  completed_at: string | null;
 };
 
 type Tour = {
@@ -40,7 +41,8 @@ type StatusFilter =
   | "pending"
   | "confirmed"
   | "rejected"
-  | "cancelled";
+  | "cancelled"
+  | "completed";
 
 export default function AdminBookingsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -152,7 +154,8 @@ export default function AdminBookingsPage() {
             total_price,
             notes,
             status,
-            created_at
+            created_at,
+            completed_at
           `
         )
         .order("created_at", { ascending: false });
@@ -305,12 +308,14 @@ export default function AdminBookingsPage() {
       | "rejected"
       | "pending"
       | "cancelled"
+      | "completed"
   ) {
     const actionLabels = {
       confirmed: "დადასტურება",
       rejected: "უარყოფა",
       pending: "მოლოდინში დაბრუნება",
       cancelled: "გაუქმება",
+      completed: "შესრულებულად მონიშვნა",
     } as const;
 
     const confirmed = window.confirm(
@@ -387,7 +392,14 @@ export default function AdminBookingsPage() {
       setBookings((currentBookings) =>
         currentBookings.map((booking) =>
           booking.id === bookingId
-            ? { ...booking, status: newStatus }
+            ? {
+                ...booking,
+                status: newStatus,
+                completed_at:
+                  newStatus === "completed"
+                    ? new Date().toISOString()
+                    : booking.completed_at,
+              }
             : booking
         )
       );
@@ -420,6 +432,10 @@ export default function AdminBookingsPage() {
 
   const rejectedCount = bookings.filter(
     (booking) => booking.status === "rejected"
+  ).length;
+
+  const completedCount = bookings.filter(
+    (booking) => booking.status === "completed"
   ).length;
 
   if (loading) {
@@ -462,7 +478,7 @@ export default function AdminBookingsPage() {
           </Link>
         </header>
 
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatsCard
             title="სულ ჯავშანი"
             value={bookings.length}
@@ -485,6 +501,12 @@ export default function AdminBookingsPage() {
             title="უარყოფილი"
             value={rejectedCount}
             icon="❌"
+          />
+
+          <StatsCard
+            title="შესრულებული"
+            value={completedCount}
+            icon="🏁"
           />
         </section>
 
@@ -513,6 +535,7 @@ export default function AdminBookingsPage() {
             <option value="confirmed">დადასტურებული</option>
             <option value="rejected">უარყოფილი</option>
             <option value="cancelled">გაუქმებული</option>
+            <option value="completed">შესრულებული</option>
           </select>
         </section>
 
@@ -628,6 +651,12 @@ export default function AdminBookingsPage() {
                       label="მოთხოვნის თარიღი"
                       value={formatDate(booking.created_at)}
                     />
+                    {booking.completed_at && (
+                      <InfoItem
+                        label="ტური შესრულებულია"
+                        value={formatDate(booking.completed_at)}
+                      />
+                    )}
                   </div>
 
                   {booking.notes && (
@@ -698,6 +727,22 @@ export default function AdminBookingsPage() {
                     >
                       🚫 გაუქმება
                     </button>
+                    {(booking.status === "confirmed" ||
+                      booking.status === "approved") && (
+                      <button
+                        type="button"
+                        disabled={isUpdating}
+                        onClick={() =>
+                          updateBookingStatus(
+                            booking.id,
+                            "completed"
+                          )
+                        }
+                        className="rounded-2xl bg-indigo-600 px-6 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        🏁 ტური შესრულებულია
+                      </button>
+                    )}
 
                     {isUpdating && (
                       <p className="self-center text-sm font-semibold text-slate-500">
@@ -761,6 +806,14 @@ function BookingStatus({
     return (
       <span className="w-fit rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
         უარყოფილი
+      </span>
+    );
+  }
+
+  if (normalizedStatus === "completed") {
+    return (
+      <span className="w-fit rounded-full bg-indigo-100 px-4 py-2 text-sm font-bold text-indigo-700">
+        🏁 შესრულებული
       </span>
     );
   }
