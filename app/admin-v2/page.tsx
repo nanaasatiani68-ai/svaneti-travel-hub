@@ -14,6 +14,7 @@ type UserRole = "Director" | "Admin";
 
 type NormalizedStatus =
   | "confirmed"
+  | "completed"
   | "rejected"
   | "cancelled"
   | "pending";
@@ -59,6 +60,7 @@ type DashboardStats = {
   totalBookings: number;
   pendingBookings: number;
   confirmedBookings: number;
+  completedBookings: number;
   rejectedBookings: number;
   cancelledBookings: number;
   totalRevenue: number;
@@ -88,6 +90,7 @@ const initialStats: DashboardStats = {
   totalBookings: 0,
   pendingBookings: 0,
   confirmedBookings: 0,
+  completedBookings: 0,
   rejectedBookings: 0,
   cancelledBookings: 0,
   totalRevenue: 0,
@@ -381,6 +384,11 @@ export default function AdminV2Page() {
           normalizeStatus(booking.status) === "confirmed"
       );
 
+      const completedBookings = bookings.filter(
+        (booking) =>
+          normalizeStatus(booking.status) === "completed"
+      );
+
       const rejectedBookings = bookings.filter(
         (booking) =>
           normalizeStatus(booking.status) === "rejected"
@@ -391,7 +399,16 @@ export default function AdminV2Page() {
           normalizeStatus(booking.status) === "cancelled"
       );
 
-      const totalRevenue = confirmedBookings.reduce(
+      const revenueBookings = bookings.filter((booking) => {
+        const status = normalizeStatus(booking.status);
+
+        return (
+          status === "confirmed" ||
+          status === "completed"
+        );
+      });
+
+      const totalRevenue = revenueBookings.reduce(
         (sum, booking) =>
           sum + safeNumber(booking.total_price),
         0
@@ -409,12 +426,20 @@ export default function AdminV2Page() {
           normalizeStatus(booking.status) === "confirmed"
       );
 
+      const todayCompletedBookings = todayBookings.filter(
+        (booking) =>
+          normalizeStatus(booking.status) === "completed"
+      );
+
       const todayPendingBookings = todayBookings.filter(
         (booking) =>
           normalizeStatus(booking.status) === "pending"
       );
 
-      const todayRevenue = todayConfirmedBookings.reduce(
+      const todayRevenue = [
+        ...todayConfirmedBookings,
+        ...todayCompletedBookings,
+      ].reduce(
         (sum, booking) =>
           sum + safeNumber(booking.total_price),
         0
@@ -508,6 +533,7 @@ export default function AdminV2Page() {
         totalBookings: bookings.length,
         pendingBookings: pendingBookings.length,
         confirmedBookings: confirmedBookings.length,
+        completedBookings: completedBookings.length,
         rejectedBookings: rejectedBookings.length,
         cancelledBookings: cancelledBookings.length,
         totalRevenue,
@@ -573,9 +599,9 @@ export default function AdminV2Page() {
         directorOnly: false,
       },
       {
-        title: "დადასტურებული შემოსავალი",
+        title: "შემოსავალი",
         value: formatCurrency(stats.totalRevenue),
-        note: `${stats.confirmedBookings} დადასტურებული ჯავშანი`,
+        note: `${stats.confirmedBookings} დადასტურებული • ${stats.completedBookings} შესრულებული`,
         icon: "💰",
         href: "/admin-v2/payments",
         color: "from-emerald-500 to-green-500",
@@ -679,18 +705,19 @@ export default function AdminV2Page() {
 
   return (
     <main className="min-h-screen bg-[#07111d]">
-      <div className="space-y-6 p-3 sm:p-5 lg:p-6">
-        <section className="relative overflow-hidden rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-500/20 via-blue-500/10 to-violet-500/15 p-5 shadow-2xl backdrop-blur-xl sm:p-6 lg:p-7">
-          <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-violet-500/15 blur-3xl" />
-
-          <div className="relative grid gap-6 xl:grid-cols-[1.4fr_1fr] xl:items-center">
+      <div className="space-y-8 p-4 sm:p-6 lg:p-8">
+        <section className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+          <div className="flex flex-col justify-between gap-6 xl:flex-row xl:items-center">
             <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex rounded-full border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-black text-cyan-100">
-                  🏔️ Georgia Gateway Hub
-                </span>
+              <span className="inline-flex rounded-full bg-cyan-500 px-4 py-2 text-sm font-bold text-white shadow-lg">
+                🏔️ Georgia Travel Hub
+              </span>
 
+              <h1 className="mt-5 text-4xl font-black text-white sm:text-5xl">
+                კეთილი იყოს შენი დაბრუნება, {firstName} 👋
+              </h1>
+
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <span
                   className={`rounded-full px-4 py-2 text-sm font-bold ${
                     role === "Director"
@@ -699,97 +726,33 @@ export default function AdminV2Page() {
                   }`}
                 >
                   {role === "Director"
-                    ? "👑 Director Panel"
-                    : "🛡️ Admin Panel"}
+                    ? "👑 Director"
+                    : "🛡️ Admin"}
+                </span>
+
+                <span className="text-sm text-white/55">
+                  მონაცემები პირდაპირ Supabase-იდან
                 </span>
               </div>
 
-              <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                კეთილი იყოს შენი დაბრუნება,{" "}
-                <span className="text-cyan-300">{firstName}</span> 👋
-              </h1>
-
-              <p className="mt-5 max-w-2xl text-base leading-7 text-white/60 sm:text-lg">
-                მართე ტურები, ჯავშნები, ტრანსფერები და სასტუმროები
-                ერთი სივრციდან.
-              </p>
-
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link
-                  href="/dashboard/add-tour"
-                  className="rounded-2xl bg-cyan-500 px-6 py-3.5 font-black text-white shadow-lg shadow-cyan-500/20 transition hover:-translate-y-0.5 hover:bg-cyan-400"
-                >
-                  ➕ ახალი ტურის დამატება
-                </Link>
-
-                <Link
-                  href="/dashboard/add-transfer"
-                  className="rounded-2xl bg-blue-500 px-6 py-3.5 font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:bg-blue-400"
-                >
-                  🚐 ახალი ტრანსფერის დამატება
-                </Link>
-
-                <Link
-                  href="/dashboard/add-hotel"
-                  className="rounded-2xl bg-emerald-500 px-6 py-3.5 font-black text-white shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 hover:bg-emerald-400"
-                >
-                  🏨 ახალი სასტუმროს დამატება
-                </Link>
-
-                <Link
-                  href="/dashboard/add-guide"
-                  className="rounded-2xl bg-violet-500 px-6 py-3.5 font-black text-white shadow-lg shadow-violet-500/20 transition hover:-translate-y-0.5 hover:bg-violet-400"
-                >
-                  🧑‍💼 ახალი გიდის დამატება
-                </Link>
-
-                <Link
-                  href="/admin-v2/bookings"
-                  className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3.5 font-black text-white transition hover:bg-white/15"
-                >
-                  📋 ჯავშნების ნახვა
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => loadDashboard(true)}
-                  disabled={refreshing}
-                  className="rounded-2xl border border-white/15 bg-white/5 px-6 py-3.5 font-black text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {refreshing ? "ახლდება..." : "🔄 განახლება"}
-                </button>
-              </div>
-
               {lastUpdated && (
-                <p className="mt-5 text-sm text-white/40">
+                <p className="mt-4 text-sm text-white/40">
                   ბოლო განახლება:{" "}
                   {lastUpdated.toLocaleString("ka-GE")}
                 </p>
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-              <HeroMetric
-                icon="⏳"
-                label="დასამუშავებელი ჯავშნები"
-                value={stats.pendingBookings}
-                href="/admin-v2/bookings"
-              />
-
-              <HeroMetric
-                icon="🏔️"
-                label="დასამტკიცებელი ტურები"
-                value={stats.pendingTours}
-                href="/admin-v2/tours"
-              />
-
-              <HeroMetric
-                icon="🚐"
-                label="დასამტკიცებელი ტრანსფერები"
-                value={stats.pendingTransfers}
-                href="/admin-v2/transfers"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => loadDashboard(true)}
+              disabled={refreshing}
+              className="w-fit rounded-2xl bg-cyan-500 px-6 py-3 font-black text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {refreshing
+                ? "ახლდება..."
+                : "🔄 სტატისტიკის განახლება"}
+            </button>
           </div>
         </section>
 
@@ -799,12 +762,12 @@ export default function AdminV2Page() {
           </div>
         )}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {visibleStatCards.map((card) => (
             <Link
               key={card.title}
               href={card.href}
-              className={`group rounded-2xl bg-gradient-to-br p-5 text-white shadow-2xl transition duration-300 hover:-translate-y-1 ${card.color}`}
+              className={`group rounded-3xl bg-gradient-to-br p-6 text-white shadow-2xl transition duration-300 hover:-translate-y-1 ${card.color}`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -812,7 +775,7 @@ export default function AdminV2Page() {
                     {card.title}
                   </p>
 
-                  <h2 className="mt-2 text-3xl font-black">
+                  <h2 className="mt-3 text-4xl font-black">
                     {card.value}
                   </h2>
 
@@ -821,7 +784,7 @@ export default function AdminV2Page() {
                   </p>
                 </div>
 
-                <div className="text-4xl transition group-hover:scale-110">
+                <div className="text-5xl transition group-hover:scale-110">
                   {card.icon}
                 </div>
               </div>
@@ -829,16 +792,16 @@ export default function AdminV2Page() {
           ))}
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[2fr_1fr]">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
+        <section className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div>
-                <h2 className="text-xl font-black text-white">
+                <h2 className="text-2xl font-black text-white">
                   📈 ბოლო 6 თვის შემოსავალი
                 </h2>
 
                 <p className="mt-2 text-sm text-white/50">
-                  ითვლება მხოლოდ დადასტურებული ჯავშნებიდან
+                  ითვლება დადასტურებული და შესრულებული ჯავშნებიდან
                 </p>
               </div>
 
@@ -847,7 +810,7 @@ export default function AdminV2Page() {
               </p>
             </div>
 
-            <div className="mt-6 flex h-64 items-end gap-2">
+            <div className="mt-8 flex h-80 items-end gap-3">
               {monthlyRevenue.map((item) => {
                 const heightPercentage =
                   item.revenue > 0
@@ -874,7 +837,7 @@ export default function AdminV2Page() {
                       </p>
                     </div>
 
-                    <div className="flex h-[170px] items-end">
+                    <div className="flex h-[220px] items-end">
                       <div
                         style={{
                           height: `${heightPercentage}%`,
@@ -892,12 +855,12 @@ export default function AdminV2Page() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
-            <h2 className="text-xl font-black text-white">
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+            <h2 className="text-2xl font-black text-white">
               📅 დღევანდელი შედეგები
             </h2>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-6 space-y-4">
               <TodayItem
                 icon="📋"
                 label="ახალი ჯავშნები"
@@ -933,7 +896,7 @@ export default function AdminV2Page() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
           <StatusCard
             title="ტურები"
             icon="🏔️"
@@ -985,10 +948,10 @@ export default function AdminV2Page() {
           />
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-2">
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
+        <section className="grid gap-6 xl:grid-cols-2">
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-black text-white">
+              <h2 className="text-2xl font-black text-white">
                 📋 ბოლო ჯავშნები
               </h2>
 
@@ -1006,11 +969,11 @@ export default function AdminV2Page() {
                 text="ჯავშნები ჯერ არ არის"
               />
             ) : (
-              <div className="mt-5 space-y-3">
+              <div className="mt-6 space-y-4">
                 {latestBookings.map((booking) => (
                   <div
                     key={booking.id}
-                    className="rounded-xl bg-white/5 p-3.5 transition hover:bg-white/10"
+                    className="rounded-2xl bg-white/5 p-4 transition hover:bg-white/10"
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                       <div className="min-w-0">
@@ -1047,9 +1010,9 @@ export default function AdminV2Page() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
+          <div className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-black text-white">
+              <h2 className="text-2xl font-black text-white">
                 🏔️ ბოლო დამატებული ტურები
               </h2>
 
@@ -1067,11 +1030,11 @@ export default function AdminV2Page() {
                 text="ტურები ჯერ არ არის"
               />
             ) : (
-              <div className="mt-5 space-y-3">
+              <div className="mt-6 space-y-4">
                 {latestTours.map((tour) => (
                   <div
                     key={tour.id}
-                    className="rounded-xl bg-white/5 p-3.5 transition hover:bg-white/10"
+                    className="rounded-2xl bg-white/5 p-4 transition hover:bg-white/10"
                   >
                     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                       <div className="min-w-0">
@@ -1101,36 +1064,12 @@ export default function AdminV2Page() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl">
-          <h2 className="text-xl font-black text-white">
+        <section className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+          <h2 className="text-2xl font-black text-white">
             ⚡ სწრაფი მოქმედებები
           </h2>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <QuickLink
-              href="/dashboard/add-tour"
-              icon="➕"
-              title="ტურის დამატება"
-            />
-
-            <QuickLink
-              href="/dashboard/add-transfer"
-              icon="🚐"
-              title="ტრანსფერის დამატება"
-            />
-
-            <QuickLink
-              href="/dashboard/add-hotel"
-              icon="🏨"
-              title="სასტუმროს დამატება"
-            />
-
-            <QuickLink
-              href="/dashboard/add-guide"
-              icon="🧑‍💼"
-              title="გიდის დამატება"
-            />
-
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <QuickLink
               href="/admin-v2/bookings"
               icon="📋"
@@ -1185,11 +1124,11 @@ export default function AdminV2Page() {
           </div>
         </section>
 
-        <footer className="rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 p-6 shadow-2xl">
+        <footer className="rounded-3xl bg-gradient-to-r from-cyan-600 to-blue-600 p-8 shadow-2xl">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
             <div>
-              <h2 className="text-2xl font-black text-white">
-                🚀 Georgia Gateway Hub
+              <h2 className="text-3xl font-black text-white">
+                🚀 Georgia Travel Hub
               </h2>
 
               <p className="mt-2 text-cyan-100">
@@ -1212,44 +1151,6 @@ export default function AdminV2Page() {
         </footer>
       </div>
     </main>
-  );
-}
-
-function HeroMetric({
-  icon,
-  label,
-  value,
-  href,
-}: {
-  icon: string;
-  label: string;
-  value: number;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/35 p-5 shadow-xl backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-cyan-300/30 hover:bg-slate-950/50"
-    >
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-2xl transition group-hover:scale-105">
-          {icon}
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-wider text-white/40">
-            ყურადღება
-          </p>
-          <p className="mt-1 truncate text-sm font-bold text-white/75">
-            {label}
-          </p>
-        </div>
-      </div>
-
-      <span className="text-3xl font-black text-cyan-300">
-        {formatNumber(value)}
-      </span>
-    </Link>
   );
 }
 
@@ -1282,7 +1183,7 @@ function StatusCard({
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/15"
+      className="rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/15"
     >
       <div className="flex items-center justify-between">
         <div>
@@ -1290,12 +1191,12 @@ function StatusCard({
             {title}
           </p>
 
-          <p className="mt-2 text-3xl font-black text-white">
+          <p className="mt-2 text-4xl font-black text-white">
             {formatNumber(total)}
           </p>
         </div>
 
-        <div className="text-3xl">{icon}</div>
+        <div className="text-5xl">{icon}</div>
       </div>
 
       <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
@@ -1376,7 +1277,7 @@ function TodayItem({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl bg-white/5 p-3.5">
+    <div className="flex items-center justify-between rounded-2xl bg-white/5 p-4">
       <div className="flex items-center gap-3">
         <span className="text-2xl">{icon}</span>
 
@@ -1402,9 +1303,9 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="rounded-xl bg-white/5 p-4 text-center font-bold text-white transition hover:-translate-y-1 hover:bg-cyan-500"
+      className="rounded-2xl bg-white/5 p-5 text-center font-bold text-white transition hover:-translate-y-1 hover:bg-cyan-500"
     >
-      <div className="text-3xl">{icon}</div>
+      <div className="text-4xl">{icon}</div>
 
       <p className="mt-3">{title}</p>
     </Link>
@@ -1422,6 +1323,14 @@ function BookingStatus({
     return (
       <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black text-emerald-300">
         დადასტურებული
+      </span>
+    );
+  }
+
+  if (normalizedStatus === "completed") {
+    return (
+      <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-black text-indigo-300">
+        შესრულებული
       </span>
     );
   }
@@ -1487,8 +1396,8 @@ function EmptyBox({
   text: string;
 }) {
   return (
-    <div className="mt-5 rounded-xl bg-white/5 p-7 text-center">
-      <div className="text-3xl">{icon}</div>
+    <div className="mt-6 rounded-2xl bg-white/5 p-10 text-center">
+      <div className="text-5xl">{icon}</div>
 
       <p className="mt-4 font-bold text-white/55">
         {text}
@@ -1509,6 +1418,10 @@ function normalizeStatus(
     normalized === "confirmed"
   ) {
     return "confirmed";
+  }
+
+  if (normalized === "completed") {
+    return "completed";
   }
 
   if (normalized === "rejected") {
@@ -1641,8 +1554,11 @@ function createMonthlyRevenueData(
   );
 
   bookings.forEach((booking) => {
+    const status = normalizeStatus(booking.status);
+
     if (
-      normalizeStatus(booking.status) !== "confirmed" ||
+      (status !== "confirmed" &&
+        status !== "completed") ||
       !booking.created_at
     ) {
       return;
