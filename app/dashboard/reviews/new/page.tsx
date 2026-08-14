@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  Suspense,
   useEffect,
   useMemo,
   useState,
@@ -24,6 +25,22 @@ type Tour = {
 };
 
 export default function NewReviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-[60vh] items-center justify-center">
+          <p className="font-bold text-slate-600">
+            ⭐ შეფასების გვერდი იტვირთება...
+          </p>
+        </main>
+      }
+    >
+      <NewReviewContent />
+    </Suspense>
+  );
+}
+
+function NewReviewContent() {
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
   const bookingId = searchParams.get("booking") || "";
