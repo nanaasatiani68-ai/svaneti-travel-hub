@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type Booking = {
   id: string;
@@ -18,6 +17,7 @@ type Booking = {
   notes: string | null;
   status: string | null;
   created_at: string | null;
+  completed_at: string | null;
 };
 
 type Tour = {
@@ -37,7 +37,7 @@ type PreparedBooking = Booking & {
 type ActiveTab = "my-bookings" | "received-bookings";
 
 export default function DashboardBookingsPage() {
-  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [activeTab, setActiveTab] =
     useState<ActiveTab>("my-bookings");
@@ -60,12 +60,46 @@ export default function DashboardBookingsPage() {
     setSuccessMessage("");
 
     const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+      data: sessionData,
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (userError || !user) {
-      router.replace("/login");
+    if (sessionError) {
+      console.error("Session loading error:", sessionError);
+    }
+
+    let user = sessionData.session?.user ?? null;
+
+    if (!user) {
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("User loading error:", userError);
+      }
+
+      user = userData.user;
+    }
+
+    if (!user) {
+      const {
+        data: refreshData,
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error("Session refresh error:", refreshError);
+      }
+
+      user = refreshData.user ?? null;
+    }
+
+    if (!user) {
+      window.location.replace(
+        `/login?next=${encodeURIComponent("/dashboard/bookings")}`
+      );
       return;
     }
 
@@ -87,7 +121,8 @@ export default function DashboardBookingsPage() {
             total_price,
             notes,
             status,
-            created_at
+            created_at,
+            completed_at
           `
         )
         .eq("user_id", user.id)
@@ -142,7 +177,8 @@ export default function DashboardBookingsPage() {
             total_price,
             notes,
             status,
-            created_at
+            created_at,
+            completed_at
           `
         )
         .in("tour_id", ownerTourIds)
@@ -221,7 +257,7 @@ export default function DashboardBookingsPage() {
     setMyBookings(prepareBookings(myBookingRows));
     setReceivedBookings(prepareBookings(receivedBookingsData));
     setLoading(false);
-  }, [router]);
+  }, [supabase]);
 
   useEffect(() => {
     loadBookings();
@@ -588,6 +624,12 @@ export default function DashboardBookingsPage() {
                           label="მოთხოვნის თარიღი"
                           value={formatDate(booking.created_at)}
                         />
+                        {booking.completed_at && (
+                          <InfoItem
+                            label="ტური შესრულებულია"
+                            value={formatDate(booking.completed_at)}
+                          />
+                        )}
                       </div>
 
                       {booking.notes && (
@@ -617,6 +659,19 @@ export default function DashboardBookingsPage() {
                                 ? "მუშავდება..."
                                 : "ჯავშნის გაუქმება"}
                             </button>
+                          </div>
+                        )}
+                      {activeTab === "my-bookings" &&
+                        status === "completed" && (
+                          <div className="mt-6 border-t border-slate-200 pt-6">
+                            <Link
+                              href={`/dashboard/reviews/new?booking=${encodeURIComponent(
+                                booking.id
+                              )}`}
+                              className="inline-flex rounded-2xl bg-amber-500 px-6 py-3 font-black text-slate-950 transition hover:bg-amber-400"
+                            >
+                              ⭐ შეფასების დატოვება
+                            </Link>
                           </div>
                         )}
 
@@ -690,6 +745,14 @@ function BookingStatus({
     return (
       <span className="w-fit rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-700">
         უარყოფილი
+      </span>
+    );
+  }
+
+  if (normalizedStatus === "completed") {
+    return (
+      <span className="w-fit rounded-full bg-indigo-100 px-4 py-2 text-sm font-bold text-indigo-700">
+        🏁 შესრულებული
       </span>
     );
   }
