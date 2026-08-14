@@ -546,16 +546,59 @@ function ContactRow({
   label: string;
   value: string;
 }) {
+  const isMissing =
+    !value ||
+    value.includes("არ არის მითითებული");
+
+  const normalizedPhone = value.replace(/[^0-9]/g, "");
+
+  const whatsappHref =
+    label === "WhatsApp" &&
+    !isMissing &&
+    normalizedPhone
+      ? `https://wa.me/${normalizedPhone}`
+      : null;
+
+  const viberHref =
+    label === "Viber" &&
+    !isMissing &&
+    normalizedPhone
+      ? `viber://chat?number=%2B${normalizedPhone}`
+      : null;
+
+  const href = whatsappHref || viberHref;
+
   return (
     <div className="flex items-start gap-2 rounded-xl bg-black/20 px-3 py-2">
       <span>{icon}</span>
 
       <div className="min-w-0">
-        <p className="text-xs text-white/40">{label}</p>
-
-        <p className="mt-0.5 break-words font-semibold text-white/80">
-          {value}
+        <p className="text-xs text-white/40">
+          {label}
         </p>
+
+        {href ? (
+          <a
+            href={href}
+            target={
+              label === "WhatsApp"
+                ? "_blank"
+                : undefined
+            }
+            rel={
+              label === "WhatsApp"
+                ? "noopener noreferrer"
+                : undefined
+            }
+            className="mt-0.5 inline-flex break-words font-semibold text-cyan-300 underline decoration-cyan-400/40 underline-offset-4 transition hover:text-cyan-200"
+          >
+            {value}
+          </a>
+        ) : (
+          <p className="mt-0.5 break-words font-semibold text-white/80">
+            {value}
+          </p>
+        )}
       </div>
     </div>
   );
