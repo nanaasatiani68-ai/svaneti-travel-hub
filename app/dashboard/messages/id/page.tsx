@@ -28,6 +28,21 @@ type Message = {
   created_at: string;
 };
 
+type Profile = {
+  id: string;
+  full_name: string | null;
+};
+
+type Tour = {
+  id: number | string;
+  title: string | null;
+};
+
+type Guide = {
+  id: string;
+  full_name: string | null;
+};
+
 export default function ConversationPage() {
   const params = useParams();
   const conversationId = String(params.id || "");
@@ -42,14 +57,20 @@ export default function ConversationPage() {
   >([]);
   const [newMessage, setNewMessage] = useState("");
 
+  const [otherName, setOtherName] =
+    useState("მომხმარებელი");
+  const [subjectName, setSubjectName] =
+    useState("საუბარი");
+  const [subjectType, setSubjectType] =
+    useState<"tour" | "guide">("tour");
+
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [errorMessage, setErrorMessage] =
     useState("");
 
-  const bottomRef = useRef<HTMLDivElement | null>(
-    null
-  );
+  const bottomRef =
+    useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -60,12 +81,50 @@ export default function ConversationPage() {
 
       try {
         const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+          data: sessionData,
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-        if (userError) {
-          throw userError;
+        if (sessionError) {
+          console.error(
+            "Chat session error:",
+            sessionError
+          );
+        }
+
+        let user =
+          sessionData.session?.user ?? null;
+
+        if (!user) {
+          const {
+            data: userData,
+            error: userError,
+          } = await supabase.auth.getUser();
+
+          if (userError) {
+            console.error(
+              "Chat user error:",
+              userError
+            );
+          }
+
+          user = userData.user;
+        }
+
+        if (!user) {
+          const {
+            data: refreshData,
+            error: refreshError,
+          } = await supabase.auth.refreshSession();
+
+          if (refreshError) {
+            console.error(
+              "Chat refresh error:",
+              refreshError
+            );
+          }
+
+          user = refreshData.user ?? null;
         }
 
         if (!user) {
@@ -77,9 +136,7 @@ export default function ConversationPage() {
           return;
         }
 
-        if (!mounted) {
-          return;
-        }
+        if (!mounted) return;
 
         setUserId(user.id);
 
@@ -126,42 +183,127 @@ export default function ConversationPage() {
           setConversation(row);
         }
 
-        const {
-          data: messageData,
-          error: messagesError,
-        } = await supabase
-          .from("messages")
-          .select(
-            `
-              id,
-              conversation_id,
-              sender_id,
-              message,
-              is_read,
-              created_at
-            `
-          )
-          .eq("conversation_id", conversationId)
-          .order("created_at", {
-            ascending: true,
-          });
+        const otherUserId =
+          row.customer_id === user.id
+            ? row.provider_id
+            : row.customer_id;
 
-        if (messagesError) {
-          throw messagesError;
+        const profilePromise = supabase
+          .from("profiles")
+          .select("id, full_name")
+          .eq("id", otherUserId)
+          .maybeSingle();
+
+        const subjectPromise = row.guide_id
+          ? supabase
+              .from("guides")
+              .select("id, full_name")
+              .eq("id", row.guide_id)
+              .maybeSingle()
+          : row.tour_id !== null
+            ? supabase
+                .from("tours")
+                .select("id, title")
+                .eq("id", row.tour_id)
+                .maybeSingle()
+            : Promise.resolve({
+                data: null,
+                error: null,
+              });
+
+        const [
+          profileResult,
+          subjectResult,
+          messagesResult,
+        ] = await Promise.all([
+          profilePromise,
+          subjectPromise,
+          supabase
+            .from("messages")
+            .select(
+              `
+                id,
+                conversation_id,
+                sender_id,
+                message,
+                is_read,
+                created_at
+              `
+            )
+            .eq(
+              "conversation_id",
+              conversationId
+            )
+            .order("created_at", {
+              ascending: true,
+            }),
+        ]);
+
+        if (profileResult.data && mounted) {
+          const profile =
+            profileResult.data as Profile;
+
+          setOtherName(
+            profile.full_name || "მომხმარებელი"
+          );
+        }
+
+        if (row.guide_id) {
+          if (subjectResult.data && mounted) {
+            const guide =
+              subjectResult.data as Guide;
+
+            setSubjectName(
+              guide.full_name || "გიდი"
+            );
+          }
+
+          if (mounted) {
+            setSubjectType("guide");
+          }
+        } else {
+          if (subjectResult.data && mounted) {
+            const tour =
+              subjectResult.data as Tour;
+
+            setSubjectName(
+              tour.title || "ტური"
+            );
+          }
+
+          if (mounted) {
+            setSubjectType("tour");
+          }
+        }
+
+        if (messagesResult.error) {
+          throw messagesResult.error;
         }
 
         if (mounted) {
           setMessages(
-            (messageData as Message[] | null) ?? []
+            (messagesResult.data as Message[] | null) ??
+              []
           );
         }
 
-        await supabase
-          .from("messages")
-          .update({ is_read: true })
-          .eq("conversation_id", conversationId)
-          .neq("sender_id", user.id)
-          .eq("is_read", false);
+        const { error: readError } =
+          await supabase
+            .from("messages")
+            .update({ is_read: true })
+            .eq(
+              "conversation_id",
+              conversationId
+            )
+            .neq("sender_id", user.id)
+            .eq("is_read", false);
+
+        if (readError) {
+          console.error(
+            "Mark messages read error:",
+            readError
+          );
+        }
       } catch (error) {
         console.error("Load chat error:", error);
 
@@ -180,7 +322,7 @@ export default function ConversationPage() {
       }
     }
 
-    loadChat();
+    void loadChat();
 
     return () => {
       mounted = false;
@@ -188,7 +330,7 @@ export default function ConversationPage() {
   }, [conversationId, supabase]);
 
   useEffect(() => {
-    if (!conversationId) {
+    if (!conversationId || !userId) {
       return;
     }
 
@@ -222,15 +364,34 @@ export default function ConversationPage() {
           });
 
           if (
-            userId &&
             nextMessage.sender_id !== userId
           ) {
-            supabase
+            void supabase
               .from("messages")
               .update({ is_read: true })
-              .eq("id", nextMessage.id)
-              .then(() => undefined);
+              .eq("id", nextMessage.id);
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const updatedMessage =
+            payload.new as Message;
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === updatedMessage.id
+                ? updatedMessage
+                : message
+            )
+          );
         }
       )
       .subscribe();
@@ -283,6 +444,21 @@ export default function ConversationPage() {
       }
 
       setNewMessage("");
+
+      const { error: conversationUpdateError } =
+        await supabase
+          .from("conversations")
+          .update({
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversation.id);
+
+      if (conversationUpdateError) {
+        console.error(
+          "Conversation timestamp update error:",
+          conversationUpdateError
+        );
+      }
     } catch (error) {
       console.error(
         "Send message error:",
@@ -307,6 +483,7 @@ export default function ConversationPage() {
       <main className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
           <div className="text-5xl">💬</div>
+
           <p className="mt-4 font-semibold text-slate-600">
             საუბარი იტვირთება...
           </p>
@@ -343,19 +520,26 @@ export default function ConversationPage() {
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-4xl flex-col">
       <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
             Live Chat
           </p>
 
-          <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">
-            💬 საუბარი
+          <h1 className="mt-1 truncate text-2xl font-black text-slate-900 sm:text-3xl">
+            💬 {subjectName}
           </h1>
+
+          <p className="mt-1 text-sm font-semibold text-slate-500">
+            {subjectType === "guide"
+              ? "🧑‍💼 გიდი"
+              : "🏔️ ტური"}{" "}
+            • საუბარი: {otherName}
+          </p>
         </div>
 
         <Link
           href="/dashboard/messages"
-          className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white"
+          className="shrink-0 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white"
         >
           ← უკან
         </Link>
@@ -399,6 +583,12 @@ export default function ConversationPage() {
                     : "bg-slate-100 text-slate-900"
                 }`}
               >
+                {!mine && (
+                  <p className="mb-1 text-[11px] font-black text-cyan-700">
+                    {otherName}
+                  </p>
+                )}
+
                 <p className="whitespace-pre-wrap break-words leading-6">
                   {message.message}
                 </p>
@@ -411,8 +601,10 @@ export default function ConversationPage() {
                   }`}
                 >
                   {formatTime(message.created_at)}
-                  {mine && message.is_read
-                    ? " • წაკითხულია"
+                  {mine
+                    ? message.is_read
+                      ? " • ✓✓ წაკითხულია"
+                      : " • ✓ გაგზავნილია"
                     : ""}
                 </p>
               </div>
@@ -432,6 +624,16 @@ export default function ConversationPage() {
           onChange={(event) =>
             setNewMessage(event.target.value)
           }
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              !event.shiftKey
+            ) {
+              event.preventDefault();
+              event.currentTarget
+                .form?.requestSubmit();
+            }
+          }}
           placeholder="დაწერე შეტყობინება..."
           rows={2}
           maxLength={2000}
@@ -448,6 +650,10 @@ export default function ConversationPage() {
           {sending ? "..." : "გაგზავნა"}
         </button>
       </form>
+
+      <p className="mt-2 text-center text-xs text-slate-400">
+        Enter — გაგზავნა • Shift + Enter — ახალი ხაზი
+      </p>
     </main>
   );
 }
