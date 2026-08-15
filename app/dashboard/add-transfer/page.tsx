@@ -1,7 +1,8 @@
 "use client";
 
 import {
-  FormEvent,
+  type ChangeEvent,
+  type FormEvent,
   useEffect,
   useMemo,
   useState,
@@ -13,6 +14,13 @@ type Profile = {
   role: string | null;
   phone: string | null;
 };
+
+const MAX_TRANSFER_IMAGE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TRANSFER_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
 
 export default function AddTransferPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -30,7 +38,8 @@ export default function AddTransferPage() {
   const [vehicle, setVehicle] = useState("");
   const [seats, setSeats] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
 
   const [contactPhone, setContactPhone] = useState("");
   const [hasWhatsapp, setHasWhatsapp] = useState(false);
@@ -161,6 +170,95 @@ export default function AddTransferPage() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(imageFile);
+    setImagePreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [imageFile]);
+
+  function handleTransferImageChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    setMessage("");
+
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    if (!ALLOWED_TRANSFER_IMAGE_TYPES.includes(file.type)) {
+      setMessage(
+        "შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტო."
+      );
+      setMessageType("error");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_TRANSFER_IMAGE_SIZE) {
+      setMessage("ფოტოს მაქსიმალური ზომაა 10 MB.");
+      setMessageType("error");
+      event.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    event.target.value = "";
+  }
+
+  async function uploadTransferImage() {
+    if (!imageFile) {
+      return {
+        publicUrl: null as string | null,
+        filePath: null as string | null,
+      };
+    }
+
+    if (!userId) {
+      throw new Error("მომხმარებელი ვერ მოიძებნა.");
+    }
+
+    const extension =
+      imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+
+    const filePath =
+      `${userId}/transfer-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+    const { error: uploadError } =
+      await supabase.storage
+        .from("transfer-images")
+        .upload(filePath, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: imageFile.type,
+        });
+
+    if (uploadError) {
+      throw new Error(
+        `ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`
+      );
+    }
+
+    const { data: publicUrlData } =
+      supabase.storage
+        .from("transfer-images")
+        .getPublicUrl(filePath);
+
+    return {
+      publicUrl: publicUrlData.publicUrl,
+      filePath,
+    };
+  }
+
   async function addTransfer(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -232,7 +330,15 @@ export default function AddTransferPage() {
 
     setLoading(true);
 
+    let uploadedFilePath: string | null = null;
+
     try {
+      const uploadedImage =
+        await uploadTransferImage();
+
+      uploadedFilePath =
+        uploadedImage.filePath;
+
       const { error } = await supabase
         .from("transfers")
         .insert({
@@ -244,7 +350,7 @@ export default function AddTransferPage() {
           seats: seats ? Number(seats) : null,
           description:
             description.trim() || null,
-          image_url: imageUrl.trim() || null,
+          image_url: uploadedImage.publicUrl,
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,
@@ -252,6 +358,12 @@ export default function AddTransferPage() {
         });
 
       if (error) {
+        if (uploadedFilePath) {
+          await supabase.storage
+            .from("transfer-images")
+            .remove([uploadedFilePath]);
+        }
+
         throw error;
       }
 
@@ -409,17 +521,50 @@ export default function AddTransferPage() {
               />
             </Field>
 
-            <Field label="ფოტოს URL">
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(event) =>
-                  setImageUrl(event.target.value)
-                }
-                placeholder="https://..."
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
-              />
-            </Field>
+            <Field label="მანქანის ფოტო">
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-5">
+              <label
+                className={`inline-flex w-full cursor-pointer items-center justify-center rounded-2xl px-6 py-3 font-black text-white transition ${
+                  loading
+                    ? "cursor-not-allowed bg-slate-400"
+                    : "bg-cyan-600 hover:bg-cyan-700"
+                }`}
+              >
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleTransferImageChange}
+                  disabled={loading}
+                  className="hidden"
+                />
+
+                📷 მანქანის ფოტოს ატვირთვა
+              </label>
+
+              <p className="mt-3 text-xs text-slate-500">
+                JPG, PNG ან WEBP — მაქსიმუმ 10 MB
+              </p>
+
+              {imagePreview && (
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <img
+                    src={imagePreview}
+                    alt="მანქანის ფოტო"
+                    className="h-64 w-full object-cover"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setImageFile(null)}
+                    disabled={loading}
+                    className="w-full bg-red-50 px-4 py-3 font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                  >
+                    🗑️ ფოტოს მოცილება
+                  </button>
+                </div>
+              )}
+            </div>
+          </Field>
           </div>
 
           <Field label="ტრანსფერის აღწერა">
