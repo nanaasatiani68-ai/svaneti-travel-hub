@@ -40,7 +40,6 @@ export default function AddTourPage() {
   const [maxPeople, setMaxPeople] = useState("");
   const [category, setCategory] = useState("");
 
-  const [organizerName, setOrganizerName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [hasWhatsapp, setHasWhatsapp] = useState(false);
   const [hasViber, setHasViber] = useState(false);
@@ -117,7 +116,9 @@ export default function AddTourPage() {
     setPreviewUrls(urls);
 
     return () => {
-      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.forEach((url) =>
+        URL.revokeObjectURL(url)
+      );
     };
   }, [imageFiles]);
 
@@ -165,7 +166,10 @@ export default function AddTourPage() {
             existingFile.lastModified === file.lastModified
         );
 
-        if (!alreadyExists && combined.length < MAX_IMAGES) {
+        if (
+          !alreadyExists &&
+          combined.length < MAX_IMAGES
+        ) {
           combined.push(file);
         }
       });
@@ -188,7 +192,9 @@ export default function AddTourPage() {
 
   function removeSelectedImage(index: number) {
     setImageFiles((currentFiles) =>
-      currentFiles.filter((_, fileIndex) => fileIndex !== index)
+      currentFiles.filter(
+        (_, fileIndex) => fileIndex !== index
+      )
     );
 
     setMessage("");
@@ -210,16 +216,23 @@ export default function AddTourPage() {
     const filePaths: string[] = [];
 
     try {
-      for (let index = 0; index < imageFiles.length; index++) {
+      for (
+        let index = 0;
+        index < imageFiles.length;
+        index++
+      ) {
         const imageFile = imageFiles[index];
 
-        const extension = getFileExtension(imageFile);
-        const randomPart = crypto.randomUUID();
+        const extension =
+          getFileExtension(imageFile);
+        const randomPart =
+          crypto.randomUUID();
 
         const fileName =
           `tour-${Date.now()}-${index}-${randomPart}.${extension}`;
 
-        const filePath = `${userId}/${fileName}`;
+        const filePath =
+          `${userId}/${fileName}`;
 
         const { error: uploadError } =
           await supabase.storage
@@ -242,7 +255,9 @@ export default function AddTourPage() {
             .getPublicUrl(filePath);
 
         filePaths.push(filePath);
-        publicUrls.push(publicUrlData.publicUrl);
+        publicUrls.push(
+          publicUrlData.publicUrl
+        );
       }
 
       return {
@@ -324,14 +339,6 @@ export default function AddTourPage() {
       return;
     }
 
-    if (!organizerName.trim()) {
-      setMessage(
-        "ჩაწერე ტურის ავტორის / ორგანიზატორის სახელი."
-      );
-      setMessageType("error");
-      return;
-    }
-
     if (!contactPhone.trim()) {
       setMessage(
         "ჩაწერე ტურის ორგანიზატორის ტელეფონის ნომერი."
@@ -349,7 +356,9 @@ export default function AddTourPage() {
     }
 
     if (imageFiles.length === 0) {
-      setMessage("აირჩიე მინიმუმ ერთი ფოტო.");
+      setMessage(
+        "აირჩიე მინიმუმ ერთი ფოტო."
+      );
       setMessageType("error");
       return;
     }
@@ -359,12 +368,15 @@ export default function AddTourPage() {
     let uploadedFilePaths: string[] = [];
 
     try {
-      const uploadedImages = await uploadImages();
+      const uploadedImages =
+        await uploadImages();
 
-      uploadedFilePaths = uploadedImages.filePaths;
+      uploadedFilePaths =
+        uploadedImages.filePaths;
 
       const firstImage =
-        uploadedImages.publicUrls[0] ?? null;
+        uploadedImages.publicUrls[0] ??
+        null;
 
       const { error: insertError } = await supabase
         .from("tours")
@@ -379,18 +391,11 @@ export default function AddTourPage() {
             ? Number(maxPeople)
             : null,
           category: category || null,
-
-          // პირველი ფოტო არის მთავარი
           image_url: firstImage,
-
-          // ყველა ფოტო ინახება გალერეისთვის
-          image_urls: uploadedImages.publicUrls,
-
+          image_urls:
+            uploadedImages.publicUrls,
           user_id: userId,
           status: "pending",
-
-          organizer_name: organizerName.trim(),
-
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,
@@ -409,7 +414,7 @@ export default function AddTourPage() {
       }
 
       setMessage(
-        "ტური და ფოტოები წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
+        "ტური წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
       );
       setMessageType("success");
 
@@ -457,8 +462,9 @@ export default function AddTourPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl leading-7 text-white/60">
-              შეავსე ტურის ინფორმაცია და ატვირთე მაქსიმუმ 5
-              ფოტო. პირველი ფოტო იქნება ტურის მთავარი ფოტო.
+              შეავსე ტურის ინფორმაცია და ატვირთე მაქსიმუმ 5 ფოტო.
+              ტური გამოქვეყნდება ადმინისტრატორის დადასტურების
+              შემდეგ.
             </p>
           </div>
 
@@ -560,7 +566,7 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setDuration(event.target.value)
                   }
-                  placeholder="მაგალითად: 4–5 საათი"
+                  placeholder="მაგალითად: 1 დღე"
                   className="input"
                 />
               </FormField>
@@ -644,7 +650,7 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setDescription(event.target.value)
                   }
-                  placeholder="აღწერე ტური, მარშრუტი და მნიშვნელოვანი ინფორმაცია..."
+                  placeholder="აღწერე მარშრუტი, მომსახურება, შეხვედრის ადგილი და მნიშვნელოვანი პირობები..."
                   rows={7}
                   required
                   className="input resize-none"
@@ -662,27 +668,13 @@ export default function AddTourPage() {
               საკონტაქტო ინფორმაცია
             </h2>
 
-            <div className="mt-7 grid gap-5 md:grid-cols-2">
-              <FormField
-                label="ტურის ავტორი / ორგანიზატორი"
-                required
-              >
-                <input
-                  type="text"
-                  value={organizerName}
-                  onChange={(event) =>
-                    setOrganizerName(event.target.value)
-                  }
-                  placeholder="მაგალითად: Georgia Gateway Hub"
-                  required
-                  className="input"
-                />
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
+              ჩაწერე საერთაშორისო ფორმატის ნომერი. უცხოელი
+              ტურისტი ამ ნომრით შეძლებს WhatsApp-ზე ან Viber-ზე
+              დაკავშირებას.
+            </p>
 
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  ეს სახელი გამოჩნდება საჯაროდ ტურის ავტორად.
-                </p>
-              </FormField>
-
+            <div className="mt-7">
               <FormField
                 label="ტურის ორგანიზატორის ტელეფონის ნომერი"
                 required
@@ -697,6 +689,11 @@ export default function AddTourPage() {
                   required
                   className="input"
                 />
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  გამოიყენე ქვეყნის კოდი, მაგალითად:
+                  +995555123456
+                </p>
               </FormField>
             </div>
 
@@ -763,6 +760,14 @@ export default function AddTourPage() {
                 </div>
               </label>
             </div>
+
+            {!hasWhatsapp && !hasViber && (
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800">
+                ℹ️ WhatsApp ან Viber მონიშნული არ არის.
+                მომხმარებელი მხოლოდ ჩვეულებრივი ზარით შეძლებს
+                დაკავშირებას.
+              </div>
+            )}
           </section>
 
           <section className="border-t border-slate-200 pt-8">
@@ -776,15 +781,15 @@ export default function AddTourPage() {
 
             <p className="mt-3 text-sm leading-6 text-slate-500">
               შეგიძლია ატვირთო მაქსიმუმ 5 ფოტო.
-              პირველი ფოტო იქნება მთავარი ფოტო.
-              თითოეულის მაქსიმალური ზომაა 10 MB.
+              პირველი ფოტო იქნება ტურის მთავარი ფოტო.
+              თითოეული ფოტოს მაქსიმალური ზომაა 10 MB.
             </p>
 
             <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-lg font-black text-slate-900">
-                    📸 დაამატე ტურის ფოტოები
+                    📷 დაამატე ფოტო
                   </p>
 
                   <p className="mt-1 text-sm text-slate-500">
@@ -794,7 +799,8 @@ export default function AddTourPage() {
 
                 <label
                   className={`inline-flex w-full items-center justify-center rounded-2xl px-6 py-3 font-black text-white shadow-lg transition sm:w-auto ${
-                    saving || imageFiles.length >= MAX_IMAGES
+                    saving ||
+                    imageFiles.length >= MAX_IMAGES
                       ? "cursor-not-allowed bg-slate-400"
                       : "cursor-pointer bg-cyan-600 hover:bg-cyan-700"
                   }`}
@@ -805,7 +811,8 @@ export default function AddTourPage() {
                     multiple
                     onChange={handleImageChange}
                     disabled={
-                      saving || imageFiles.length >= MAX_IMAGES
+                      saving ||
+                      imageFiles.length >= MAX_IMAGES
                     }
                     className="hidden"
                   />
@@ -819,54 +826,63 @@ export default function AddTourPage() {
               </div>
 
               <p className="mt-4 text-xs leading-5 text-slate-500">
-                შეგიძლია ერთდროულად რამდენიმე ფოტო მონიშნო ან ღილაკს რამდენჯერმე დააჭირო.
-                პირველი ფოტო იქნება მთავარი ფოტო.
+                ტელეფონიდან შეგიძლია ფოტოები მონიშნო ერთდროულად
+                ან ღილაკს რამდენჯერმე დააჭირო.
               </p>
             </div>
 
             {previewUrls.length > 0 && (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {previewUrls.map((url, index) => (
-                  <div
-                    key={url}
-                    className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm"
-                  >
-                    <div className="relative">
-                      <img
-                        src={url}
-                        alt={`ტურის ფოტო ${index + 1}`}
-                        className="h-48 w-full object-cover"
-                      />
+                {previewUrls.map(
+                  (url, index) => (
+                    <div
+                      key={`${url}-${index}`}
+                      className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm"
+                    >
+                      <div className="relative">
+                        <img
+                          src={url}
+                          alt={`ტურის ფოტო ${
+                            index + 1
+                          }`}
+                          className="h-48 w-full object-cover"
+                        />
 
-                      {index === 0 && (
-                        <div className="absolute left-3 top-3 rounded-full bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-lg">
-                          ⭐ მთავარი ფოტო
+                        {index === 0 && (
+                          <div className="absolute left-3 top-3 rounded-full bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-lg">
+                            ⭐ მთავარი ფოტო
+                          </div>
+                        )}
+
+                        <div className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-2 text-xs font-black text-white">
+                          {index + 1}
                         </div>
-                      )}
+                      </div>
 
-                      <div className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-2 text-xs font-black text-white">
-                        {index + 1}
+                      <div className="p-4">
+                        <p className="truncate text-sm font-semibold text-slate-600">
+                          {
+                            imageFiles[index]
+                              ?.name
+                          }
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeSelectedImage(
+                              index
+                            )
+                          }
+                          disabled={saving}
+                          className="mt-3 w-full rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200 disabled:opacity-50"
+                        >
+                          🗑️ ფოტოს მოცილება
+                        </button>
                       </div>
                     </div>
-
-                    <div className="p-4">
-                      <p className="truncate text-sm font-semibold text-slate-600">
-                        {imageFiles[index]?.name}
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeSelectedImage(index)
-                        }
-                        disabled={saving}
-                        className="mt-3 w-full rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200 disabled:opacity-50"
-                      >
-                        🗑️ ფოტოს მოცილება
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             )}
 
@@ -893,7 +909,7 @@ export default function AddTourPage() {
               className="rounded-2xl bg-cyan-600 px-8 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               {saving
-                ? `⏳ ${imageFiles.length} ფოტო იტვირთება...`
+                ? `ტური და ${imageFiles.length} ფოტო ინახება...`
                 : "🏔️ ტურის გაგზავნა"}
             </button>
           </div>
@@ -953,7 +969,6 @@ function getFileExtension(file: File) {
 
 function getLocalToday() {
   const now = new Date();
-
   const timezoneOffset =
     now.getTimezoneOffset() * 60_000;
 
