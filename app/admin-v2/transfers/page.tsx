@@ -74,10 +74,15 @@ export default function TransfersPage() {
     setUpdatingId(transferId);
     setMessage("");
 
-    const { error } = await supabase
+    const {
+      data: updatedTransfer,
+      error,
+    } = await supabase
       .from("transfers")
       .update({ status: nextStatus })
-      .eq("id", transferId);
+      .eq("id", transferId)
+      .select("id, status")
+      .maybeSingle();
 
     if (error) {
       console.error("Transfer status update error:", error);
@@ -88,12 +93,29 @@ export default function TransfersPage() {
       return;
     }
 
+    if (!updatedTransfer) {
+      setMessage(
+        "ტრანსფერის სტატუსი ბაზაში არ შეიცვალა. სავარაუდოდ Supabase RLS Update Policy არ გაქვს ჩართული."
+      );
+      setUpdatingId(null);
+      return;
+    }
+
     setTransfers((currentTransfers) =>
       currentTransfers.map((transfer) =>
         transfer.id === transferId
-          ? { ...transfer, status: nextStatus }
+          ? {
+              ...transfer,
+              status: String(updatedTransfer.status || nextStatus),
+            }
           : transfer
       )
+    );
+
+    setMessage(
+      nextStatus === "approved"
+        ? "✅ ტრანსფერი წარმატებით დამტკიცდა."
+        : "❌ ტრანსფერი უარყოფილია."
     );
 
     setUpdatingId(null);
@@ -279,12 +301,25 @@ export default function TransfersPage() {
                               if (updatingId) return;
                               setUpdatingId(transfer.id);
 
-                              const { error } = await supabase
+                              const {
+                                data: updatedTransfer,
+                                error,
+                              } = await supabase
                                 .from("transfers")
                                 .update({ status: "pending" })
-                                .eq("id", transfer.id);
+                                .eq("id", transfer.id)
+                                .select("id, status")
+                                .maybeSingle();
 
-                              if (!error) {
+                              if (error) {
+                                setMessage(
+                                  `სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+                                );
+                              } else if (!updatedTransfer) {
+                                setMessage(
+                                  "ტრანსფერის სტატუსი ბაზაში არ შეიცვალა. შეამოწმე Supabase RLS Update Policy."
+                                );
+                              } else {
                                 setTransfers((currentTransfers) =>
                                   currentTransfers.map((item) =>
                                     item.id === transfer.id
@@ -295,9 +330,8 @@ export default function TransfersPage() {
                                       : item
                                   )
                                 );
-                              } else {
                                 setMessage(
-                                  `სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+                                  "↩️ ტრანსფერი დაბრუნდა მოლოდინში."
                                 );
                               }
 
