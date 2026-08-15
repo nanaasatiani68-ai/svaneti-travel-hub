@@ -13,6 +13,7 @@ type Tour = {
   location: string | null;
   price: number | null;
   image_url: string | null;
+  image_urls: string[] | null;
   duration: string | null;
   start_date: string | null;
   max_people: number | null;
@@ -25,6 +26,8 @@ type Tour = {
   contact_phone: string | null;
   whatsapp_phone: string | null;
   viber_phone: string | null;
+  has_whatsapp: boolean | null;
+  has_viber: boolean | null;
 };
 
 export default function MyToursPage() {
@@ -70,6 +73,7 @@ export default function MyToursPage() {
           location,
           price,
           image_url,
+          image_urls,
           duration,
           start_date,
           max_people,
@@ -80,7 +84,9 @@ export default function MyToursPage() {
           organizer_name,
           contact_phone,
           whatsapp_phone,
-          viber_phone
+          viber_phone,
+          has_whatsapp,
+          has_viber
         `
       )
       .eq("user_id", user.id)
@@ -163,20 +169,39 @@ export default function MyToursPage() {
       return;
     }
 
-    const imagePath = getStoragePathFromPublicUrl(
-      tour.image_url || "",
-      "tour-images"
+    const imageUrls =
+      Array.isArray(tour.image_urls) &&
+      tour.image_urls.length > 0
+        ? tour.image_urls
+        : tour.image_url
+          ? [tour.image_url]
+          : [];
+
+    const imagePaths = Array.from(
+      new Set(
+        imageUrls
+          .map((url) =>
+            getStoragePathFromPublicUrl(
+              url,
+              "tour-images"
+            )
+          )
+          .filter(
+            (path): path is string =>
+              Boolean(path)
+          )
+      )
     );
 
-    if (imagePath) {
+    if (imagePaths.length > 0) {
       const { error: imageDeleteError } =
         await supabase.storage
           .from("tour-images")
-          .remove([imagePath]);
+          .remove(imagePaths);
 
       if (imageDeleteError) {
         console.error(
-          "Tour image delete error:",
+          "Tour images delete error:",
           imageDeleteError
         );
       }
@@ -404,8 +429,12 @@ export default function MyToursPage() {
                         icon="🟢"
                         label="WhatsApp"
                         value={
-                          tour.whatsapp_phone ||
-                          "ნომერი არ არის მითითებული"
+                          tour.has_whatsapp
+                            ? tour.contact_phone ||
+                              tour.whatsapp_phone ||
+                              "ნომერი არ არის მითითებული"
+                            : tour.whatsapp_phone ||
+                              "ნომერი არ არის მითითებული"
                         }
                       />
 
@@ -413,8 +442,12 @@ export default function MyToursPage() {
                         icon="🟣"
                         label="Viber"
                         value={
-                          tour.viber_phone ||
-                          "ნომერი არ არის მითითებული"
+                          tour.has_viber
+                            ? tour.contact_phone ||
+                              tour.viber_phone ||
+                              "ნომერი არ არის მითითებული"
+                            : tour.viber_phone ||
+                              "ნომერი არ არის მითითებული"
                         }
                       />
                     </div>
@@ -467,7 +500,7 @@ export default function MyToursPage() {
                     </Link>
 
                     <Link
-                      href={`/dashboard/edit-tour/${tour.id}`}
+                      href={`/dashboard/my-tours/${tour.id}/edit`}
                       className="flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-center font-bold text-white transition hover:bg-amber-600"
                     >
                       ✏️ შეცვლა
