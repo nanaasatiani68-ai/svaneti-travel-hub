@@ -21,6 +21,7 @@ type Tour = {
   location: string | null;
   price: number | null;
   image_url: string | null;
+  image_urls: string[] | null;
   duration: string | null;
   max_people: number | null;
   category: string | null;
@@ -50,6 +51,7 @@ export default function BookTourPage() {
   const [tour, setTour] = useState<Tour | null>(null);
   const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [selectedImage, setSelectedImage] = useState("");
 
   const [currentUserId, setCurrentUserId] = useState("");
   const [loadingTour, setLoadingTour] = useState(true);
@@ -132,6 +134,7 @@ export default function BookTourPage() {
             location,
             price,
             image_url,
+            image_urls,
             duration,
             max_people,
             category,
@@ -160,6 +163,16 @@ export default function BookTourPage() {
       const loadedTour = data as Tour;
       setTour(loadedTour);
 
+      const initialGallery =
+        Array.isArray(loadedTour.image_urls) &&
+        loadedTour.image_urls.length > 0
+          ? loadedTour.image_urls.filter(Boolean).slice(0, 5)
+          : loadedTour.image_url
+            ? [loadedTour.image_url]
+            : [];
+
+      setSelectedImage(initialGallery[0] || "");
+
       if (!loadedTour.user_id) {
         return;
       }
@@ -175,6 +188,7 @@ export default function BookTourPage() {
             location,
             price,
             image_url,
+            image_urls,
             duration,
             max_people,
             category,
@@ -316,6 +330,31 @@ export default function BookTourPage() {
 
     return total / reviews.length;
   }, [reviews]);
+
+  const galleryImages = useMemo(() => {
+    if (!tour) {
+      return [] as string[];
+    }
+
+    const urls =
+      Array.isArray(tour.image_urls) &&
+      tour.image_urls.length > 0
+        ? tour.image_urls.filter(Boolean)
+        : tour.image_url
+          ? [tour.image_url]
+          : [];
+
+    return Array.from(new Set(urls)).slice(0, 5);
+  }, [tour]);
+
+  useEffect(() => {
+    if (
+      galleryImages.length > 0 &&
+      !galleryImages.includes(selectedImage)
+    ) {
+      setSelectedImage(galleryImages[0]);
+    }
+  }, [galleryImages, selectedImage]);
 
   const totalPrice = useMemo(() => {
     if (tour?.price === null || tour?.price === undefined) {
@@ -698,9 +737,9 @@ export default function BookTourPage() {
           <div className="space-y-8">
             <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl">
               <div className="relative">
-                {tour.image_url ? (
+                {selectedImage ? (
                   <img
-                    src={tour.image_url}
+                    src={selectedImage}
                     alt={tour.title || "Tour"}
                     className="h-[300px] w-full object-cover sm:h-[480px]"
                   />
@@ -710,7 +749,7 @@ export default function BookTourPage() {
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
                   <div className="flex flex-wrap gap-2">
@@ -752,6 +791,62 @@ export default function BookTourPage() {
               </div>
             </section>
 
+            {galleryImages.length > 1 && (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-xl sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                      Tour gallery
+                    </p>
+
+                    <h2 className="mt-1 text-xl font-black">
+                      📸 ტურის ფოტოები
+                    </h2>
+                  </div>
+
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/60">
+                    {galleryImages.length} ფოტო
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                  {galleryImages.map((image, index) => {
+                    const active = image === selectedImage;
+
+                    return (
+                      <button
+                        key={`${image}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedImage(image)}
+                        className={`group relative overflow-hidden rounded-2xl border-2 transition ${
+                          active
+                            ? "border-cyan-400 ring-2 ring-cyan-400/30"
+                            : "border-white/10 hover:border-white/30"
+                        }`}
+                        aria-label={`ტურის ფოტო ${index + 1}`}
+                      >
+                        <img
+                          src={image}
+                          alt={`${tour.title || "ტური"} - ფოტო ${index + 1}`}
+                          className="h-24 w-full object-cover transition duration-300 group-hover:scale-105 sm:h-28"
+                        />
+
+                        <span className="absolute right-2 top-2 rounded-full bg-slate-950/75 px-2 py-1 text-[10px] font-black text-white">
+                          {index + 1}
+                        </span>
+
+                        {index === 0 && (
+                          <span className="absolute bottom-2 left-2 rounded-full bg-cyan-500 px-2 py-1 text-[10px] font-black text-white">
+                            მთავარი
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-7">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoBox
@@ -788,7 +883,7 @@ export default function BookTourPage() {
               </div>
             </section>
 
-            <section id="tour-description" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
                 Tour description
               </p>
@@ -1139,7 +1234,7 @@ export default function BookTourPage() {
             )}
           </div>
 
-          <aside id="booking" className="scroll-mt-28 rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
+          <aside className="rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
                 Booking
