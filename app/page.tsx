@@ -90,6 +90,7 @@ const translations = {
     pricePerPerson: "ფასი ერთ ადამიანზე",
     negotiable: "შეთანხმებით",
     book: "დაჯავშნა",
+    details: "დეტალების ნახვა",
     addFavorite: "ფავორიტებში დამატება",
 
     recommended: "რეკომენდებული",
@@ -198,6 +199,7 @@ const translations = {
     pricePerPerson: "Price per person",
     negotiable: "Contact for price",
     book: "Book Now",
+    details: "View Details",
     addFavorite: "Add to favorites",
 
     recommended: "Recommended",
@@ -964,12 +966,21 @@ export default function Home() {
                           : t.negotiable}
                       </p>
 
-                      <Link
-                        href={`/book-tour/${tour.id}`}
-                        className="rounded-xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
-                      >
-                        {t.book}
-                      </Link>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Link
+                          href={`/book-tour/${tour.id}#tour-description`}
+                          className="rounded-xl border border-white/15 bg-white/10 px-5 py-3 text-center font-bold transition hover:bg-white/20"
+                        >
+                          👁️ {t.details}
+                        </Link>
+
+                        <Link
+                          href={`/book-tour/${tour.id}#booking`}
+                          className="rounded-xl bg-cyan-500 px-5 py-3 text-center font-bold transition hover:bg-cyan-600"
+                        >
+                          📅 {t.book}
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -1145,17 +1156,23 @@ function TourCard({
   return (
     <article className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/10">
       <div className="relative overflow-hidden">
-        {tour.image_url ? (
-          <img
-            src={tour.image_url}
-            alt={tour.title || "Tour"}
-            className="h-64 w-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-64 items-center justify-center bg-white/5 text-8xl">
-            🏔️
-          </div>
-        )}
+        <Link
+          href={`/book-tour/${tour.id}#tour-description`}
+          aria-label={t.details}
+          className="block"
+        >
+          {tour.image_url ? (
+            <img
+              src={tour.image_url}
+              alt={tour.title || "Tour"}
+              className="h-64 w-full object-cover transition duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-64 items-center justify-center bg-white/5 text-8xl">
+              🏔️
+            </div>
+          )}
+        </Link>
 
         {tour.category && (
           <span className="absolute left-4 top-4 rounded-full bg-slate-950/80 px-4 py-2 text-xs font-bold backdrop-blur-xl">
@@ -1225,12 +1242,21 @@ function TourCard({
             </p>
           </div>
 
-          <Link
-            href={`/book-tour/${tour.id}`}
-            className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
-          >
-            {t.book}
-          </Link>
+          <div className="flex shrink-0 flex-col gap-2">
+            <Link
+              href={`/book-tour/${tour.id}#tour-description`}
+              className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold text-white transition hover:bg-white/20"
+            >
+              👁️ {t.details}
+            </Link>
+
+            <Link
+              href={`/book-tour/${tour.id}#booking`}
+              className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-white transition hover:bg-cyan-600"
+            >
+              📅 {t.book}
+            </Link>
+          </div>
         </div>
       </div>
     </article>

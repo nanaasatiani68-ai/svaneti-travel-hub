@@ -676,22 +676,28 @@ export default function PublicToursPage() {
                   className="group overflow-hidden rounded-3xl border border-white/10 bg-white/10 shadow-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/15"
                 >
                   <div className="relative h-56 overflow-hidden">
-                    {tour.image_url ? (
-                      <img
-                        src={tour.image_url}
-                        alt={tour.title || "ტური"}
-                        loading="lazy"
-                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900">
-                        <span className="text-7xl">
-                          🏔️
-                        </span>
-                      </div>
-                    )}
+                    <Link
+                      href={`/book-tour/${tour.id}#tour-description`}
+                      aria-label="ტურის დეტალების ნახვა"
+                      className="absolute inset-0 z-10 block"
+                    >
+                      {tour.image_url ? (
+                        <img
+                          src={tour.image_url}
+                          alt={tour.title || "ტური"}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900">
+                          <span className="text-7xl">
+                            🏔️
+                          </span>
+                        </div>
+                      )}
+                    </Link>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/10 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-slate-950/95 via-slate-950/10 to-transparent" />
 
                     <button
                       type="button"
@@ -715,7 +721,7 @@ export default function PublicToursPage() {
                           : "♡"}
                     </button>
 
-                    <div className="absolute left-4 top-4 flex max-w-[calc(100%-80px)] flex-wrap gap-2">
+                    <div className="pointer-events-none absolute left-4 top-4 z-20 flex max-w-[calc(100%-80px)] flex-wrap gap-2">
                       <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white">
                         ხელმისაწვდომია
                       </span>
@@ -727,10 +733,15 @@ export default function PublicToursPage() {
                       )}
                     </div>
 
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <h2 className="text-2xl font-extrabold">
-                        {tour.title || "უსახელო ტური"}
-                      </h2>
+                    <div className="absolute bottom-4 left-4 right-4 z-20">
+                      <Link
+                        href={`/book-tour/${tour.id}#tour-description`}
+                        className="inline-block"
+                      >
+                        <h2 className="text-2xl font-extrabold transition hover:text-cyan-300">
+                          {tour.title || "უსახელო ტური"}
+                        </h2>
+                      </Link>
 
                       <p className="mt-2 text-sm text-white/80">
                         📍{" "}
