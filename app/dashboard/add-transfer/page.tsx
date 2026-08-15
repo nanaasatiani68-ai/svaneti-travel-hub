@@ -434,6 +434,73 @@ export default function AddTransferPage() {
             />
           </Field>
 
+          <Field label="ტელეფონის ნომერი" required>
+            <input
+              type="tel"
+              value={contactPhone}
+              onChange={(event) =>
+                setContactPhone(event.target.value)
+              }
+              placeholder="+995555123456"
+              required
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label
+              className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                hasWhatsapp
+                  ? "border-emerald-500 bg-emerald-50"
+                  : "border-slate-200 bg-slate-50 hover:border-emerald-300"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={hasWhatsapp}
+                onChange={(event) =>
+                  setHasWhatsapp(event.target.checked)
+                }
+                className="h-5 w-5 accent-emerald-600"
+              />
+
+              <div>
+                <p className="font-black text-slate-900">
+                  WhatsApp
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  ამ ნომერზე WhatsApp ხელმისაწვდომია
+                </p>
+              </div>
+            </label>
+
+            <label
+              className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                hasViber
+                  ? "border-violet-500 bg-violet-50"
+                  : "border-slate-200 bg-slate-50 hover:border-violet-300"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={hasViber}
+                onChange={(event) =>
+                  setHasViber(event.target.checked)
+                }
+                className="h-5 w-5 accent-violet-600"
+              />
+
+              <div>
+                <p className="font-black text-slate-900">
+                  Viber
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  ამ ნომერზე Viber ხელმისაწვდომია
+                </p>
+              </div>
+            </label>
+          </div>
+
           <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
             <Link
               href={returnPath}
