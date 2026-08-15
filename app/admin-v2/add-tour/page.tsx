@@ -4,14 +4,14 @@ import {
   ChangeEvent,
   FormEvent,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGES = 5;
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -21,16 +21,13 @@ const ALLOWED_IMAGE_TYPES = [
 
 export default function AddTourPage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
   const [userId, setUserId] = useState("");
   const [checkingUser, setCheckingUser] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [imageFile, setImageFile] =
-    useState<File | null>(null);
-
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -51,28 +48,16 @@ export default function AddTourPage() {
   >("success");
 
   useEffect(() => {
-    let active = true;
-
     async function checkUser() {
       setCheckingUser(true);
 
       const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
 
-      if (!active) {
-        return;
-      }
-
-      if (sessionError) {
-        console.error("Session loading error:", sessionError);
-      }
-
-      const user = session?.user;
-
-      if (!user) {
-        window.location.replace("/login");
+      if (error || !user) {
+        router.replace("/login");
         return;
       }
 
@@ -84,10 +69,6 @@ export default function AddTourPage() {
           .select("phone, role")
           .eq("id", user.id)
           .maybeSingle();
-
-      if (!active) {
-        return;
-      }
 
       if (profileError) {
         console.error(
@@ -101,7 +82,7 @@ export default function AddTourPage() {
         .toLowerCase();
 
       if (normalizedRole !== "director") {
-        window.location.replace("/admin-v2");
+        router.replace("/admin-v2");
         return;
       }
 
@@ -112,112 +93,89 @@ export default function AddTourPage() {
       setCheckingUser(false);
     }
 
-    void checkUser();
-
-    return () => {
-      active = false;
-    };
-  }, [supabase]);
+    checkUser();
+  }, [router]);
 
   useEffect(() => {
+    const urls = imageFiles.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
     return () => {
-      if (previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(previewUrl);
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imageFiles]);
+
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    setMessage("");
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (selectedFiles.length === 0) return;
+
+    for (const file of selectedFiles) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setMessage("შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტოები.");
+        setMessageType("error");
+        event.target.value = "";
+        return;
       }
-    };
-  }, [previewUrl]);
-
-  function handleImageChange(
-    event: ChangeEvent<HTMLInputElement>
-  ) {
-    setMessage("");
-
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
+      if (file.size > MAX_IMAGE_SIZE) {
+        setMessage(`ფოტო "${file.name}" 10 MB-ზე მეტია.`);
+        setMessageType("error");
+        event.target.value = "";
+        return;
+      }
     }
 
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      setMessage(
-        "შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტო."
-      );
-      setMessageType("error");
-      event.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE) {
-      setMessage(
-        "ფოტოს ზომა არ უნდა აღემატებოდეს 10 MB-ს."
-      );
-      setMessageType("error");
-      event.target.value = "";
-      return;
-    }
-
-    if (previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    const newPreviewUrl = URL.createObjectURL(file);
-
-    setImageFile(file);
-    setPreviewUrl(newPreviewUrl);
-  }
-
-  function removeSelectedImage() {
-    if (previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    setImageFile(null);
-    setPreviewUrl("");
-    setMessage("");
-  }
-
-  async function uploadImage() {
-    if (!imageFile) {
-      return {
-        publicUrl: "",
-        filePath: "",
-      };
-    }
-
-    if (!userId) {
-      throw new Error("მომხმარებელი ვერ მოიძებნა.");
-    }
-
-    const extension = getFileExtension(imageFile);
-    const randomPart = crypto.randomUUID();
-
-    const fileName =
-      `tour-${Date.now()}-${randomPart}.${extension}`;
-
-    const filePath = `${userId}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("tour-images")
-      .upload(filePath, imageFile, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: imageFile.type,
+    setImageFiles((currentFiles) => {
+      const combined = [...currentFiles];
+      selectedFiles.forEach((file) => {
+        const exists = combined.some((f) =>
+          f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
+        );
+        if (!exists && combined.length < MAX_IMAGES) combined.push(file);
       });
+      return combined;
+    });
 
-    if (uploadError) {
-      throw new Error(
-        `ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`
-      );
+    if (imageFiles.length + selectedFiles.length > MAX_IMAGES) {
+      setMessage(`ერთ ტურზე მაქსიმუმ ${MAX_IMAGES} ფოტოს ატვირთვა შეგიძლია.`);
+      setMessageType("error");
     }
+    event.target.value = "";
+  }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("tour-images")
-      .getPublicUrl(filePath);
+  function removeSelectedImage(index: number) {
+    setImageFiles((files) => files.filter((_, i) => i !== index));
+    setMessage("");
+  }
 
-    return {
-      publicUrl: publicUrlData.publicUrl,
-      filePath,
-    };
+  async function uploadImages() {
+    if (imageFiles.length === 0) {
+      return { publicUrls: [] as string[], filePaths: [] as string[] };
+    }
+    if (!userId) throw new Error("მომხმარებელი ვერ მოიძებნა.");
+
+    const publicUrls: string[] = [];
+    const filePaths: string[] = [];
+    try {
+      for (let index = 0; index < imageFiles.length; index++) {
+        const imageFile = imageFiles[index];
+        const extension = getFileExtension(imageFile);
+        const fileName = `tour-${Date.now()}-${index}-${crypto.randomUUID()}.${extension}`;
+        const filePath = `${userId}/${fileName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("tour-images")
+          .upload(filePath, imageFile, {
+            cacheControl: "3600", upsert: false, contentType: imageFile.type,
+          });
+        if (uploadError) throw new Error(`ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`);
+        const { data: publicUrlData } = supabase.storage.from("tour-images").getPublicUrl(filePath);
+        filePaths.push(filePath);
+        publicUrls.push(publicUrlData.publicUrl);
+      }
+      return { publicUrls, filePaths };
+    } catch (error) {
+      if (filePaths.length > 0) await supabase.storage.from("tour-images").remove(filePaths);
+      throw error;
+    }
   }
 
   async function addTour(
@@ -300,14 +258,20 @@ export default function AddTourPage() {
       return;
     }
 
+    if (imageFiles.length === 0) {
+      setMessage("აირჩიე მინიმუმ ერთი ფოტო.");
+      setMessageType("error");
+      return;
+    }
+
     setSaving(true);
 
-    let uploadedFilePath = "";
+    let uploadedFilePaths: string[] = [];
 
     try {
-      const uploadedImage = await uploadImage();
-
-      uploadedFilePath = uploadedImage.filePath;
+      const uploadedImages = await uploadImages();
+      uploadedFilePaths = uploadedImages.filePaths;
+      const firstImage = uploadedImages.publicUrls[0] ?? null;
 
       const {
         data: { session },
@@ -333,7 +297,8 @@ export default function AddTourPage() {
           start_date: startDate || null,
           max_people: maxPeople ? Number(maxPeople) : null,
           category: category || null,
-          image_url: uploadedImage.publicUrl || null,
+          image_url: firstImage,
+          image_urls: uploadedImages.publicUrls,
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,
@@ -346,10 +311,10 @@ export default function AddTourPage() {
       };
 
       if (!response.ok || !result.success) {
-        if (uploadedFilePath) {
+        if (uploadedFilePaths.length > 0) {
           await supabase.storage
             .from("tour-images")
-            .remove([uploadedFilePath]);
+            .remove(uploadedFilePaths);
         }
 
         throw new Error(
@@ -715,77 +680,54 @@ export default function AddTourPage() {
           </section>
 
           <section className="border-t border-slate-200 pt-8">
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
-              Cover image
-            </p>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">Tour gallery</p>
+            <h2 className="mt-2 text-3xl font-black">📸 ტურის ფოტოები</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500">მაქსიმუმ 5 ფოტო. პირველი ფოტო იქნება მთავარი ფოტო.</p>
 
-            <h2 className="mt-2 text-3xl font-black">
-              ტურის მთავარი ფოტო
-            </h2>
-
-            <p className="mt-3 text-sm text-slate-500">
-              დასაშვებია JPG, PNG ან WEBP. მაქსიმალური ზომაა
-              10 MB.
-            </p>
-
-            <label className="mt-6 block cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-cyan-500">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleImageChange}
-                disabled={saving}
-                className="hidden"
-              />
-
-              {previewUrl ? (
-                <div className="relative">
-                  <img
-                    src={previewUrl}
-                    alt="ტურის ფოტოს წინასწარი ნახვა"
-                    className="h-[280px] w-full object-cover sm:h-[420px]"
+            <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-lg font-black text-slate-900">📷 დაამატე ფოტო</p>
+                  <p className="mt-1 text-sm text-slate-500">არჩეულია {imageFiles.length} / {MAX_IMAGES} ფოტო</p>
+                </div>
+                <label className={`inline-flex w-full items-center justify-center rounded-2xl px-6 py-3 font-black text-white shadow-lg transition sm:w-auto ${
+                  saving || imageFiles.length >= MAX_IMAGES
+                    ? "cursor-not-allowed bg-slate-400"
+                    : "cursor-pointer bg-cyan-600 hover:bg-cyan-700"
+                }`}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handleImageChange}
+                    disabled={saving || imageFiles.length >= MAX_IMAGES}
+                    className="hidden"
                   />
+                  {imageFiles.length === 0
+                    ? "➕ ფოტოს დამატება"
+                    : imageFiles.length >= MAX_IMAGES
+                      ? "✅ 5 ფოტო დამატებულია"
+                      : "➕ კიდევ ფოტოს დამატება"}
+                </label>
+              </div>
+            </div>
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
-
-                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                    <p className="font-black">
-                      📸 ფოტო არჩეულია
-                    </p>
-
-                    <p className="mt-1 break-words text-sm text-white/70">
-                      {imageFile?.name}
-                    </p>
-
-                    <p className="mt-1 text-xs text-white/55">
-                      სხვა ფოტოს ასარჩევად დააჭირე სურათს
-                    </p>
+            {previewUrls.length > 0 && (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {previewUrls.map((url, index) => (
+                  <div key={`${url}-${index}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm">
+                    <div className="relative">
+                      <img src={url} alt={`ტურის ფოტო ${index + 1}`} className="h-48 w-full object-cover" />
+                      {index === 0 && (
+                        <div className="absolute left-3 top-3 rounded-full bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-lg">⭐ მთავარი ფოტო</div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <button type="button" onClick={() => removeSelectedImage(index)} disabled={saving} className="w-full rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200 disabled:opacity-50">🗑️ ფოტოს მოცილება</button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex min-h-[280px] flex-col items-center justify-center px-5 py-10 text-center">
-                  <div className="text-7xl">📸</div>
-
-                  <p className="mt-5 text-xl font-black text-slate-800">
-                    ფოტოს ასარჩევად დააჭირე აქ
-                  </p>
-
-                  <p className="mt-2 text-sm text-slate-500">
-                    შეგიძლია აირჩიო ფოტო ტელეფონიდან ან
-                    კომპიუტერიდან
-                  </p>
-                </div>
-              )}
-            </label>
-
-            {previewUrl && (
-              <button
-                type="button"
-                onClick={removeSelectedImage}
-                disabled={saving}
-                className="mt-4 rounded-2xl bg-red-100 px-5 py-3 font-bold text-red-700 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                🗑️ არჩეული ფოტოს მოცილება
-              </button>
+                ))}
+              </div>
             )}
           </section>
 
