@@ -788,7 +788,7 @@ export default function BookTourPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+            <section id="tour-description" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
                 Tour description
               </p>
@@ -1139,7 +1139,7 @@ export default function BookTourPage() {
             )}
           </div>
 
-          <aside className="rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
+          <aside id="booking" className="scroll-mt-28 rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
                 Booking

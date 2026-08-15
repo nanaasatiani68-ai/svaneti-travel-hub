@@ -802,12 +802,21 @@ export default function PublicToursPage() {
                         </p>
                       </div>
 
-                      <Link
-                        href={`/book-tour/${tour.id}`}
-                        className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
-                      >
-                        ნახვა და დაჯავშნა
-                      </Link>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Link
+                          href={`/book-tour/${tour.id}#tour-description`}
+                          className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold transition hover:bg-white/20"
+                        >
+                          👁️ სრული აღწერა
+                        </Link>
+
+                        <Link
+                          href={`/book-tour/${tour.id}#booking`}
+                          className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
+                        >
+                          📅 დაჯავშნა
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </article>

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGES = 5;
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -24,15 +25,11 @@ export default function AddTourPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [userId, setUserId] = useState("");
-  const [userRole, setUserRole] = useState("");
-  const [returnPath, setReturnPath] = useState("/dashboard");
   const [checkingUser, setCheckingUser] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [imageFile, setImageFile] =
-    useState<File | null>(null);
-
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -54,14 +51,23 @@ export default function AddTourPage() {
   >("success");
 
   useEffect(() => {
-    let mounted = true;
-
     async function checkUser() {
       setCheckingUser(true);
 
-      try {
-        let {
-          data: { user: authenticatedUser },
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("Session loading error:", sessionError);
+      }
+
+      let authenticatedUser = session?.user ?? null;
+
+      if (!authenticatedUser) {
+        const {
+          data: { user },
           error: userError,
         } = await supabase.auth.getUser();
 
@@ -69,173 +75,130 @@ export default function AddTourPage() {
           console.error("User loading error:", userError);
         }
 
-        if (!authenticatedUser) {
-          const {
-            data: refreshData,
-            error: refreshError,
-          } = await supabase.auth.refreshSession();
+        authenticatedUser = user;
+      }
 
-          if (refreshError) {
-            console.error(
-              "Session refresh error:",
-              refreshError
-            );
-          }
+      if (!authenticatedUser) {
+        router.replace("/login");
+        return;
+      }
 
-          authenticatedUser =
-            refreshData.user ?? null;
-        }
+      setUserId(authenticatedUser.id);
 
-        if (!authenticatedUser) {
-          const nextPath =
-            encodeURIComponent(
-              "/dashboard/add-tour"
-            );
-
-          window.location.replace(
-            `/login?next=${nextPath}`
-          );
-          return;
-        }
-
-        if (!mounted) {
-          return;
-        }
-
-        setUserId(authenticatedUser.id);
-
-        const {
-          data: profile,
-          error: profileError,
-        } = await supabase
+      const { data: profile, error: profileError } =
+        await supabase
           .from("profiles")
-          .select("phone, role")
+          .select("phone")
           .eq("id", authenticatedUser.id)
           .maybeSingle();
 
-        if (profileError) {
-          console.error(
-            "Profile loading error:",
-            profileError
-          );
-        }
-
-        if (!mounted) {
-          return;
-        }
-
-        if (profile?.phone) {
-          setContactPhone(profile.phone);
-        }
-
-        const normalizedRole = String(
-          profile?.role ?? ""
-        )
-          .trim()
-          .toLowerCase();
-
-        setUserRole(normalizedRole);
-
-        if (
-          normalizedRole === "director" ||
-          normalizedRole === "admin"
-        ) {
-          setReturnPath("/admin-v2");
-        } else if (
-          normalizedRole === "staff"
-        ) {
-          setReturnPath("/staff");
-        } else {
-          setReturnPath("/dashboard");
-        }
-
-        setCheckingUser(false);
-      } catch (error) {
+      if (profileError) {
         console.error(
-          "Authentication check error:",
-          error
-        );
-
-        const nextPath =
-          encodeURIComponent(
-            "/dashboard/add-tour"
-          );
-
-        window.location.replace(
-          `/login?next=${nextPath}`
+          "Profile phone loading error:",
+          profileError
         );
       }
+
+      if (profile?.phone) {
+        setContactPhone(profile.phone);
+      }
+
+      setCheckingUser(false);
     }
 
     checkUser();
-
-    return () => {
-      mounted = false;
-    };
-  }, [supabase]);
+  }, [router, supabase]);
 
   useEffect(() => {
+    const urls = imageFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setPreviewUrls(urls);
+
     return () => {
-      if (previewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [previewUrl]);
+  }, [imageFiles]);
 
   function handleImageChange(
     event: ChangeEvent<HTMLInputElement>
   ) {
     setMessage("");
 
-    const file = event.target.files?.[0];
+    const selectedFiles = Array.from(
+      event.target.files ?? []
+    );
 
-    if (!file) {
+    if (selectedFiles.length === 0) {
       return;
     }
 
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    for (const file of selectedFiles) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setMessage(
+          "შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტოები."
+        );
+        setMessageType("error");
+        event.target.value = "";
+        return;
+      }
+
+      if (file.size > MAX_IMAGE_SIZE) {
+        setMessage(
+          `ფოტო "${file.name}" 10 MB-ზე მეტია.`
+        );
+        setMessageType("error");
+        event.target.value = "";
+        return;
+      }
+    }
+
+    setImageFiles((currentFiles) => {
+      const combined = [...currentFiles];
+
+      selectedFiles.forEach((file) => {
+        const alreadyExists = combined.some(
+          (existingFile) =>
+            existingFile.name === file.name &&
+            existingFile.size === file.size &&
+            existingFile.lastModified === file.lastModified
+        );
+
+        if (!alreadyExists && combined.length < MAX_IMAGES) {
+          combined.push(file);
+        }
+      });
+
+      return combined;
+    });
+
+    if (
+      imageFiles.length + selectedFiles.length >
+      MAX_IMAGES
+    ) {
       setMessage(
-        "შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტო."
+        `ერთ ტურზე მაქსიმუმ ${MAX_IMAGES} ფოტოს ატვირთვა შეგიძლია.`
       );
       setMessageType("error");
-      event.target.value = "";
-      return;
     }
 
-    if (file.size > MAX_IMAGE_SIZE) {
-      setMessage(
-        "ფოტოს ზომა არ უნდა აღემატებოდეს 10 MB-ს."
-      );
-      setMessageType("error");
-      event.target.value = "";
-      return;
-    }
-
-    if (previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    const newPreviewUrl = URL.createObjectURL(file);
-
-    setImageFile(file);
-    setPreviewUrl(newPreviewUrl);
+    event.target.value = "";
   }
 
-  function removeSelectedImage() {
-    if (previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
+  function removeSelectedImage(index: number) {
+    setImageFiles((currentFiles) =>
+      currentFiles.filter((_, fileIndex) => fileIndex !== index)
+    );
 
-    setImageFile(null);
-    setPreviewUrl("");
     setMessage("");
   }
 
-  async function uploadImage() {
-    if (!imageFile) {
+  async function uploadImages() {
+    if (imageFiles.length === 0) {
       return {
-        publicUrl: "",
-        filePath: "",
+        publicUrls: [] as string[],
+        filePaths: [] as string[],
       };
     }
 
@@ -243,36 +206,58 @@ export default function AddTourPage() {
       throw new Error("მომხმარებელი ვერ მოიძებნა.");
     }
 
-    const extension = getFileExtension(imageFile);
-    const randomPart = crypto.randomUUID();
+    const publicUrls: string[] = [];
+    const filePaths: string[] = [];
 
-    const fileName =
-      `tour-${Date.now()}-${randomPart}.${extension}`;
+    try {
+      for (let index = 0; index < imageFiles.length; index++) {
+        const imageFile = imageFiles[index];
 
-    const filePath = `${userId}/${fileName}`;
+        const extension = getFileExtension(imageFile);
+        const randomPart = crypto.randomUUID();
 
-    const { error: uploadError } = await supabase.storage
-      .from("tour-images")
-      .upload(filePath, imageFile, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: imageFile.type,
-      });
+        const fileName =
+          `tour-${Date.now()}-${index}-${randomPart}.${extension}`;
 
-    if (uploadError) {
-      throw new Error(
-        `ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`
-      );
+        const filePath = `${userId}/${fileName}`;
+
+        const { error: uploadError } =
+          await supabase.storage
+            .from("tour-images")
+            .upload(filePath, imageFile, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: imageFile.type,
+            });
+
+        if (uploadError) {
+          throw new Error(
+            `ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`
+          );
+        }
+
+        const { data: publicUrlData } =
+          supabase.storage
+            .from("tour-images")
+            .getPublicUrl(filePath);
+
+        filePaths.push(filePath);
+        publicUrls.push(publicUrlData.publicUrl);
+      }
+
+      return {
+        publicUrls,
+        filePaths,
+      };
+    } catch (error) {
+      if (filePaths.length > 0) {
+        await supabase.storage
+          .from("tour-images")
+          .remove(filePaths);
+      }
+
+      throw error;
     }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("tour-images")
-      .getPublicUrl(filePath);
-
-    return {
-      publicUrl: publicUrlData.publicUrl,
-      filePath,
-    };
   }
 
   async function addTour(
@@ -340,7 +325,9 @@ export default function AddTourPage() {
     }
 
     if (!organizerName.trim()) {
-      setMessage("ჩაწერე ტურის ავტორის / ორგანიზატორის სახელი.");
+      setMessage(
+        "ჩაწერე ტურის ავტორის / ორგანიზატორის სახელი."
+      );
       setMessageType("error");
       return;
     }
@@ -361,14 +348,23 @@ export default function AddTourPage() {
       return;
     }
 
+    if (imageFiles.length === 0) {
+      setMessage("აირჩიე მინიმუმ ერთი ფოტო.");
+      setMessageType("error");
+      return;
+    }
+
     setSaving(true);
 
-    let uploadedFilePath = "";
+    let uploadedFilePaths: string[] = [];
 
     try {
-      const uploadedImage = await uploadImage();
+      const uploadedImages = await uploadImages();
 
-      uploadedFilePath = uploadedImage.filePath;
+      uploadedFilePaths = uploadedImages.filePaths;
+
+      const firstImage =
+        uploadedImages.publicUrls[0] ?? null;
 
       const { error: insertError } = await supabase
         .from("tours")
@@ -383,20 +379,28 @@ export default function AddTourPage() {
             ? Number(maxPeople)
             : null,
           category: category || null,
-          image_url: uploadedImage.publicUrl || null,
+
+          // პირველი ფოტო არის მთავარი
+          image_url: firstImage,
+
+          // ყველა ფოტო ინახება გალერეისთვის
+          image_urls: uploadedImages.publicUrls,
+
           user_id: userId,
           status: "pending",
+
           organizer_name: organizerName.trim(),
+
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,
         });
 
       if (insertError) {
-        if (uploadedFilePath) {
+        if (uploadedFilePaths.length > 0) {
           await supabase.storage
             .from("tour-images")
-            .remove([uploadedFilePath]);
+            .remove(uploadedFilePaths);
         }
 
         throw new Error(
@@ -405,17 +409,12 @@ export default function AddTourPage() {
       }
 
       setMessage(
-        "ტური წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
+        "ტური და ფოტოები წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
       );
       setMessageType("success");
 
-      const destination =
-        userRole === "director" ||
-        userRole === "admin"
-          ? "/admin-v2/tours"
-          : "/dashboard/my-tours";
-
-      window.location.assign(destination);
+      router.push("/dashboard/my-tours");
+      router.refresh();
     } catch (error) {
       console.error("Add tour error:", error);
 
@@ -458,14 +457,13 @@ export default function AddTourPage() {
             </h1>
 
             <p className="mt-3 max-w-2xl leading-7 text-white/60">
-              შეავსე ტურის ინფორმაცია და ატვირთე მთავარი ფოტო.
-              ტური გამოქვეყნდება ადმინისტრატორის დადასტურების
-              შემდეგ.
+              შეავსე ტურის ინფორმაცია და ატვირთე მაქსიმუმ 5
+              ფოტო. პირველი ფოტო იქნება ტურის მთავარი ფოტო.
             </p>
           </div>
 
           <Link
-            href={returnPath}
+            href="/dashboard"
             className="w-fit rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
           >
             ← Dashboard
@@ -562,7 +560,7 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setDuration(event.target.value)
                   }
-                  placeholder="მაგალითად: 1 დღე"
+                  placeholder="მაგალითად: 4–5 საათი"
                   className="input"
                 />
               </FormField>
@@ -646,7 +644,7 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setDescription(event.target.value)
                   }
-                  placeholder="აღწერე მარშრუტი, მომსახურება, შეხვედრის ადგილი და მნიშვნელოვანი პირობები..."
+                  placeholder="აღწერე ტური, მარშრუტი და მნიშვნელოვანი ინფორმაცია..."
                   rows={7}
                   required
                   className="input resize-none"
@@ -664,12 +662,6 @@ export default function AddTourPage() {
               საკონტაქტო ინფორმაცია
             </h2>
 
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-              ჩაწერე საერთაშორისო ფორმატის ნომერი. უცხოელი
-              ტურისტი ამ ნომრით შეძლებს WhatsApp-ზე ან Viber-ზე
-              დაკავშირებას.
-            </p>
-
             <div className="mt-7 grid gap-5 md:grid-cols-2">
               <FormField
                 label="ტურის ავტორი / ორგანიზატორი"
@@ -681,14 +673,13 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setOrganizerName(event.target.value)
                   }
-                  placeholder="მაგალითად: Ushguli Travel ან Giorgi"
+                  placeholder="მაგალითად: Georgia Gateway Hub"
                   required
                   className="input"
                 />
 
                 <p className="mt-2 text-xs leading-5 text-slate-500">
                   ეს სახელი გამოჩნდება საჯაროდ ტურის ავტორად.
-                  შენი ანგარიშის სახელი მომხმარებლებისთვის არ გამოჩნდება.
                 </p>
               </FormField>
 
@@ -706,11 +697,6 @@ export default function AddTourPage() {
                   required
                   className="input"
                 />
-
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  გამოიყენე ქვეყნის კოდი, მაგალითად:
-                  +995555123456
-                </p>
               </FormField>
             </div>
 
@@ -777,95 +763,103 @@ export default function AddTourPage() {
                 </div>
               </label>
             </div>
-
-            {!hasWhatsapp && !hasViber && (
-              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800">
-                ℹ️ WhatsApp ან Viber მონიშნული არ არის.
-                მომხმარებელი მხოლოდ ჩვეულებრივი ზარით შეძლებს
-                დაკავშირებას.
-              </div>
-            )}
           </section>
 
           <section className="border-t border-slate-200 pt-8">
             <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
-              Cover image
+              Tour gallery
             </p>
 
             <h2 className="mt-2 text-3xl font-black">
-              ტურის მთავარი ფოტო
+              📸 ტურის ფოტოები
             </h2>
 
-            <p className="mt-3 text-sm text-slate-500">
-              დასაშვებია JPG, PNG ან WEBP. მაქსიმალური ზომაა
-              10 MB.
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              შეგიძლია ატვირთო მაქსიმუმ 5 ფოტო.
+              პირველი ფოტო იქნება მთავარი ფოტო.
+              თითოეულის მაქსიმალური ზომაა 10 MB.
             </p>
 
-            <label className="mt-6 block cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-cyan-500">
+            <label className="mt-6 flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center transition hover:border-cyan-500">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 onChange={handleImageChange}
-                disabled={saving}
+                disabled={
+                  saving || imageFiles.length >= MAX_IMAGES
+                }
                 className="hidden"
               />
 
-              {previewUrl ? (
-                <div className="relative">
-                  <img
-                    src={previewUrl}
-                    alt="ტურის ფოტოს წინასწარი ნახვა"
-                    className="h-[280px] w-full object-cover sm:h-[420px]"
-                  />
+              <div className="text-6xl">📷</div>
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
+              <p className="mt-4 text-xl font-black">
+                ფოტოების ასარჩევად დააჭირე აქ
+              </p>
 
-                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                    <p className="font-black">
-                      📸 ფოტო არჩეულია
-                    </p>
-
-                    <p className="mt-1 break-words text-sm text-white/70">
-                      {imageFile?.name}
-                    </p>
-
-                    <p className="mt-1 text-xs text-white/55">
-                      სხვა ფოტოს ასარჩევად დააჭირე სურათს
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex min-h-[280px] flex-col items-center justify-center px-5 py-10 text-center">
-                  <div className="text-7xl">📸</div>
-
-                  <p className="mt-5 text-xl font-black text-slate-800">
-                    ფოტოს ასარჩევად დააჭირე აქ
-                  </p>
-
-                  <p className="mt-2 text-sm text-slate-500">
-                    შეგიძლია აირჩიო ფოტო ტელეფონიდან ან
-                    კომპიუტერიდან
-                  </p>
-                </div>
-              )}
+              <p className="mt-2 text-sm text-slate-500">
+                არჩეულია {imageFiles.length} / {MAX_IMAGES}
+              </p>
             </label>
 
-            {previewUrl && (
-              <button
-                type="button"
-                onClick={removeSelectedImage}
-                disabled={saving}
-                className="mt-4 rounded-2xl bg-red-100 px-5 py-3 font-bold text-red-700 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                🗑️ არჩეული ფოტოს მოცილება
-              </button>
+            {previewUrls.length > 0 && (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {previewUrls.map((url, index) => (
+                  <div
+                    key={url}
+                    className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm"
+                  >
+                    <div className="relative">
+                      <img
+                        src={url}
+                        alt={`ტურის ფოტო ${index + 1}`}
+                        className="h-48 w-full object-cover"
+                      />
+
+                      {index === 0 && (
+                        <div className="absolute left-3 top-3 rounded-full bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-lg">
+                          ⭐ მთავარი ფოტო
+                        </div>
+                      )}
+
+                      <div className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-2 text-xs font-black text-white">
+                        {index + 1}
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <p className="truncate text-sm font-semibold text-slate-600">
+                        {imageFiles[index]?.name}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeSelectedImage(index)
+                        }
+                        disabled={saving}
+                        className="mt-3 w-full rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200 disabled:opacity-50"
+                      >
+                        🗑️ ფოტოს მოცილება
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {imageFiles.length >= MAX_IMAGES && (
+              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+                ✅ 5 ფოტო უკვე არჩეულია.
+              </div>
             )}
           </section>
 
           <div className="flex flex-col-reverse gap-4 border-t border-slate-200 pt-8 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() => router.push(returnPath)}
+              onClick={() => router.push("/dashboard")}
               disabled={saving}
               className="rounded-2xl bg-slate-200 px-7 py-4 font-bold text-slate-700 transition hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -878,7 +872,7 @@ export default function AddTourPage() {
               className="rounded-2xl bg-cyan-600 px-8 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               {saving
-                ? "ტური და ფოტო ინახება..."
+                ? `⏳ ${imageFiles.length} ფოტო იტვირთება...`
                 : "🏔️ ტურის გაგზავნა"}
             </button>
           </div>
@@ -938,6 +932,7 @@ function getFileExtension(file: File) {
 
 function getLocalToday() {
   const now = new Date();
+
   const timezoneOffset =
     now.getTimezoneOffset() * 60_000;
 
