@@ -780,28 +780,49 @@ export default function AddTourPage() {
               თითოეულის მაქსიმალური ზომაა 10 MB.
             </p>
 
-            <label className="mt-6 flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center transition hover:border-cyan-500">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={handleImageChange}
-                disabled={
-                  saving || imageFiles.length >= MAX_IMAGES
-                }
-                className="hidden"
-              />
+            <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-lg font-black text-slate-900">
+                    📸 დაამატე ტურის ფოტოები
+                  </p>
 
-              <div className="text-6xl">📷</div>
+                  <p className="mt-1 text-sm text-slate-500">
+                    არჩეულია {imageFiles.length} / {MAX_IMAGES} ფოტო
+                  </p>
+                </div>
 
-              <p className="mt-4 text-xl font-black">
-                ფოტოების ასარჩევად დააჭირე აქ
+                <label
+                  className={`inline-flex w-full items-center justify-center rounded-2xl px-6 py-3 font-black text-white shadow-lg transition sm:w-auto ${
+                    saving || imageFiles.length >= MAX_IMAGES
+                      ? "cursor-not-allowed bg-slate-400"
+                      : "cursor-pointer bg-cyan-600 hover:bg-cyan-700"
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handleImageChange}
+                    disabled={
+                      saving || imageFiles.length >= MAX_IMAGES
+                    }
+                    className="hidden"
+                  />
+
+                  {imageFiles.length === 0
+                    ? "➕ ფოტოს დამატება"
+                    : imageFiles.length >= MAX_IMAGES
+                      ? "✅ 5 ფოტო დამატებულია"
+                      : "➕ კიდევ ფოტოს დამატება"}
+                </label>
+              </div>
+
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                შეგიძლია ერთდროულად რამდენიმე ფოტო მონიშნო ან ღილაკს რამდენჯერმე დააჭირო.
+                პირველი ფოტო იქნება მთავარი ფოტო.
               </p>
-
-              <p className="mt-2 text-sm text-slate-500">
-                არჩეულია {imageFiles.length} / {MAX_IMAGES}
-              </p>
-            </label>
+            </div>
 
             {previewUrls.length > 0 && (
               <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
