@@ -25,16 +25,41 @@ type Booking = {
 type Tour = {
   id: number | string;
   title: string | null;
+  user_id: string | null;
+  organizer_name: string | null;
+  commission_rate: number | null;
+};
+
+type OwnerProfile = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
 };
 
 type PaymentRow = Booking & {
   tour_title: string;
+  owner_id: string | null;
+  owner_name: string;
+  owner_phone: string | null;
+  commission_rate: number;
+  commission_amount: number;
 };
 
 type RevenueFilter =
   | "all"
   | "confirmed"
   | "completed";
+
+type OwnerSummary = {
+  owner_id: string;
+  owner_name: string;
+  owner_phone: string | null;
+  bookings_count: number;
+  gross_revenue: number;
+  commission_due: number;
+};
+
+const DEFAULT_COMMISSION_RATE = 10;
 
 export default function PaymentsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -46,6 +71,9 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] =
     useState<RevenueFilter>("all");
+
+  const [selectedMonth, setSelectedMonth] =
+    useState(getCurrentMonthKey());
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
@@ -170,7 +198,7 @@ export default function PaymentsPage() {
 
       const tourMap = new Map<
         string,
-        string
+        Tour
       >();
 
       if (tourIds.length > 0) {
@@ -179,36 +207,108 @@ export default function PaymentsPage() {
           error: toursError,
         } = await supabase
           .from("tours")
-          .select("id, title")
+          .select(
+            "id, title, user_id, organizer_name, commission_rate"
+          )
           .in("id", tourIds);
 
         if (toursError) {
+          throw toursError;
+        }
+
+        (
+          (toursData as Tour[] | null) ?? []
+        ).forEach((tour) => {
+          tourMap.set(String(tour.id), tour);
+        });
+      }
+
+      const ownerIds = Array.from(
+        new Set(
+          Array.from(tourMap.values())
+            .map((tour) => tour.user_id)
+            .filter(
+              (value): value is string =>
+                Boolean(value)
+            )
+        )
+      );
+
+      const ownerMap = new Map<
+        string,
+        OwnerProfile
+      >();
+
+      if (ownerIds.length > 0) {
+        const {
+          data: profilesData,
+          error: profilesError,
+        } = await supabase
+          .from("profiles")
+          .select("id, full_name, phone")
+          .in("id", ownerIds);
+
+        if (profilesError) {
           console.error(
-            "Payments tours error:",
-            toursError
+            "Owner profiles loading error:",
+            profilesError
           );
         } else {
           (
-            (toursData as Tour[] | null) ?? []
-          ).forEach((tour) => {
-            tourMap.set(
-              String(tour.id),
-              tour.title || "უცნობი ტური"
-            );
+            (profilesData as OwnerProfile[] | null) ??
+            []
+          ).forEach((owner) => {
+            ownerMap.set(owner.id, owner);
           });
         }
       }
 
       const prepared = bookings.map(
-        (booking) => ({
-          ...booking,
-          tour_title:
+        (booking): PaymentRow => {
+          const tour =
             booking.tour_id !== null
               ? tourMap.get(
                   String(booking.tour_id)
-                ) || "უცნობი ტური"
-              : "უცნობი ტური",
-        })
+                ) ?? null
+              : null;
+
+          const owner =
+            tour?.user_id
+              ? ownerMap.get(tour.user_id) ?? null
+              : null;
+
+          const commissionRate =
+            safeNumber(tour?.commission_rate) > 0
+              ? safeNumber(tour?.commission_rate)
+              : DEFAULT_COMMISSION_RATE;
+
+          const gross =
+            safeNumber(booking.total_price);
+
+          const normalizedStatus =
+            normalizeStatus(booking.status);
+
+          const commissionAmount =
+            normalizedStatus === "completed"
+              ? roundMoney(
+                  (gross * commissionRate) / 100
+                )
+              : 0;
+
+          return {
+            ...booking,
+            tour_title:
+              tour?.title || "უცნობი ტური",
+            owner_id: tour?.user_id ?? null,
+            owner_name:
+              tour?.organizer_name ||
+              owner?.full_name ||
+              "უცნობი მფლობელი",
+            owner_phone: owner?.phone ?? null,
+            commission_rate: commissionRate,
+            commission_amount: commissionAmount,
+          };
+        }
       );
 
       setRows(prepared);
@@ -256,6 +356,9 @@ export default function PaymentsPage() {
         row.tour_title
           .toLowerCase()
           .includes(normalizedSearch) ||
+        row.owner_name
+          .toLowerCase()
+          .includes(normalizedSearch) ||
         String(row.guest_name || "")
           .toLowerCase()
           .includes(normalizedSearch) ||
@@ -277,51 +380,111 @@ export default function PaymentsPage() {
     [normalizedRows]
   );
 
-  const confirmedRevenue = useMemo(
+  const completedRows = useMemo(
     () =>
-      normalizedRows
-        .filter(
-          (row) =>
-            row.normalized_status ===
-            "confirmed"
-        )
-        .reduce(
-          (sum, row) =>
-            sum +
-            safeNumber(row.total_price),
-          0
-        ),
+      normalizedRows.filter(
+        (row) =>
+          row.normalized_status === "completed"
+      ),
     [normalizedRows]
   );
 
   const completedRevenue = useMemo(
     () =>
-      normalizedRows
-        .filter(
-          (row) =>
-            row.normalized_status ===
-            "completed"
-        )
-        .reduce(
-          (sum, row) =>
-            sum +
-            safeNumber(row.total_price),
-          0
-        ),
-    [normalizedRows]
+      completedRows.reduce(
+        (sum, row) =>
+          sum + safeNumber(row.total_price),
+        0
+      ),
+    [completedRows]
   );
 
-  const completedCount =
-    normalizedRows.filter(
-      (row) =>
-        row.normalized_status === "completed"
-    ).length;
+  const totalCommission = useMemo(
+    () =>
+      completedRows.reduce(
+        (sum, row) =>
+          sum + row.commission_amount,
+        0
+      ),
+    [completedRows]
+  );
 
-  const confirmedCount =
-    normalizedRows.filter(
-      (row) =>
-        row.normalized_status === "confirmed"
-    ).length;
+  const monthlyCompletedRows = useMemo(
+    () =>
+      completedRows.filter(
+        (row) =>
+          getMonthKey(
+            row.completed_at ||
+              row.booking_date ||
+              row.created_at
+          ) === selectedMonth
+      ),
+    [completedRows, selectedMonth]
+  );
+
+  const monthlyOwnerSummaries =
+    useMemo(() => {
+      const map = new Map<
+        string,
+        OwnerSummary
+      >();
+
+      monthlyCompletedRows.forEach((row) => {
+        const ownerKey =
+          row.owner_id ||
+          `unknown:${row.owner_name}`;
+
+        const current =
+          map.get(ownerKey) ?? {
+            owner_id: ownerKey,
+            owner_name: row.owner_name,
+            owner_phone: row.owner_phone,
+            bookings_count: 0,
+            gross_revenue: 0,
+            commission_due: 0,
+          };
+
+        current.bookings_count += 1;
+        current.gross_revenue =
+          roundMoney(
+            current.gross_revenue +
+              safeNumber(row.total_price)
+          );
+        current.commission_due =
+          roundMoney(
+            current.commission_due +
+              row.commission_amount
+          );
+
+        map.set(ownerKey, current);
+      });
+
+      return Array.from(map.values()).sort(
+        (a, b) =>
+          b.commission_due -
+          a.commission_due
+      );
+    }, [monthlyCompletedRows]);
+
+  const monthlyGross = useMemo(
+    () =>
+      monthlyOwnerSummaries.reduce(
+        (sum, owner) =>
+          sum + owner.gross_revenue,
+        0
+      ),
+    [monthlyOwnerSummaries]
+  );
+
+  const monthlyCommission = useMemo(
+    () =>
+      monthlyOwnerSummaries.reduce(
+        (sum, owner) =>
+          sum + owner.commission_due,
+        0
+      ),
+    [monthlyOwnerSummaries]
+  );
 
   if (loading) {
     return (
@@ -347,12 +510,13 @@ export default function PaymentsPage() {
             </p>
 
             <h1 className="mt-2 text-4xl font-black">
-              💳 Payments & Revenue
+              💳 Payments & Commission
             </h1>
 
-            <p className="mt-3 text-white/60">
-              დადასტურებული და შესრულებული
-              ტურების შემოსავლები.
+            <p className="mt-3 max-w-3xl text-white/60">
+              Georgia Gateway Hub-ის საკომისიო ითვლება
+              მხოლოდ შესრულებულ ტურებზე. სტანდარტული
+              განაკვეთი არის 10%.
             </p>
           </div>
 
@@ -384,19 +548,10 @@ export default function PaymentsPage() {
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            title="სულ შემოსავალი"
+            title="სულ ჯავშნების თანხა"
             value={formatCurrency(totalRevenue)}
             note={`${normalizedRows.length} ჯავშანი`}
             icon="💰"
-          />
-
-          <StatCard
-            title="დადასტურებული"
-            value={formatCurrency(
-              confirmedRevenue
-            )}
-            note={`${confirmedCount} ჯავშანი`}
-            icon="✅"
           />
 
           <StatCard
@@ -404,21 +559,152 @@ export default function PaymentsPage() {
             value={formatCurrency(
               completedRevenue
             )}
-            note={`${completedCount} შესრულებული`}
+            note={`${completedRows.length} შესრულებული`}
             icon="🏁"
           />
 
           <StatCard
-            title="საშუალო ჯავშანი"
+            title="სულ 10% საკომისიო"
             value={formatCurrency(
-              normalizedRows.length > 0
-                ? totalRevenue /
-                    normalizedRows.length
-                : 0
+              totalCommission
             )}
-            note="საშუალო ღირებულება"
-            icon="📊"
+            note="მხოლოდ შესრულებულ ტურებზე"
+            icon="🧾"
           />
+
+          <StatCard
+            title="ამ თვის საკომისიო"
+            value={formatCurrency(
+              monthlyCommission
+            )}
+            note={`${monthlyCompletedRows.length} შესრულებული`}
+            icon="📅"
+          />
+        </section>
+
+        <section className="mt-8 rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-5 shadow-2xl">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                Monthly invoices
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black">
+                🧾 თვის ბოლოს დასაინვოისებელი თანხები
+              </h2>
+
+              <p className="mt-2 text-white/60">
+                არჩეულ თვეში შესრულებული ტურები
+                დაჯგუფებულია ტურის მფლობელის მიხედვით.
+              </p>
+            </div>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-white/60">
+                აირჩიე თვე
+              </span>
+
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(event) =>
+                  setSelectedMonth(
+                    event.target.value
+                  )
+                }
+                className="rounded-2xl border border-white/10 bg-slate-900 px-5 py-3 font-bold text-white outline-none focus:border-cyan-400"
+              />
+            </label>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <MiniStat
+              label="მფლობელები"
+              value={String(
+                monthlyOwnerSummaries.length
+              )}
+            />
+            <MiniStat
+              label="ტურების სრული თანხა"
+              value={formatCurrency(
+                monthlyGross
+              )}
+            />
+            <MiniStat
+              label="Georgia Gateway Hub 10%"
+              value={formatCurrency(
+                monthlyCommission
+              )}
+            />
+          </div>
+
+          {monthlyOwnerSummaries.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-7 text-center text-white/55">
+              ამ თვეში შესრულებული ტურები ჯერ არ არის.
+            </div>
+          ) : (
+            <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[850px]">
+                  <thead className="bg-black/20 text-left text-xs uppercase tracking-wider text-white/50">
+                    <tr>
+                      <th className="px-5 py-4">
+                        ტურის მფლობელი
+                      </th>
+                      <th className="px-5 py-4">
+                        დასრულებული ჯავშნები
+                      </th>
+                      <th className="px-5 py-4 text-right">
+                        ჯამური გაყიდვები
+                      </th>
+                      <th className="px-5 py-4 text-right">
+                        საკომისიო 10%
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {monthlyOwnerSummaries.map(
+                      (owner) => (
+                        <tr
+                          key={owner.owner_id}
+                          className="border-t border-white/10"
+                        >
+                          <td className="px-5 py-5">
+                            <p className="font-black">
+                              {owner.owner_name}
+                            </p>
+
+                            {owner.owner_phone && (
+                              <p className="mt-1 text-sm text-white/45">
+                                📞 {owner.owner_phone}
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-5 text-white/70">
+                            {owner.bookings_count}
+                          </td>
+
+                          <td className="px-5 py-5 text-right font-bold">
+                            {formatCurrency(
+                              owner.gross_revenue
+                            )}
+                          </td>
+
+                          <td className="px-5 py-5 text-right text-lg font-black text-cyan-300">
+                            {formatCurrency(
+                              owner.commission_due
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="mt-7 grid gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl md:grid-cols-[1fr_240px]">
@@ -428,7 +714,7 @@ export default function PaymentsPage() {
             onChange={(event) =>
               setSearch(event.target.value)
             }
-            placeholder="მოძებნე ტური, სტუმარი ან ელფოსტა..."
+            placeholder="მოძებნე ტური, მფლობელი, სტუმარი ან ელფოსტა..."
             className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-white outline-none placeholder:text-white/35 focus:border-cyan-400"
           />
 
@@ -465,36 +751,30 @@ export default function PaymentsPage() {
             <h2 className="mt-5 text-2xl font-black">
               შემოსავალი ვერ მოიძებნა
             </h2>
-
-            <p className="mt-3 text-white/50">
-              დადასტურებული ან შესრულებული
-              ჯავშნები აქ გამოჩნდება.
-            </p>
           </section>
         ) : (
           <section className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px]">
+              <table className="w-full min-w-[1100px]">
                 <thead className="bg-white/10 text-left text-xs uppercase tracking-wider text-white/50">
                   <tr>
                     <th className="px-5 py-4">
                       ტური
                     </th>
-
+                    <th className="px-5 py-4">
+                      მფლობელი
+                    </th>
                     <th className="px-5 py-4">
                       სტუმარი
                     </th>
-
-                    <th className="px-5 py-4">
-                      თარიღი
-                    </th>
-
                     <th className="px-5 py-4">
                       სტატუსი
                     </th>
-
                     <th className="px-5 py-4 text-right">
                       თანხა
+                    </th>
+                    <th className="px-5 py-4 text-right">
+                      საკომისიო
                     </th>
                   </tr>
                 </thead>
@@ -507,12 +787,22 @@ export default function PaymentsPage() {
                         className="border-t border-white/10 transition hover:bg-white/5"
                       >
                         <td className="px-5 py-5">
-                          <p className="font-black text-white">
+                          <p className="font-black">
                             {row.tour_title}
                           </p>
 
                           <p className="mt-1 text-xs text-white/40">
-                            Booking #{row.id}
+                            {formatDate(
+                              row.completed_at ||
+                                row.booking_date ||
+                                row.created_at
+                            )}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-5">
+                          <p className="font-semibold">
+                            {row.owner_name}
                           </p>
                         </td>
 
@@ -528,23 +818,6 @@ export default function PaymentsPage() {
                           </p>
                         </td>
 
-                        <td className="px-5 py-5 text-sm text-white/70">
-                          <p>
-                            ტური:{" "}
-                            {row.booking_date ||
-                              "არ არის"}
-                          </p>
-
-                          {row.completed_at && (
-                            <p className="mt-1 text-indigo-300">
-                              დასრულდა:{" "}
-                              {formatDate(
-                                row.completed_at
-                              )}
-                            </p>
-                          )}
-                        </td>
-
                         <td className="px-5 py-5">
                           <StatusBadge
                             status={
@@ -558,6 +831,26 @@ export default function PaymentsPage() {
                             safeNumber(
                               row.total_price
                             )
+                          )}
+                        </td>
+
+                        <td className="px-5 py-5 text-right">
+                          {row.normalized_status ===
+                          "completed" ? (
+                            <>
+                              <p className="font-black text-cyan-300">
+                                {formatCurrency(
+                                  row.commission_amount
+                                )}
+                              </p>
+                              <p className="mt-1 text-xs text-white/40">
+                                {row.commission_rate}%
+                              </p>
+                            </>
+                          ) : (
+                            <span className="text-sm text-white/35">
+                              დასრულების შემდეგ
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -600,6 +893,25 @@ function StatCard({
 
       <p className="mt-2 text-sm text-white/40">
         {note}
+      </p>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-white/40">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-black">
+        {value}
       </p>
     </div>
   );
@@ -651,6 +963,12 @@ function safeNumber(
     : 0;
 }
 
+function roundMoney(value: number) {
+  return Math.round(
+    (value + Number.EPSILON) * 100
+  ) / 100;
+}
+
 function formatCurrency(value: number) {
   return `${new Intl.NumberFormat(
     "ka-GE",
@@ -679,8 +997,38 @@ function formatDate(
       year: "numeric",
       month: "short",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     }
   ).format(date);
+}
+
+function getMonthKey(
+  value: string | null
+) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function getCurrentMonthKey() {
+  const date = new Date();
+
+  const year = date.getFullYear();
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  return `${year}-${month}`;
 }
