@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Profile = {
   role: string | null;
+  phone: string | null;
 };
 
 export default function AddTransferPage() {
@@ -30,6 +31,10 @@ export default function AddTransferPage() {
   const [seats, setSeats] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+
+  const [contactPhone, setContactPhone] = useState("");
+  const [hasWhatsapp, setHasWhatsapp] = useState(false);
+  const [hasViber, setHasViber] = useState(false);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<
@@ -90,7 +95,7 @@ export default function AddTransferPage() {
           error: profileError,
         } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, phone")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -107,6 +112,10 @@ export default function AddTransferPage() {
         const role = String(profile?.role ?? "")
           .trim()
           .toLowerCase();
+
+        if (profile?.phone) {
+          setContactPhone(profile.phone);
+        }
 
         if (!mounted) {
           return;
@@ -209,6 +218,18 @@ export default function AddTransferPage() {
       }
     }
 
+    if (!contactPhone.trim()) {
+      setMessage("ჩაწერე საკონტაქტო ტელეფონის ნომერი.");
+      setMessageType("error");
+      return;
+    }
+
+    if (!isValidPhone(contactPhone)) {
+      setMessage("ტელეფონის ნომერი ჩაწერე საერთაშორისო ფორმატში, მაგალითად: +995555123456");
+      setMessageType("error");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -224,6 +245,9 @@ export default function AddTransferPage() {
           description:
             description.trim() || null,
           image_url: imageUrl.trim() || null,
+          contact_phone: normalizePhone(contactPhone),
+          has_whatsapp: hasWhatsapp,
+          has_viber: hasViber,
           status: "pending",
         });
 
@@ -454,4 +478,15 @@ function Field({
       {children}
     </label>
   );
+}
+
+function normalizePhone(phone: string) {
+  const trimmedPhone = phone.trim();
+  const hasPlus = trimmedPhone.startsWith("+");
+  const digits = trimmedPhone.replace(/\D/g, "");
+  return hasPlus ? `+${digits}` : digits;
+}
+
+function isValidPhone(phone: string) {
+  return /^\+\d{8,15}$/.test(normalizePhone(phone));
 }

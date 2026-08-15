@@ -57,6 +57,11 @@ const menuItems: MenuItem[] = [
     icon: "👤",
   },
   {
+    name: "➕ ტრანსფერის დამატება",
+    href: "/dashboard/add-transfer",
+    icon: "🚐",
+  },
+  {
     name: "ტურები და მფლობელები",
     href: "/admin-v2/tour-owners",
     icon: "📊",

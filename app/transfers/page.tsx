@@ -13,6 +13,9 @@ type Transfer = {
   seats: number | null;
   description: string | null;
   image_url: string | null;
+  contact_phone: string | null;
+  has_whatsapp: boolean | null;
+  has_viber: boolean | null;
   status: string | null;
   created_at: string | null;
 };
@@ -51,6 +54,9 @@ export default function TransfersPage() {
             seats,
             description,
             image_url,
+            contact_phone,
+            has_whatsapp,
+            has_viber,
             status,
             created_at
           `
@@ -258,7 +264,7 @@ export default function TransfersPage() {
           <div className="flex gap-2">
             <Link
               href="/dashboard/add-transfer"
-              className="hidden rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold transition hover:bg-cyan-600 sm:inline-flex"
+              className="inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold transition hover:bg-cyan-600"
             >
               + დამატება
             </Link>
@@ -511,12 +517,20 @@ export default function TransfersPage() {
                           </p>
                         </div>
 
-                        <Link
-                          href={`/book-transfer/${transfer.id}`}
-                          className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
-                        >
-                          ნახვა და დაჯავშნა
-                        </Link>
+                        <div className="flex flex-col gap-2 sm:min-w-[190px]">
+                          {transfer.contact_phone && (
+                            <a href={`tel:${transfer.contact_phone}`} className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold transition hover:bg-white/20">
+                              📞 {transfer.contact_phone}
+                            </a>
+                          )}
+                          {transfer.has_whatsapp && transfer.contact_phone && (
+                            <a href={`https://wa.me/${normalizePhoneForLink(transfer.contact_phone)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 font-bold transition hover:bg-emerald-600">💬 WhatsApp</a>
+                          )}
+                          {transfer.has_viber && transfer.contact_phone && (
+                            <a href={`viber://chat?number=%2B${normalizePhoneForLink(transfer.contact_phone)}`} className="inline-flex items-center justify-center rounded-2xl bg-violet-500 px-5 py-3 font-bold transition hover:bg-violet-600">📱 Viber</a>
+                          )}
+                          <Link href={`/book-transfer/${transfer.id}`} className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600">ნახვა და დაჯავშნა</Link>
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -633,4 +647,8 @@ function EmptyState({
       )}
     </div>
   );
+}
+
+function normalizePhoneForLink(phone: string) {
+  return phone.replace(/\D/g, "");
 }
