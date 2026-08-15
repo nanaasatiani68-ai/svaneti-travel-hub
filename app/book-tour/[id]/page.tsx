@@ -52,6 +52,7 @@ export default function BookTourPage() {
   const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedImage, setSelectedImage] = useState("");
+  const [showMobileGallery, setShowMobileGallery] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState("");
   const [loadingTour, setLoadingTour] = useState(true);
@@ -809,7 +810,20 @@ export default function BookTourPage() {
                   </span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                <button
+                  type="button"
+                  onClick={() => setShowMobileGallery((current) => !current)}
+                  className="mt-4 flex w-full items-center justify-between rounded-2xl bg-cyan-500 px-5 py-4 font-black text-white transition hover:bg-cyan-600 sm:hidden"
+                >
+                  <span>📷 ფოტოების ნახვა</span>
+                  <span>{showMobileGallery ? "▲" : "▼"}</span>
+                </button>
+
+                <div
+                  className={`mt-4 grid grid-cols-2 gap-3 sm:grid sm:grid-cols-3 md:grid-cols-5 ${
+                    showMobileGallery ? "grid" : "hidden"
+                  }`}
+                >
                   {galleryImages.map((image, index) => {
                     const active = image === selectedImage;
 
@@ -817,7 +831,15 @@ export default function BookTourPage() {
                       <button
                         key={`${image}-${index}`}
                         type="button"
-                        onClick={() => setSelectedImage(image)}
+                        onClick={() => {
+                          setSelectedImage(image);
+                          if (window.innerWidth < 640) {
+                            window.scrollTo({
+                              top: 0,
+                              behavior: "smooth",
+                            });
+                          }
+                        }}
                         className={`group relative overflow-hidden rounded-2xl border-2 transition ${
                           active
                             ? "border-cyan-400 ring-2 ring-cyan-400/30"
@@ -1443,9 +1465,17 @@ function OwnerCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <h2 className="text-3xl font-black">
-            {organizerName}
-          </h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-3xl font-black">
+              {organizerName}
+            </h2>
+
+            {organizerName === "Georgia Gateway Hub" && (
+              <span className="rounded-full bg-cyan-500 px-3 py-1 text-xs font-black text-white">
+                Official
+              </span>
+            )}
+          </div>
 
           <p className="mt-2 text-sm leading-6 text-white/55">
             ამ ტურის საჯარო ორგანიზატორი

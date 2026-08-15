@@ -13,6 +13,7 @@ type Tour = {
   location: string | null;
   price: number | null;
   image_url: string | null;
+  organizer_name: string | null;
   duration: string | null;
   max_people: number | null;
   category: string | null;
@@ -79,6 +80,7 @@ export default function PublicToursPage() {
             location,
             price,
             image_url,
+            organizer_name,
             duration,
             max_people,
             category,
@@ -239,7 +241,8 @@ export default function PublicToursPage() {
         tour.category ?? ""
       ).toLowerCase();
       const authorName = String(
-        tour.user_id ? authorNames[tour.user_id] ?? "" : ""
+        tour.organizer_name?.trim() ||
+          (tour.user_id ? authorNames[tour.user_id] ?? "" : "")
       ).toLowerCase();
 
       const matchesSearch =
@@ -782,10 +785,11 @@ export default function PublicToursPage() {
                         </p>
 
                         <p className="truncate font-bold text-white">
-                          {tour.user_id
-                            ? authorNames[tour.user_id] ||
-                              "ტურის ორგანიზატორი"
-                            : "ტურის ორგანიზატორი"}
+                          {tour.organizer_name?.trim() ||
+                            (tour.user_id
+                              ? authorNames[tour.user_id] ||
+                                "ტურის ორგანიზატორი"
+                              : "ტურის ორგანიზატორი")}
                         </p>
                       </div>
                     </div>

@@ -299,6 +299,7 @@ export default function AddTourPage() {
           category: category || null,
           image_url: firstImage,
           image_urls: uploadedImages.publicUrls,
+          organizer_name: "Georgia Gateway Hub",
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,

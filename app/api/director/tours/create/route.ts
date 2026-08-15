@@ -14,6 +14,8 @@ type CreateTourBody = {
   max_people?: number | null;
   category?: string | null;
   image_url?: string | null;
+  image_urls?: string[] | null;
+  organizer_name?: string | null;
   contact_phone?: string;
   has_whatsapp?: boolean;
   has_viber?: boolean;
@@ -200,6 +202,12 @@ export async function POST(request: NextRequest) {
         max_people: maxPeople,
         category: body.category || null,
         image_url: body.image_url || null,
+        image_urls: Array.isArray(body.image_urls)
+          ? body.image_urls.slice(0, 5)
+          : [],
+        organizer_name:
+          String(body.organizer_name || "").trim() ||
+          "Georgia Gateway Hub",
         user_id: currentUser.id,
         status: "approved",
         submitted_at: new Date().toISOString(),

@@ -15,6 +15,7 @@ type Tour = {
   location: string | null;
   price: number | null;
   image_url: string | null;
+  organizer_name: string | null;
   duration: string | null;
   max_people: number | null;
   category: string | null;
@@ -326,6 +327,7 @@ export default function Home() {
             location,
             price,
             image_url,
+            organizer_name,
             duration,
             max_people,
             category,
