@@ -14,6 +14,8 @@ type Tour = {
   description: string | null;
   location: string | null;
   price: number | null;
+  price_type: "fixed" | "negotiable" | null;
+  price_currency: "GEL" | "USD" | null;
   image_url: string | null;
   organizer_name: string | null;
   duration: string | null;
@@ -88,7 +90,7 @@ const translations = {
     people: "ადამიანი",
     peopleUnknown: "რაოდენობა უცნობია",
     newOffer: "ახალი შეთავაზება",
-    pricePerPerson: "ტურის ფასი",
+    pricePerPerson: "ფასი",
     negotiable: "შეთანხმებით",
     book: "დაჯავშნა",
     details: "დეტალების ნახვა",
@@ -197,7 +199,7 @@ const translations = {
     people: "people",
     peopleUnknown: "Capacity unknown",
     newOffer: "New offer",
-    pricePerPerson: "Tour price",
+    pricePerPerson: "Price",
     negotiable: "Contact for price",
     book: "Book Now",
     details: "View Details",
@@ -326,6 +328,8 @@ export default function Home() {
             description,
             location,
             price,
+            price_type,
+            price_currency,
             image_url,
             organizer_name,
             duration,
@@ -961,11 +965,7 @@ export default function Home() {
 
                     <div className="mt-6 flex items-center justify-between gap-4">
                       <p className="text-2xl font-black text-cyan-300">
-                        {tour.price !== null
-                          ? `${Number(
-                              tour.price
-                            ).toLocaleString()} ₾`
-                          : t.negotiable}
+                        {t.negotiable}
                       </p>
 
                       <div className="flex flex-col gap-2 sm:flex-row">
@@ -1146,6 +1146,31 @@ export default function Home() {
   );
 }
 
+
+function formatTourPrice(
+  tour: Tour,
+  language: Language
+) {
+  if (
+    tour.price_type === "negotiable" ||
+    tour.price === null ||
+    tour.price === undefined
+  ) {
+    return language === "ka"
+      ? "ფასი შეთანხმებით"
+      : "Contact for price";
+  }
+
+  const amount = Number(tour.price).toLocaleString(
+    language === "ka" ? "ka-GE" : "en-US",
+    { maximumFractionDigits: 2 }
+  );
+
+  return tour.price_currency === "USD"
+    ? `$${amount}`
+    : `${amount} ₾`;
+}
+
 function TourCard({
   tour,
   language,
@@ -1238,9 +1263,7 @@ function TourCard({
             </p>
 
             <p className="mt-1 text-2xl font-black text-cyan-300">
-              {tour.price !== null
-                ? `${Number(tour.price).toLocaleString()} ₾`
-                : t.negotiable}
+              {formatTourPrice(tour, language)}
             </p>
           </div>
 

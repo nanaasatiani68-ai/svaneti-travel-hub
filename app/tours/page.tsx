@@ -12,6 +12,8 @@ type Tour = {
   description: string | null;
   location: string | null;
   price: number | null;
+  price_type: "fixed" | "negotiable" | null;
+  price_currency: "GEL" | "USD" | null;
   image_url: string | null;
   organizer_name: string | null;
   duration: string | null;
@@ -79,6 +81,8 @@ export default function PublicToursPage() {
             description,
             location,
             price,
+            price_type,
+            price_currency,
             image_url,
             organizer_name,
             duration,
@@ -807,13 +811,7 @@ export default function PublicToursPage() {
                         </p>
 
                         <p className="mt-1 text-2xl font-extrabold text-cyan-300">
-                          {tour.price !== null
-                            ? `${Number(
-                                tour.price
-                              ).toLocaleString(
-                                "ka-GE"
-                              )} ₾`
-                            : "შეთანხმებით"}
+                          {formatTourPrice(tour)}
                         </p>
                       </div>
 
@@ -875,6 +873,26 @@ function TourInfoBox({
       <span>{value}</span>
     </div>
   );
+}
+
+
+function formatTourPrice(tour: Tour) {
+  if (
+    tour.price_type === "negotiable" ||
+    tour.price === null ||
+    tour.price === undefined
+  ) {
+    return "ფასი შეთანხმებით";
+  }
+
+  const amount = Number(tour.price).toLocaleString(
+    "ka-GE",
+    { maximumFractionDigits: 2 }
+  );
+
+  return tour.price_currency === "USD"
+    ? `$${amount}`
+    : `${amount} ₾`;
 }
 
 function ErrorState({

@@ -20,6 +20,8 @@ type Tour = {
   description: string | null;
   location: string | null;
   price: number | null;
+  price_type: "fixed" | "negotiable" | null;
+  price_currency: "GEL" | "USD" | null;
   image_url: string | null;
   image_urls: string[] | null;
   duration: string | null;
@@ -134,6 +136,8 @@ export default function BookTourPage() {
             description,
             location,
             price,
+            price_type,
+            price_currency,
             image_url,
             image_urls,
             duration,
@@ -188,6 +192,8 @@ export default function BookTourPage() {
             description,
             location,
             price,
+            price_type,
+            price_currency,
             image_url,
             image_urls,
             duration,
@@ -357,13 +363,6 @@ export default function BookTourPage() {
     }
   }, [galleryImages, selectedImage]);
 
-  const totalPrice = useMemo(() => {
-    if (tour?.price === null || tour?.price === undefined) {
-      return null;
-    }
-
-    return Number(tour.price);
-  }, [tour?.price]);
 
   const today = getLocalToday();
 
@@ -885,11 +884,7 @@ export default function BookTourPage() {
 
                 <InfoBox
                   label="ფასი"
-                  value={
-                    tour.price !== null
-                      ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
-                      : "შეთანხმებით"
-                  }
+                  value={formatTourPrice(tour)}
                   icon="💰"
                 />
 
@@ -1238,11 +1233,7 @@ export default function BookTourPage() {
                         </p>
 
                         <p className="mt-4 text-xl font-black text-cyan-300">
-                          {ownerTour.price !== null
-                            ? `${Number(
-                                ownerTour.price
-                              ).toLocaleString("ka-GE")} ₾`
-                            : "შეთანხმებით"}
+                          {formatTourPrice(ownerTour)}
                         </p>
 
                         <div className="mt-4 text-sm font-bold text-cyan-300">
@@ -1367,11 +1358,7 @@ export default function BookTourPage() {
               <div className="rounded-2xl bg-slate-100 p-5">
                 <PriceRow
                   label="ფასი"
-                  value={
-                    tour.price !== null
-                      ? `${Number(tour.price).toLocaleString("ka-GE")} ₾`
-                      : "შეთანხმებით"
-                  }
+                  value={formatTourPrice(tour)}
                 />
 
                 <PriceRow
@@ -1391,9 +1378,7 @@ export default function BookTourPage() {
                     </span>
 
                     <span className="text-2xl font-black text-cyan-700">
-                      {totalPrice !== null
-                        ? `${totalPrice.toLocaleString("ka-GE")} ₾`
-                        : "შეთანხმებით"}
+                      {formatTourPrice(tour)}
                     </span>
                   </div>
                 </div>
@@ -1419,6 +1404,26 @@ export default function BookTourPage() {
       </div>
     </main>
   );
+}
+
+
+function formatTourPrice(tour: Tour) {
+  if (
+    tour.price_type === "negotiable" ||
+    tour.price === null ||
+    tour.price === undefined
+  ) {
+    return "ფასი შეთანხმებით";
+  }
+
+  const amount = Number(tour.price).toLocaleString(
+    "ka-GE",
+    { maximumFractionDigits: 2 }
+  );
+
+  return tour.price_currency === "USD"
+    ? `$${amount}`
+    : `${amount} ₾`;
 }
 
 function StarDisplay({ rating }: { rating: number }) {

@@ -8,7 +8,9 @@ type CreateTourBody = {
   title?: string;
   description?: string;
   location?: string;
-  price?: number;
+  price?: number | null;
+  price_type?: "fixed" | "negotiable";
+  price_currency?: "GEL" | "USD" | null;
   duration?: string | null;
   start_date?: string | null;
   max_people?: number | null;
@@ -133,7 +135,22 @@ export async function POST(request: NextRequest) {
     const description = String(body.description || "").trim();
     const location = String(body.location || "").trim();
     const contactPhone = String(body.contact_phone || "").trim();
-    const price = Number(body.price);
+    const priceType =
+      body.price_type === "negotiable"
+        ? "negotiable"
+        : "fixed";
+
+    const priceCurrency =
+      priceType === "negotiable"
+        ? null
+        : body.price_currency === "USD"
+          ? "USD"
+          : "GEL";
+
+    const price =
+      priceType === "negotiable"
+        ? null
+        : Number(body.price);
 
     if (!title || !description || !location || !contactPhone) {
       return NextResponse.json(
@@ -146,7 +163,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Number.isFinite(price) || price < 0) {
+    if (
+      priceType === "fixed" &&
+      (price === null ||
+        !Number.isFinite(price) ||
+        price < 0)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -197,6 +219,8 @@ export async function POST(request: NextRequest) {
         description,
         location,
         price,
+        price_type: priceType,
+        price_currency: priceCurrency,
         duration: body.duration || null,
         start_date: body.start_date || null,
         max_people: maxPeople,

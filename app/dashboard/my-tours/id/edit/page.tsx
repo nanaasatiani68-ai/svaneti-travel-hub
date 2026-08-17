@@ -27,6 +27,8 @@ type Tour = {
   description: string | null;
   location: string | null;
   price: number | null;
+  price_type: "fixed" | "negotiable" | null;
+  price_currency: "GEL" | "USD" | null;
   duration: string | null;
   start_date: string | null;
   max_people: number | null;
@@ -58,6 +60,9 @@ export default function EditTourPage() {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [price, setPrice] = useState("");
+  const [priceOption, setPriceOption] = useState<
+    "negotiable" | "GEL" | "USD"
+  >("negotiable");
   const [duration, setDuration] = useState("");
   const [startDate, setStartDate] = useState("");
   const [maxPeople, setMaxPeople] = useState("");
@@ -156,6 +161,8 @@ export default function EditTourPage() {
               description,
               location,
               price,
+              price_type,
+              price_currency,
               duration,
               start_date,
               max_people,
@@ -191,10 +198,23 @@ export default function EditTourPage() {
         setTitle(tour.title || "");
         setDescription(tour.description || "");
         setLocation(tour.location || "");
+        const loadedPriceOption:
+          | "negotiable"
+          | "GEL"
+          | "USD" =
+          tour.price_type === "negotiable" ||
+          tour.price === null ||
+          tour.price === undefined
+            ? "negotiable"
+            : tour.price_currency === "USD"
+              ? "USD"
+              : "GEL";
+
+        setPriceOption(loadedPriceOption);
         setPrice(
-          tour.price !== null && tour.price !== undefined
-            ? String(tour.price)
-            : ""
+          loadedPriceOption === "negotiable"
+            ? ""
+            : String(tour.price)
         );
         setDuration(tour.duration || "");
         setStartDate(tour.start_date || "");
@@ -423,12 +443,19 @@ export default function EditTourPage() {
       return;
     }
 
-    const numericPrice = Number(price);
+    const isNegotiable =
+      priceOption === "negotiable";
+
+    const numericPrice = isNegotiable
+      ? null
+      : Number(price);
 
     if (
-      !price ||
-      Number.isNaN(numericPrice) ||
-      numericPrice < 0
+      !isNegotiable &&
+      (!price ||
+        numericPrice === null ||
+        Number.isNaN(numericPrice) ||
+        numericPrice < 0)
     ) {
       setMessage("ჩაწერე სწორი ფასი.");
       setMessageType("error");
@@ -509,6 +536,8 @@ export default function EditTourPage() {
           description: description.trim(),
           location: location.trim(),
           price: numericPrice,
+          price_type: isNegotiable ? "negotiable" : "fixed",
+          price_currency: isNegotiable ? null : priceOption,
           duration: duration.trim() || null,
           start_date: startDate || null,
           max_people: maxPeople
@@ -682,25 +711,67 @@ export default function EditTourPage() {
                 />
               </FormField>
 
-              <FormField label="ფასი" required>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={price}
-                    onChange={(event) =>
-                      setPrice(event.target.value)
-                    }
-                    required
-                    className="input pr-14"
-                  />
+              <FormField label="ფასის ტიპი" required>
+                <select
+                  value={priceOption}
+                  onChange={(event) => {
+                    const value = event.target.value as
+                      | "negotiable"
+                      | "GEL"
+                      | "USD";
 
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">
-                    ₾
-                  </span>
-                </div>
+                    setPriceOption(value);
+
+                    if (value === "negotiable") {
+                      setPrice("");
+                    }
+                  }}
+                  className="input"
+                >
+                  <option value="negotiable">
+                    🤝 ფასი შეთანხმებით
+                  </option>
+                  <option value="GEL">
+                    ₾ ფასი ლარში
+                  </option>
+                  <option value="USD">
+                    $ ფასი დოლარში
+                  </option>
+                </select>
               </FormField>
+
+              {priceOption !== "negotiable" ? (
+                <FormField
+                  label={
+                    priceOption === "USD"
+                      ? "ფასი დოლარში ($)"
+                      : "ფასი ლარში (₾)"
+                  }
+                  required
+                >
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={price}
+                      onChange={(event) =>
+                        setPrice(event.target.value)
+                      }
+                      required
+                      className="input pr-14"
+                    />
+
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">
+                      {priceOption === "USD" ? "$" : "₾"}
+                    </span>
+                  </div>
+                </FormField>
+              ) : (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm font-semibold leading-6 text-cyan-800">
+                  🤝 საიტზე გამოჩნდება: <strong>ფასი შეთანხმებით</strong>
+                </div>
+              )}
 
               <FormField label="ხანგრძლივობა">
                 <input
