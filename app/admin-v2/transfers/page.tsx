@@ -1,10 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Transfer = {
   id: string;
+  title: string | null;
+  transfer_type: string | null;
   from_location: string;
   to_location: string;
   vehicle: string | null;
@@ -13,27 +20,57 @@ type Transfer = {
   status: string;
   image_url: string | null;
   contact_phone: string | null;
-  has_whatsapp: boolean | null;
-  has_viber: boolean | null;
   created_at: string | null;
 };
 
-export default function TransfersPage() {
+type TransferBooking = {
+  id: string;
+  transfer_id: string | number;
+  guest_name: string;
+  guest_email: string;
+  guest_phone: string;
+  contact_whatsapp: boolean | null;
+  travel_date: string;
+  travel_time: string | null;
+  passengers: number;
+  vehicle_type: string | null;
+  luggage_count: number | null;
+  pickup_address: string;
+  dropoff_address: string;
+  flight_number: string | null;
+  total_price: number | null;
+  notes: string | null;
+  status: string;
+  created_at: string | null;
+  transfers:
+    | {
+        title: string | null;
+        from_location: string | null;
+        to_location: string | null;
+      }
+    | null;
+};
+
+export default function TransfersAdminPage() {
   const supabase = useMemo(() => createClient(), []);
+
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [bookings, setBookings] = useState<TransferBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
-  const loadTransfers = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setMessage("");
 
-    const { data, error } = await supabase
-      .from("transfers")
-      .select(
-        `
+    const [transferResult, bookingResult] = await Promise.all([
+      supabase
+        .from("transfers")
+        .select(`
           id,
+          title,
+          transfer_type,
           from_location,
           to_location,
           vehicle,
@@ -42,342 +79,409 @@ export default function TransfersPage() {
           status,
           image_url,
           contact_phone,
-          has_whatsapp,
-          has_viber,
           created_at
-        `
-      )
-      .order("created_at", { ascending: false });
+        `)
+        .order("created_at", { ascending: false }),
 
-    if (error) {
-      console.error("Transfers loading error:", error);
-      setMessage(`ტრანსფერების ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
+      supabase
+        .from("transfer_bookings")
+        .select(`
+          id,
+          transfer_id,
+          guest_name,
+          guest_email,
+          guest_phone,
+          contact_whatsapp,
+          travel_date,
+          travel_time,
+          passengers,
+          vehicle_type,
+          luggage_count,
+          pickup_address,
+          dropoff_address,
+          flight_number,
+          total_price,
+          notes,
+          status,
+          created_at,
+          transfers (
+            title,
+            from_location,
+            to_location
+          )
+        `)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (transferResult.error) {
+      setMessage(
+        `ტრანსფერების ჩატვირთვა ვერ მოხერხდა: ${transferResult.error.message}`
+      );
       setTransfers([]);
-      setLoading(false);
-      return;
+    } else {
+      setTransfers((transferResult.data as Transfer[] | null) ?? []);
     }
 
-    setTransfers((data as Transfer[] | null) ?? []);
+    if (bookingResult.error) {
+      setMessage((current) =>
+        current
+          ? `${current} | ჯავშნები: ${bookingResult.error?.message}`
+          : `ჯავშნების ჩატვირთვა ვერ მოხერხდა: ${bookingResult.error?.message}`
+      );
+      setBookings([]);
+    } else {
+      setBookings(
+        (bookingResult.data as unknown as TransferBooking[] | null) ?? []
+      );
+    }
+
     setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
-    void loadTransfers();
-  }, [loadTransfers]);
+    void loadData();
+  }, [loadData]);
 
   async function updateStatus(
-    transferId: string,
-    nextStatus: "approved" | "rejected"
+    table: "transfers" | "transfer_bookings",
+    id: string,
+    status: string
   ) {
     if (updatingId) return;
 
-    setUpdatingId(transferId);
+    setUpdatingId(id);
     setMessage("");
 
-    const {
-      data: updatedTransfer,
-      error,
-    } = await supabase
-      .from("transfers")
-      .update({ status: nextStatus })
-      .eq("id", transferId)
-      .select("id, status")
-      .maybeSingle();
+    const { error } = await supabase
+      .from(table)
+      .update({ status })
+      .eq("id", id);
 
     if (error) {
-      console.error("Transfer status update error:", error);
-      setMessage(
-        `სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
-      );
+      setMessage(`სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`);
       setUpdatingId(null);
       return;
     }
 
-    if (!updatedTransfer) {
-      setMessage(
-        "ტრანსფერის სტატუსი ბაზაში არ შეიცვალა. სავარაუდოდ Supabase RLS Update Policy არ გაქვს ჩართული."
+    if (table === "transfers") {
+      setTransfers((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, status } : item
+        )
       );
-      setUpdatingId(null);
-      return;
+    } else {
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, status } : item
+        )
+      );
     }
 
-    setTransfers((currentTransfers) =>
-      currentTransfers.map((transfer) =>
-        transfer.id === transferId
-          ? {
-              ...transfer,
-              status: String(updatedTransfer.status || nextStatus),
-            }
-          : transfer
-      )
-    );
-
-    setMessage(
-      nextStatus === "approved"
-        ? "✅ ტრანსფერი წარმატებით დამტკიცდა."
-        : "❌ ტრანსფერი უარყოფილია."
-    );
-
+    setMessage("✅ სტატუსი განახლდა.");
     setUpdatingId(null);
-  }
-
-  function normalizePhoneForLink(phone: string) {
-    return phone.replace(/\D/g, "");
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="rounded-3xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black text-white sm:text-4xl">
               🚐 Transfers Management
             </h1>
-
-            <p className="mt-3 text-white/70">
-              ყველა დამატებული ტრანსფერი
+            <p className="mt-2 text-white/65">
+              ტრანსფერები და კლიენტების ჯავშნები
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => void loadTransfers()}
-            disabled={loading}
-            className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold text-white transition hover:bg-white/20 disabled:opacity-50"
+            onClick={() => void loadData()}
+            className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold text-white"
           >
             🔄 განახლება
           </button>
         </div>
 
         {message && (
-          <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">
+          <div className="mt-6 rounded-2xl bg-cyan-500/10 p-4 text-cyan-100">
             {message}
           </div>
         )}
 
-        {loading ? (
-          <div className="mt-8 rounded-2xl bg-white/10 p-8 text-center text-white">
-            ტრანსფერები იტვირთება...
-          </div>
-        ) : transfers.length === 0 ? (
-          <div className="mt-8 rounded-2xl bg-white/10 p-8 text-white">
-            ტრანსფერები ჯერ არ არის.
-          </div>
-        ) : (
-          <div className="mt-8 space-y-5">
-            {transfers.map((transfer) => {
-              const isUpdating = updatingId === transfer.id;
-              const isPending =
-                String(transfer.status).toLowerCase() === "pending";
+        <section className="mt-10">
+          <h2 className="text-2xl font-black text-white">ტრანსფერები</h2>
 
-              return (
+          {loading ? (
+            <div className="mt-5 rounded-2xl bg-white/10 p-8 text-white">
+              იტვირთება...
+            </div>
+          ) : (
+            <div className="mt-5 space-y-5">
+              {transfers.map((transfer) => (
                 <article
                   key={transfer.id}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 text-white shadow-xl"
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 text-white"
                 >
-                  <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
-                    <div className="min-h-[220px] bg-black/20">
+                  <div className="grid lg:grid-cols-[240px_1fr]">
+                    <div className="min-h-[200px] bg-black/20">
                       {transfer.image_url ? (
                         <img
                           src={transfer.image_url}
-                          alt={`${transfer.from_location} - ${transfer.to_location}`}
-                          className="h-full min-h-[220px] w-full object-cover"
+                          alt={transfer.title || "Transfer"}
+                          className="h-full min-h-[200px] w-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-full min-h-[220px] items-center justify-center text-7xl">
+                        <div className="flex h-full min-h-[200px] items-center justify-center text-7xl">
                           🚐
                         </div>
                       )}
                     </div>
 
-                    <div className="p-5 sm:p-6">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <h2 className="text-2xl font-black">
-                            🚐 {transfer.from_location} →{" "}
-                            {transfer.to_location}
-                          </h2>
+                          <h3 className="text-2xl font-black">
+                            {transfer.title ||
+                              `${transfer.from_location} → ${transfer.to_location}`}
+                          </h3>
 
-                          <div className="mt-4 grid gap-2 text-white/80 sm:grid-cols-2">
-                            <p>💰 {Number(transfer.price).toLocaleString("ka-GE")} ₾</p>
+                          <p className="mt-2 text-cyan-200">
+                            {transfer.transfer_type || "Transfer"}
+                          </p>
 
+                          <div className="mt-4 grid gap-2 text-white/75 sm:grid-cols-2">
+                            <p>
+                              📍 {transfer.from_location} →{" "}
+                              {transfer.to_location}
+                            </p>
+                            <p>
+                              💰{" "}
+                              {Number(transfer.price).toLocaleString(
+                                "ka-GE"
+                              )}{" "}
+                              ₾
+                            </p>
                             {transfer.vehicle && (
                               <p>🚙 {transfer.vehicle}</p>
                             )}
-
                             {transfer.seats && (
                               <p>👥 {transfer.seats} Seats</p>
                             )}
-
-                            {transfer.contact_phone && (
-                              <p>📞 {transfer.contact_phone}</p>
-                            )}
                           </div>
-
-                          {transfer.contact_phone && (
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              <a
-                                href={`tel:${transfer.contact_phone}`}
-                                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold hover:bg-white/20"
-                              >
-                                📞 Call
-                              </a>
-
-                              {transfer.has_whatsapp && (
-                                <a
-                                  href={`https://wa.me/${normalizePhoneForLink(
-                                    transfer.contact_phone
-                                  )}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold hover:bg-emerald-600"
-                                >
-                                  WhatsApp
-                                </a>
-                              )}
-
-                              {transfer.has_viber && (
-                                <a
-                                  href={`viber://chat?number=%2B${normalizePhoneForLink(
-                                    transfer.contact_phone
-                                  )}`}
-                                  className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-bold hover:bg-violet-600"
-                                >
-                                  Viber
-                                </a>
-                              )}
-                            </div>
-                          )}
                         </div>
 
-                        <StatusBadge status={transfer.status} />
+                        <Badge status={transfer.status} />
                       </div>
 
-                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                        <button
-                          type="button"
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        <Action
+                          text="✅ Approve"
+                          disabled={updatingId === transfer.id}
                           onClick={() =>
                             void updateStatus(
+                              "transfers",
                               transfer.id,
                               "approved"
                             )
                           }
-                          disabled={
-                            isUpdating ||
-                            String(transfer.status).toLowerCase() ===
-                              "approved"
-                          }
-                          className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {isUpdating
-                            ? "მუშავდება..."
-                            : "✅ დამტკიცება"}
-                        </button>
-
-                        <button
-                          type="button"
+                        />
+                        <Action
+                          text="❌ Reject"
+                          disabled={updatingId === transfer.id}
                           onClick={() =>
                             void updateStatus(
+                              "transfers",
                               transfer.id,
                               "rejected"
                             )
                           }
-                          disabled={
-                            isUpdating ||
-                            String(transfer.status).toLowerCase() ===
-                              "rejected"
+                        />
+                        <Action
+                          text="↩️ Pending"
+                          disabled={updatingId === transfer.id}
+                          onClick={() =>
+                            void updateStatus(
+                              "transfers",
+                              transfer.id,
+                              "pending"
+                            )
                           }
-                          className="rounded-2xl bg-red-500 px-6 py-3 font-black text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {isUpdating
-                            ? "მუშავდება..."
-                            : "❌ უარყოფა"}
-                        </button>
-
-                        {!isPending && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (updatingId) return;
-                              setUpdatingId(transfer.id);
-
-                              const {
-                                data: updatedTransfer,
-                                error,
-                              } = await supabase
-                                .from("transfers")
-                                .update({ status: "pending" })
-                                .eq("id", transfer.id)
-                                .select("id, status")
-                                .maybeSingle();
-
-                              if (error) {
-                                setMessage(
-                                  `სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
-                                );
-                              } else if (!updatedTransfer) {
-                                setMessage(
-                                  "ტრანსფერის სტატუსი ბაზაში არ შეიცვალა. შეამოწმე Supabase RLS Update Policy."
-                                );
-                              } else {
-                                setTransfers((currentTransfers) =>
-                                  currentTransfers.map((item) =>
-                                    item.id === transfer.id
-                                      ? {
-                                          ...item,
-                                          status: "pending",
-                                        }
-                                      : item
-                                  )
-                                );
-                                setMessage(
-                                  "↩️ ტრანსფერი დაბრუნდა მოლოდინში."
-                                );
-                              }
-
-                              setUpdatingId(null);
-                            }}
-                            disabled={isUpdating}
-                            className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-black text-white transition hover:bg-white/20 disabled:opacity-40"
-                          >
-                            ↩️ მოლოდინში დაბრუნება
-                          </button>
-                        )}
+                        />
                       </div>
                     </div>
                   </div>
                 </article>
-              );
-            })}
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-12 border-t border-white/10 pt-10">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-white">
+                📋 Transfer Bookings
+              </h2>
+              <p className="mt-2 text-white/60">
+                სრული ინფორმაცია თითოეულ მოთხოვნაზე
+              </p>
+            </div>
+
+            <span className="rounded-full bg-cyan-500/20 px-4 py-2 font-black text-cyan-200">
+              {bookings.length} booking
+            </span>
           </div>
-        )}
+
+          <div className="mt-5 space-y-5">
+            {bookings.map((booking) => (
+              <article
+                key={booking.id}
+                className="rounded-3xl border border-white/10 bg-slate-950/35 p-5 text-white"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-wide text-cyan-300">
+                      {booking.transfers?.title ||
+                        `${booking.transfers?.from_location || "Transfer"} → ${
+                          booking.transfers?.to_location || ""
+                        }`}
+                    </p>
+
+                    <h3 className="mt-2 text-2xl font-black">
+                      {booking.guest_name}
+                    </h3>
+                  </div>
+
+                  <Badge status={booking.status} />
+                </div>
+
+                <div className="mt-5 grid gap-3 text-white/75 sm:grid-cols-2 xl:grid-cols-3">
+                  <p>
+                    📅 {booking.travel_date} {booking.travel_time || ""}
+                  </p>
+                  <p>👥 {booking.passengers} მგზავრი</p>
+                  <p>🧳 {booking.luggage_count ?? 0} ბარგი</p>
+                  <p>🚗 {booking.vehicle_type || "No preference"}</p>
+                  <p>📍 {booking.pickup_address}</p>
+                  <p>🏁 {booking.dropoff_address}</p>
+                  {booking.flight_number && (
+                    <p>✈️ {booking.flight_number}</p>
+                  )}
+                  <p>
+                    📞 {booking.guest_phone}
+                    {booking.contact_whatsapp ? " • WhatsApp" : ""}
+                  </p>
+                  <p>✉️ {booking.guest_email}</p>
+                  <p>
+                    💰{" "}
+                    {booking.total_price !== null
+                      ? `${Number(booking.total_price).toLocaleString(
+                          "ka-GE"
+                        )} ₾`
+                      : "შეთანხმებით"}
+                  </p>
+                </div>
+
+                {booking.notes && (
+                  <div className="mt-4 rounded-2xl bg-white/5 p-4 text-white/70">
+                    📝 {booking.notes}
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Action
+                    text="✅ Confirm"
+                    disabled={updatingId === booking.id}
+                    onClick={() =>
+                      void updateStatus(
+                        "transfer_bookings",
+                        booking.id,
+                        "confirmed"
+                      )
+                    }
+                  />
+                  <Action
+                    text="✔️ Completed"
+                    disabled={updatingId === booking.id}
+                    onClick={() =>
+                      void updateStatus(
+                        "transfer_bookings",
+                        booking.id,
+                        "completed"
+                      )
+                    }
+                  />
+                  <Action
+                    text="❌ Cancel"
+                    disabled={updatingId === booking.id}
+                    onClick={() =>
+                      void updateStatus(
+                        "transfer_bookings",
+                        booking.id,
+                        "cancelled"
+                      )
+                    }
+                  />
+                  <Action
+                    text="↩️ Pending"
+                    disabled={updatingId === booking.id}
+                    onClick={() =>
+                      void updateStatus(
+                        "transfer_bookings",
+                        booking.id,
+                        "pending"
+                      )
+                    }
+                  />
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const normalized = String(status || "").toLowerCase();
+function Action({
+  text,
+  onClick,
+  disabled,
+}: {
+  text: string;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 font-bold text-white disabled:opacity-40"
+    >
+      {text}
+    </button>
+  );
+}
 
-  if (normalized === "approved") {
-    return (
-      <span className="w-fit rounded-full bg-emerald-500/20 px-4 py-2 text-sm font-black text-emerald-300">
-        approved
-      </span>
-    );
-  }
+function Badge({ status }: { status: string }) {
+  const normalized = String(status || "pending").toLowerCase();
 
-  if (normalized === "rejected") {
-    return (
-      <span className="w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm font-black text-red-300">
-        rejected
-      </span>
-    );
-  }
+  const className =
+    normalized === "approved" ||
+    normalized === "confirmed" ||
+    normalized === "completed"
+      ? "bg-emerald-500/20 text-emerald-300"
+      : normalized === "rejected" || normalized === "cancelled"
+      ? "bg-red-500/20 text-red-300"
+      : "bg-yellow-500/20 text-yellow-300";
 
   return (
-    <span className="w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm font-black text-yellow-300">
-      pending
+    <span
+      className={`rounded-full px-4 py-2 text-sm font-black ${className}`}
+    >
+      {normalized}
     </span>
   );
 }
