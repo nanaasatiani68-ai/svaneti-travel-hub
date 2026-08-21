@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import VisitorTracker from "@/app/components/VisitorTracker";
 import PWARegister from "@/app/components/PWARegister";
 import InstallAppPrompt from "@/app/components/InstallAppPrompt";
+import SiteLanguageSwitcher from "@/app/components/SiteLanguageSwitcher";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -116,6 +117,7 @@ export default function RootLayout({
         <PWARegister />
         <VisitorTracker />
         {children}
+        <SiteLanguageSwitcher />
         <InstallAppPrompt />
       </body>
     </html>
