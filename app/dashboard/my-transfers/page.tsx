@@ -1,130 +1,137 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { supabase } from "../../lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type Transfer = {
   id: string;
-  from_location: string;
-  to_location: string;
-  price: number;
+  title: string | null;
+  from_location: string | null;
+  to_location: string | null;
+  price: number | null;
+  price_type: "fixed" | "negotiable" | "from" | null;
   vehicle: string | null;
-  seats: number | null;
-  description: string | null;
-  status: string;
+  image_url: string | null;
+  status: string | null;
+  created_at: string | null;
 };
 
 export default function MyTransfersPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadTransfers();
-  }, []);
+    async function load() {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
 
-  async function loadTransfers() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.replace(`/login?next=${encodeURIComponent("/dashboard/my-transfers")}`);
+        return;
+      }
 
-    if (!user) {
+      const { data, error } = await supabase
+        .from("transfers")
+        .select("id,title,from_location,to_location,price,price_type,vehicle,image_url,status,created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) setMessage(error.message);
+      setTransfers((data as Transfer[] | null) ?? []);
       setLoading(false);
-      return;
     }
 
-    const { data, error } = await supabase
-      .from("transfers")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    void load();
+  }, [supabase]);
 
-    if (!error && data) {
-      setTransfers(data);
-    }
-
-    setLoading(false);
+  if (loading) {
+    return <main className="p-8">ტრანსფერები იტვირთება...</main>;
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-10">
-      <div className="max-w-6xl mx-auto">
-
-        <div className="flex items-center justify-between mb-8">
-
-          <h1 className="text-4xl font-bold">
-            🚐 My Transfers
-          </h1>
-
-          <Link
-            href="/dashboard/add-transfer"
-            className="rounded-xl bg-sky-500 px-5 py-3 font-semibold text-white hover:bg-sky-600"
-          >
-            ➕ Add Transfer
+    <main className="min-h-screen bg-slate-950 px-4 py-10 text-white sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">My Transfers</p>
+            <h1 className="mt-2 text-4xl font-black">ჩემი ტრანსფერები</h1>
+          </div>
+          <Link href="/dashboard/add-transfer" className="rounded-xl bg-cyan-500 px-5 py-3 text-center font-black">
+            + ტრანსფერის დამატება
           </Link>
-
         </div>
 
-        {loading ? (
-          <div className="rounded-2xl bg-white p-10 shadow">
-            იტვირთება...
-          </div>
-        ) : transfers.length === 0 ? (
-          <div className="rounded-2xl bg-white p-10 shadow">
+        {message && <div className="mt-6 rounded-xl bg-red-500/10 p-4 text-red-200">{message}</div>}
 
-            <h2 className="text-2xl font-bold">
-              No transfers yet
-            </h2>
-
-            <p className="mt-3 text-gray-600">
-              Your transfers will appear here after you add them.
-            </p>
-
-          </div>
-        ) : (
-          <div className="grid gap-6">
-
-            {transfers.map((transfer) => (
-
-              <div
-                key={transfer.id}
-                className="rounded-2xl bg-white p-6 shadow"
-              >
-
-                <h2 className="text-2xl font-bold">
-                  🚐 {transfer.from_location} → {transfer.to_location}
-                </h2>
-
-                <p className="mt-3">
-                  💰 {transfer.price} ₾
-                </p>
-
-                {transfer.vehicle && (
-                  <p>🚙 {transfer.vehicle}</p>
+        <div className="mt-8 space-y-5">
+          {transfers.map((transfer) => (
+            <article key={transfer.id} className="grid overflow-hidden rounded-3xl border border-white/10 bg-white/5 md:grid-cols-[240px_1fr]">
+              <div className="min-h-[180px] bg-black/20">
+                {transfer.image_url ? (
+                  <img src={transfer.image_url} alt={transfer.title || "Transfer"} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full min-h-[180px] items-center justify-center text-6xl">🚐</div>
                 )}
-
-                {transfer.seats && (
-                  <p>👥 {transfer.seats} Seats</p>
-                )}
-
-                {transfer.description && (
-                  <p className="mt-3 text-gray-600">
-                    {transfer.description}
-                  </p>
-                )}
-
-                <div className="mt-4 inline-block rounded-full bg-yellow-100 px-4 py-2 text-yellow-700 font-semibold">
-                  {transfer.status}
-                </div>
-
               </div>
 
-            ))}
+              <div className="p-5">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row">
+                  <div>
+                    <h2 className="text-2xl font-black">
+                      {transfer.title || `${transfer.from_location || "From"} → ${transfer.to_location || "To"}`}
+                    </h2>
+                    <p className="mt-2 text-white/60">
+                      {transfer.from_location || "—"} → {transfer.to_location || "—"}
+                    </p>
+                    <p className="mt-2 text-cyan-300 font-black">{formatPrice(transfer)}</p>
+                    {transfer.vehicle && <p className="mt-2 text-white/60">🚘 {transfer.vehicle}</p>}
+                  </div>
+                  <Status status={transfer.status || "pending"} />
+                </div>
 
-          </div>
-        )}
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href={`/dashboard/my-transfers/${transfer.id}/edit`} className="rounded-xl bg-amber-500 px-5 py-3 font-black text-slate-950">
+                    ✏️ Edit
+                  </Link>
+                  {transfer.status === "approved" && (
+                    <Link href={`/transfers/${transfer.id}`} className="rounded-xl bg-white/10 px-5 py-3 font-black">
+                      View Details
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
 
+          {transfers.length === 0 && (
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center">
+              ტრანსფერები ჯერ არ დაგიმატებია.
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
+}
+
+function Status({ status }: { status: string }) {
+  const value = status.toLowerCase();
+  const cls =
+    value === "approved"
+      ? "bg-emerald-500/20 text-emerald-300"
+      : value === "rejected"
+        ? "bg-red-500/20 text-red-300"
+        : "bg-amber-500/20 text-amber-300";
+
+  return <span className={`h-fit w-fit rounded-full px-4 py-2 text-sm font-black ${cls}`}>{value}</span>;
+}
+
+function formatPrice(transfer: Transfer) {
+  if (transfer.price_type === "negotiable" || transfer.price == null) return "ფასი შეთანხმებით";
+  const price = Number(transfer.price).toLocaleString("ka-GE");
+  if (transfer.price_type === "from") return `${price} ₾-დან`;
+  return `${price} ₾ მანქანაზე`;
 }
