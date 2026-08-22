@@ -642,7 +642,7 @@ export default function BookTransferPage() {
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                {language === "ka" ? "{language === "ka" ? "ტრანსფერის აღწერა" : "Transfer description"}" : "Transfer description"}
+                {language === "ka" ? "ტრანსფერის აღწერა" : "Transfer description"}
               </p>
 
               <h2 className="mt-3 text-3xl font-black">
@@ -890,7 +890,7 @@ export default function BookTransferPage() {
 const transferBookingCopy = {
   ka: {
     invalidTransferId: "ტრანსფერის ID არასწორია.",
-    transferNotFound: "{language === "ka" ? "ტრანსფერი ვერ მოიძებნა" : "Transfer not found"} ან ჯერ არ არის დამტკიცებული.",
+    transferNotFound: "ტრანსფერი ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული.",
     unknownError: "უცნობი შეცდომა დაფიქსირდა.",
     transferInfoMissing: "ტრანსფერის ინფორმაცია ვერ მოიძებნა.",
     nameRequired: "ჩაწერე მგზავრის სახელი და გვარი.",
