@@ -26,7 +26,7 @@ type Transfer = {
   from_location: string | null;
   to_location: string | null;
   price: number | null;
-  price_type?: "fixed" | "negotiable" | null;
+  price_type?: "fixed" | "negotiable" | "from" | null;
   price_currency?: "GEL" | "USD" | null;
   vehicle: string | null;
   image_url: string | null;
@@ -498,7 +498,7 @@ export default function Home() {
             title={`${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
             subtitle={transfer.vehicle || t.transfers}
             meta={transfer.to_location || t.georgia}
-            price={formatPrice(transfer.price, transfer.price_type, transfer.price_currency, language, t.negotiable)}
+            price={formatTransferPrice(transfer, language)}
             actionLabel={t.details}
           />
         )}
@@ -873,4 +873,37 @@ function formatSimplePrice(
   return `${Number(value).toLocaleString(language === "ka" ? "ka-GE" : "en-US", {
     maximumFractionDigits: 2,
   })} ₾`;
+}
+
+function formatTransferPrice(transfer: Transfer, language: Language) {
+  const type =
+    transfer.price_type === "negotiable" || transfer.price_type === "from"
+      ? transfer.price_type
+      : "fixed";
+
+  if (type === "negotiable") {
+    return language === "ka" ? "ფასი შეთანხმებით" : "Negotiable";
+  }
+
+  if (
+    transfer.price === null ||
+    transfer.price === undefined ||
+    Number.isNaN(Number(transfer.price))
+  ) {
+    return language === "ka" ? "ფასი შეთანხმებით" : "Negotiable";
+  }
+
+  const amount = Number(transfer.price).toLocaleString(
+    language === "ka" ? "ka-GE" : "en-US"
+  );
+
+  if (type === "from") {
+    return language === "ka"
+      ? `${amount} ₾-დან`
+      : `From ${amount} ₾`;
+  }
+
+  return language === "ka"
+    ? `${amount} ₾ მანქანაზე`
+    : `${amount} ₾ per vehicle`;
 }
