@@ -1,12 +1,10 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import WeatherCard from "./components/WeatherCard";
+import LanguageSwitcher from "./components/LanguageSwitcher";
+import { useLanguage } from "./providers/LanguageProvider";
+import type { Language } from "./lib/i18n/translations";
 
-type Language = "ka" | "en";
 
 type Tour = {
   id: string | number;
@@ -158,9 +156,7 @@ export default function Home() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const pageSize = useResponsivePageSize();
-
-  const [language, setLanguage] = useState<Language>("ka");
-  const [languageLoaded, setLanguageLoaded] = useState(false);
+  const { language, languageReady } = useLanguage();
   const [showBeta, setShowBeta] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -181,16 +177,9 @@ export default function Home() {
   const t = translations[language];
 
   useEffect(() => {
-    const savedLanguage = localStorage.getItem("site-language");
-    if (savedLanguage === "ka" || savedLanguage === "en") {
-      setLanguage(savedLanguage);
-    }
-
     if (sessionStorage.getItem("beta-closed") === "true") {
       setShowBeta(false);
     }
-
-    setLanguageLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -253,10 +242,6 @@ export default function Home() {
     setPages({ tours: 0, transfers: 0, hotels: 0, guides: 0 });
   }, [pageSize]);
 
-  function changeLanguage(nextLanguage: Language) {
-    setLanguage(nextLanguage);
-    localStorage.setItem("site-language", nextLanguage);
-  }
 
   function closeBetaModal() {
     setShowBeta(false);
@@ -280,7 +265,7 @@ export default function Home() {
     setPages((current) => ({ ...current, [section]: page }));
   }
 
-  if (!languageLoaded) {
+  if (!languageReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
         <div className="text-center">
@@ -300,7 +285,7 @@ export default function Home() {
             <h2 className="text-2xl font-extrabold sm:text-3xl">{t.betaTitle}</h2>
             <p className="mt-4 leading-7 text-white/70">{t.betaText}</p>
             <div className="mt-6 flex justify-center">
-              <LanguageSwitcher language={language} changeLanguage={changeLanguage} />
+              <LanguageSwitcher />
             </div>
             <button
               type="button"
@@ -340,7 +325,7 @@ export default function Home() {
             </nav>
 
             <div className="hidden items-center gap-3 lg:flex">
-              <LanguageSwitcher language={language} changeLanguage={changeLanguage} />
+              <LanguageSwitcher />
               <Link href="/login" className="rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 font-semibold hover:bg-white/20">{t.login}</Link>
               <Link href="/signup" className="rounded-xl bg-emerald-500 px-5 py-2.5 font-semibold hover:bg-emerald-600">{t.signup}</Link>
             </div>
@@ -395,7 +380,7 @@ export default function Home() {
               </div>
 
               <div className="mt-7">
-                <LanguageSwitcher language={language} changeLanguage={changeLanguage} />
+                <LanguageSwitcher />
               </div>
 
               <div className="mt-7 grid gap-3">
@@ -614,7 +599,7 @@ export default function Home() {
             <p>© 2026 Georgia Gateway Hub</p>
             <p className="mt-1">{t.madeInGeorgia}</p>
           </div>
-          <LanguageSwitcher language={language} changeLanguage={changeLanguage} />
+          <LanguageSwitcher />
         </div>
       </footer>
     </main>
@@ -790,33 +775,6 @@ function AddServiceButton({ label, onClick }: { label: string; onClick: () => vo
     >
       + {label}
     </button>
-  );
-}
-
-function LanguageSwitcher({
-  language,
-  changeLanguage,
-}: {
-  language: Language;
-  changeLanguage: (language: Language) => void;
-}) {
-  return (
-    <div className="inline-flex rounded-xl border border-white/15 bg-white/10 p-1">
-      <button
-        type="button"
-        onClick={() => changeLanguage("ka")}
-        className={`rounded-lg px-3 py-2 text-sm font-black ${language === "ka" ? "bg-white text-slate-950" : "text-white/60"}`}
-      >
-        KA
-      </button>
-      <button
-        type="button"
-        onClick={() => changeLanguage("en")}
-        className={`rounded-lg px-3 py-2 text-sm font-black ${language === "en" ? "bg-white text-slate-950" : "text-white/60"}`}
-      >
-        EN
-      </button>
-    </div>
   );
 }
 

@@ -10,23 +10,33 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
+import { useLanguage } from "@/app/providers/LanguageProvider";
+import { localizedValue } from "@/app/lib/i18n/localizedValue";
 
 type Transfer = {
   id: string | number;
   user_id: string | null;
   from_location: string | null;
+  from_location_ka: string | null;
+  from_location_en: string | null;
   to_location: string | null;
+  to_location_ka: string | null;
+  to_location_en: string | null;
   price: number | null;
   price_type: "fixed" | "negotiable" | "from" | null;
   vehicle: string | null;
   seats: number | null;
   description: string | null;
+  description_ka: string | null;
+  description_en: string | null;
   image_url: string | null;
   status: string | null;
   created_at: string | null;
 };
 
 export default function BookTransferPage() {
+  const { language } = useLanguage();
+  const c = transferBookingCopy[language];
   const params = useParams<{ id: string }>();
   const transferId = params?.id;
 
@@ -67,7 +77,7 @@ export default function BookTransferPage() {
     try {
       if (!transferId) {
         throw new Error(
-          "ტრანსფერის ID არასწორია."
+          c.invalidTransferId
         );
       }
 
@@ -78,12 +88,18 @@ export default function BookTransferPage() {
             id,
             user_id,
             from_location,
+            from_location_ka,
+            from_location_en,
             to_location,
+            to_location_ka,
+            to_location_en,
             price,
             price_type,
             vehicle,
             seats,
             description,
+            description_ka,
+            description_en,
             image_url,
             status,
             created_at
@@ -99,7 +115,7 @@ export default function BookTransferPage() {
 
       if (!data) {
         throw new Error(
-          "ტრანსფერი ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული."
+          c.transferNotFound
         );
       }
 
@@ -107,16 +123,26 @@ export default function BookTransferPage() {
 
       setTransfer(loadedTransfer);
 
-      if (loadedTransfer.from_location) {
-        setPickupAddress(
-          loadedTransfer.from_location
-        );
+      const fromValue = localizedValue(
+        language,
+        loadedTransfer.from_location_ka,
+        loadedTransfer.from_location_en,
+        loadedTransfer.from_location
+      );
+
+      const toValue = localizedValue(
+        language,
+        loadedTransfer.to_location_ka,
+        loadedTransfer.to_location_en,
+        loadedTransfer.to_location
+      );
+
+      if (fromValue) {
+        setPickupAddress(fromValue);
       }
 
-      if (loadedTransfer.to_location) {
-        setDropoffAddress(
-          loadedTransfer.to_location
-        );
+      if (toValue) {
+        setDropoffAddress(toValue);
       }
     } catch (error: unknown) {
       console.error(
@@ -127,7 +153,7 @@ export default function BookTransferPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "უცნობი შეცდომა დაფიქსირდა.";
+          : c.unknownError;
 
       setLoadError(message);
     } finally {
@@ -198,7 +224,7 @@ export default function BookTransferPage() {
 
   useEffect(() => {
     void loadTransfer();
-  }, [transferId]);
+  }, [transferId, language]);
 
   useEffect(() => {
     void loadCurrentUser();
@@ -223,6 +249,33 @@ export default function BookTransferPage() {
     return Number(transfer.price);
   }, [transfer]);
 
+  const localizedFrom = transfer
+    ? localizedValue(
+        language,
+        transfer.from_location_ka,
+        transfer.from_location_en,
+        transfer.from_location
+      )
+    : "";
+
+  const localizedTo = transfer
+    ? localizedValue(
+        language,
+        transfer.to_location_ka,
+        transfer.to_location_en,
+        transfer.to_location
+      )
+    : "";
+
+  const localizedDescription = transfer
+    ? localizedValue(
+        language,
+        transfer.description_ka,
+        transfer.description_en,
+        transfer.description
+      )
+    : "";
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
@@ -237,54 +290,54 @@ export default function BookTransferPage() {
 
     if (!transfer) {
       setFormError(
-        "ტრანსფერის ინფორმაცია ვერ მოიძებნა."
+        c.transferInfoMissing
       );
       return;
     }
 
     if (!guestName.trim()) {
       setFormError(
-        "ჩაწერე მგზავრის სახელი და გვარი."
+        c.nameRequired
       );
       return;
     }
 
     if (!guestEmail.trim()) {
-      setFormError("ჩაწერე ელფოსტა.");
+      setFormError(c.emailRequired);
       return;
     }
 
     if (!isValidEmail(guestEmail)) {
       setFormError(
-        "ელფოსტის მისამართი არასწორია."
+        c.emailInvalid
       );
       return;
     }
 
     if (!guestPhone.trim()) {
       setFormError(
-        "ჩაწერე ტელეფონის ნომერი."
+        c.phoneRequired
       );
       return;
     }
 
     if (!travelDate) {
       setFormError(
-        "აირჩიე მგზავრობის თარიღი."
+        c.dateRequired
       );
       return;
     }
 
     if (travelDate < today) {
       setFormError(
-        "გასული თარიღის არჩევა შეუძლებელია."
+        c.pastDate
       );
       return;
     }
 
     if (!travelTime) {
       setFormError(
-        "აირჩიე მგზავრობის დრო."
+        c.timeRequired
       );
       return;
     }
@@ -294,7 +347,7 @@ export default function BookTransferPage() {
       passengers < 1
     ) {
       setFormError(
-        "მგზავრების რაოდენობა უნდა იყოს მინიმუმ 1."
+        c.passengersMin
       );
       return;
     }
@@ -311,14 +364,14 @@ export default function BookTransferPage() {
 
     if (!pickupAddress.trim()) {
       setFormError(
-        "ჩაწერე აყვანის ზუსტი მისამართი."
+        c.pickupRequired
       );
       return;
     }
 
     if (!dropoffAddress.trim()) {
       setFormError(
-        "ჩაწერე დანიშნულების ზუსტი მისამართი."
+        c.dropoffRequired
       );
       return;
     }
@@ -370,7 +423,7 @@ export default function BookTransferPage() {
       }
 
       setSuccessMessage(
-        "ტრანსფერის მოთხოვნა წარმატებით გაიგზავნა. მძღოლი ან ორგანიზატორი დაგიკავშირდება ტელეფონზე ან ელფოსტაზე."
+        c.successMessage
       );
 
       setTravelDate("");
@@ -378,16 +431,12 @@ export default function BookTransferPage() {
       setPassengers(1);
       setNotes("");
 
-      if (transfer.from_location) {
-        setPickupAddress(
-          transfer.from_location
-        );
+      if (localizedFrom) {
+        setPickupAddress(localizedFrom);
       }
 
-      if (transfer.to_location) {
-        setDropoffAddress(
-          transfer.to_location
-        );
+      if (localizedTo) {
+        setDropoffAddress(localizedTo);
       }
 
       window.scrollTo({
@@ -403,7 +452,7 @@ export default function BookTransferPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "უცნობი შეცდომა დაფიქსირდა.";
+          : c.unknownError;
 
       setFormError(
         `ტრანსფერის მოთხოვნა ვერ გაიგზავნა: ${message}`
@@ -420,11 +469,11 @@ export default function BookTransferPage() {
           <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-cyan-400" />
 
           <h1 className="mt-6 text-2xl font-black">
-            ტრანსფერი იტვირთება
+            {language === "ka" ? "ტრანსფერი იტვირთება" : "Loading transfer"}
           </h1>
 
           <p className="mt-2 text-white/55">
-            გთხოვთ, მოიცადოთ...
+            {language === "ka" ? "გთხოვთ, მოიცადოთ..." : "Please wait..."}
           </p>
         </div>
       </main>
@@ -438,12 +487,12 @@ export default function BookTransferPage() {
           <div className="text-7xl">🚐</div>
 
           <h1 className="mt-5 text-2xl font-black">
-            ტრანსფერი ვერ მოიძებნა
+            {language === "ka" ? "ტრანსფერი ვერ მოიძებნა" : "Transfer not found"}
           </h1>
 
           <p className="mt-3 leading-7 text-white/60">
             {loadError ||
-              "ტრანსფერის ინფორმაცია ვერ ჩაიტვირთა."}
+              c.transferLoadFailed}
           </p>
 
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
@@ -452,14 +501,14 @@ export default function BookTransferPage() {
               onClick={loadTransfer}
               className="rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
             >
-              ხელახლა ცდა
+              {language === "ka" ? "ხელახლა ცდა" : "Try again"}
             </button>
 
             <Link
               href="/transfers"
               className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
             >
-              ყველა ტრანსფერი
+              {language === "ka" ? "ყველა ტრანსფერი" : "All transfers"}
             </Link>
           </div>
         </div>
@@ -485,7 +534,7 @@ export default function BookTransferPage() {
               </p>
 
               <p className="text-xs text-white/45">
-                ტრანსფერის დეტალები
+                {language === "ka" ? "ტრანსფერის დეტალები" : "Transfer details"}
               </p>
             </div>
           </Link>
@@ -494,7 +543,7 @@ export default function BookTransferPage() {
             href="/transfers"
             className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20"
           >
-            ← ტრანსფერები
+            {language === "ka" ? "← ტრანსფერები" : "← Transfers"}
           </Link>
         </div>
       </header>
@@ -503,7 +552,7 @@ export default function BookTransferPage() {
         {successMessage && (
           <div className="mb-8 rounded-3xl border border-emerald-400/30 bg-emerald-500/15 p-6 text-emerald-100 shadow-xl">
             <h2 className="text-xl font-black">
-              ✅ მოთხოვნა წარმატებით გაიგზავნა
+              {language === "ka" ? "✅ მოთხოვნა წარმატებით გაიგზავნა" : "✅ Request sent successfully"}
             </h2>
 
             <p className="mt-2 leading-7 text-emerald-100/75">
@@ -534,25 +583,23 @@ export default function BookTransferPage() {
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
                   <span className="inline-flex rounded-full bg-emerald-500 px-4 py-2 text-xs font-black shadow-lg">
-                    ✓ ხელმისაწვდომია
+                    {language === "ka" ? "✓ ხელმისაწვდომია" : "✓ Available"}
                   </span>
 
                   <h1 className="mt-4 text-3xl font-black drop-shadow-xl sm:text-5xl">
-                    {transfer.from_location ||
-                      "საწყისი ადგილი"}
+                    {localizedFrom || c.startLocation}
 
                     <span className="mx-3 text-cyan-300">
                       →
                     </span>
 
-                    {transfer.to_location ||
-                      "დანიშნულება"}
+                    {localizedTo || c.destination}
                   </h1>
 
                   <p className="mt-3 text-lg text-white/80">
                     🚘{" "}
                     {transfer.vehicle ||
-                      "ავტომობილი არ არის მითითებული"}
+                      c.vehicleNotSpecified}
                   </p>
                 </div>
               </div>
@@ -562,38 +609,32 @@ export default function BookTransferPage() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoBox
                   icon="📍"
-                  label="საწყისი ადგილი"
-                  value={
-                    transfer.from_location ||
-                    "არ არის მითითებული"
-                  }
+                  label={c.startLocation}
+                  value={localizedFrom || c.notSpecified}
                 />
 
                 <InfoBox
                   icon="🏁"
-                  label="დანიშნულება"
-                  value={
-                    transfer.to_location ||
-                    "არ არის მითითებული"
-                  }
+                  label={c.destination}
+                  value={localizedTo || c.notSpecified}
                 />
 
                 <InfoBox
                   icon="🚘"
-                  label="ავტომობილი"
+                  label={c.vehicle}
                   value={
                     transfer.vehicle ||
-                    "არ არის მითითებული"
+                    c.notSpecified
                   }
                 />
 
                 <InfoBox
                   icon="👥"
-                  label="ადგილები"
+                  label={c.seats}
                   value={
                     transfer.seats
-                      ? `${transfer.seats} მგზავრი`
-                      : "არ არის მითითებული"
+                      ? language === "ka" ? `${transfer.seats} მგზავრი` : `${transfer.seats} passenger${transfer.seats === 1 ? "" : "s"}`
+                      : c.notSpecified
                   }
                 />
               </div>
@@ -601,40 +642,29 @@ export default function BookTransferPage() {
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                Transfer description
+                {language === "ka" ? "{language === "ka" ? "ტრანსფერის აღწერა" : "Transfer description"}" : "Transfer description"}
               </p>
 
               <h2 className="mt-3 text-3xl font-black">
-                ტრანსფერის აღწერა
+                {language === "ka" ? "ტრანსფერის აღწერა" : "Transfer description"}
               </h2>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-white/70">
-                {transfer.description ||
-                  "ტრანსფერის სრული აღწერა ჯერ არ არის დამატებული."}
+                {localizedDescription || c.noDescription}
               </p>
             </section>
 
             <section className="grid gap-5 md:grid-cols-2">
               <DetailCard
                 icon="✅"
-                title="დაჯავშნის ინფორმაცია"
-                items={[
-                  "მოთხოვნის გაგზავნა უფასოა",
-                  "მძღოლი დაგიკავშირდება დასადასტურებლად",
-                  "შეგიძლია მიუთითო აყვანის ზუსტი მისამართი",
-                  "დაჯავშნა საბოლოოა მხოლოდ დადასტურების შემდეგ",
-                ]}
+                title={c.bookingInfo}
+                items={c.bookingInfoItems}
               />
 
               <DetailCard
                 icon="ℹ️"
-                title="მნიშვნელოვანი პირობები"
-                items={[
-                  "მგზავრების რაოდენობა არ უნდა აღემატებოდეს ადგილების რაოდენობას",
-                  "დრო შეიძლება შეთანხმდეს მძღოლთან",
-                  "დამატებითი გაჩერება შეიძლება ფასიანი იყოს",
-                  "ზუსტი პირობები გადაამოწმე ორგანიზატორთან",
-                ]}
+                title={c.importantTerms}
+                items={c.importantTermsItems}
               />
             </section>
           </div>
@@ -645,12 +675,11 @@ export default function BookTransferPage() {
             </p>
 
             <h2 className="mt-2 text-3xl font-black">
-              ტრანსფერის დაჯავშნა
+              {language === "ka" ? "ტრანსფერის დაჯავშნა" : "Book Transfer"}
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-slate-500">
-              შეავსე მონაცემები და გააგზავნე
-              მოთხოვნა.
+              {language === "ka" ? "შეავსე მონაცემები და გააგზავნე მოთხოვნა." : "Fill in your details and send a booking request."}
             </p>
 
             {formError && (
@@ -663,7 +692,7 @@ export default function BookTransferPage() {
               onSubmit={handleSubmit}
               className="mt-7 space-y-5"
             >
-              <FormField label="სახელი და გვარი">
+              <FormField label={c.fullName}>
                 <input
                   type="text"
                   value={guestName}
@@ -672,14 +701,14 @@ export default function BookTransferPage() {
                       event.target.value
                     )
                   }
-                  placeholder="მაგალითად: Anna Brown"
+                  placeholder={c.namePlaceholder}
                   autoComplete="name"
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                 />
               </FormField>
 
-              <FormField label="ელფოსტა">
+              <FormField label={c.email}>
                 <input
                   type="email"
                   value={guestEmail}
@@ -695,7 +724,7 @@ export default function BookTransferPage() {
                 />
               </FormField>
 
-              <FormField label="ტელეფონის ნომერი">
+              <FormField label={c.phone}>
                 <input
                   type="tel"
                   value={guestPhone}
@@ -712,7 +741,7 @@ export default function BookTransferPage() {
               </FormField>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="მგზავრობის თარიღი">
+                <FormField label={c.travelDate}>
                   <input
                     type="date"
                     value={travelDate}
@@ -727,7 +756,7 @@ export default function BookTransferPage() {
                   />
                 </FormField>
 
-                <FormField label="მგზავრობის დრო">
+                <FormField label={c.travelTime}>
                   <input
                     type="time"
                     value={travelTime}
@@ -742,7 +771,7 @@ export default function BookTransferPage() {
                 </FormField>
               </div>
 
-              <FormField label="მგზავრების რაოდენობა">
+              <FormField label={c.passengers}>
                 <input
                   type="number"
                   min={1}
@@ -762,7 +791,7 @@ export default function BookTransferPage() {
                 />
               </FormField>
 
-              <FormField label="აყვანის ზუსტი მისამართი">
+              <FormField label={c.pickupAddress}>
                 <input
                   type="text"
                   value={pickupAddress}
@@ -771,13 +800,13 @@ export default function BookTransferPage() {
                       event.target.value
                     )
                   }
-                  placeholder="მაგალითად: სასტუმრო ლაჰილი, მესტია"
+                  placeholder={c.pickupPlaceholder}
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                 />
               </FormField>
 
-              <FormField label="დანიშნულების ზუსტი მისამართი">
+              <FormField label={c.dropoffAddress}>
                 <input
                   type="text"
                   value={dropoffAddress}
@@ -786,19 +815,19 @@ export default function BookTransferPage() {
                       event.target.value
                     )
                   }
-                  placeholder="მაგალითად: ქუთაისის აეროპორტი"
+                  placeholder={c.dropoffPlaceholder}
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                 />
               </FormField>
 
-              <FormField label="დამატებითი შეტყობინება">
+              <FormField label={c.specialRequests}>
                 <textarea
                   value={notes}
                   onChange={(event) =>
                     setNotes(event.target.value)
                   }
-                  placeholder="მაგალითად: გვაქვს დიდი ბარგი..."
+                  placeholder={c.notesPlaceholder}
                   rows={4}
                   maxLength={1000}
                   className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -811,31 +840,27 @@ export default function BookTransferPage() {
 
               <div className="rounded-2xl bg-slate-100 p-5">
                 <PriceRow
-                  label="მარშრუტი"
+                  label={c.route}
                   value={`${
-                    transfer.from_location ||
-                    "საწყისი ადგილი"
+                    localizedFrom || c.startLocation
                   } → ${
-                    transfer.to_location ||
-                    "დანიშნულება"
+                    localizedTo || c.destination
                   }`}
                 />
 
                 <PriceRow
-                  label="მგზავრების რაოდენობა"
+                  label={c.passengers}
                   value={String(passengers)}
                 />
 
                 <div className="mt-4 border-t border-slate-300 pt-4">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-lg font-black">
-                      ტრანსფერის ფასი
+                      {language === "ka" ? "ტრანსფერის ფასი" : "Transfer price"}
                     </span>
 
                     <span className="text-2xl font-black text-cyan-700">
-                      {formatTransferPrice(
-                        transfer
-                      )}
+                      {formatTransferPrice(transfer, language)}
                     </span>
                   </div>
                 </div>
@@ -847,13 +872,12 @@ export default function BookTransferPage() {
                 className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting
-                  ? "მოთხოვნა იგზავნება..."
-                  : "დაჯავშნის მოთხოვნის გაგზავნა"}
+                  ? c.submitting
+                  : c.submitButton}
               </button>
 
               <p className="text-center text-xs leading-5 text-slate-400">
-                მოთხოვნის გაგზავნა ავტომატურად
-                დადასტურებულ ჯავშანს არ ნიშნავს.
+                {language === "ka" ? "მოთხოვნის გაგზავნა ავტომატურად დადასტურებულ ჯავშანს არ ნიშნავს." : "Sending a request does not automatically confirm the booking."}
               </p>
             </form>
           </aside>
@@ -862,6 +886,119 @@ export default function BookTransferPage() {
     </main>
   );
 }
+
+const transferBookingCopy = {
+  ka: {
+    invalidTransferId: "ტრანსფერის ID არასწორია.",
+    transferNotFound: "{language === "ka" ? "ტრანსფერი ვერ მოიძებნა" : "Transfer not found"} ან ჯერ არ არის დამტკიცებული.",
+    unknownError: "უცნობი შეცდომა დაფიქსირდა.",
+    transferInfoMissing: "ტრანსფერის ინფორმაცია ვერ მოიძებნა.",
+    nameRequired: "ჩაწერე მგზავრის სახელი და გვარი.",
+    emailRequired: "ჩაწერე ელფოსტა.",
+    emailInvalid: "ელფოსტის მისამართი არასწორია.",
+    phoneRequired: "ჩაწერე ტელეფონის ნომერი.",
+    dateRequired: "აირჩიე მგზავრობის თარიღი.",
+    pastDate: "გასული თარიღის არჩევა შეუძლებელია.",
+    timeRequired: "აირჩიე მგზავრობის დრო.",
+    passengersMin: "მგზავრების რაოდენობა უნდა იყოს მინიმუმ 1.",
+    pickupRequired: "ჩაწერე აყვანის ზუსტი მისამართი.",
+    dropoffRequired: "ჩაწერე დანიშნულების ზუსტი მისამართი.",
+    successMessage: "ტრანსფერის მოთხოვნა წარმატებით გაიგზავნა. მძღოლი ან ორგანიზატორი დაგიკავშირდება ტელეფონზე ან ელფოსტაზე.",
+    transferLoadFailed: "ტრანსფერის ინფორმაცია ვერ ჩაიტვირთა.",
+    startLocation: "საწყისი ადგილი",
+    destination: "დანიშნულება",
+    vehicle: "ავტომობილი",
+    vehicleNotSpecified: "ავტომობილი არ არის მითითებული",
+    seats: "ადგილები",
+    notSpecified: "არ არის მითითებული",
+    noDescription: "ტრანსფერის სრული აღწერა ჯერ არ არის დამატებული.",
+    bookingInfo: "დაჯავშნის ინფორმაცია",
+    importantTerms: "მნიშვნელოვანი პირობები",
+    bookingInfoItems: [
+      "მოთხოვნის გაგზავნა უფასოა",
+      "მძღოლი დაგიკავშირდება დასადასტურებლად",
+      "შეგიძლია მიუთითო აყვანის ზუსტი მისამართი",
+      "დაჯავშნა საბოლოოა მხოლოდ დადასტურების შემდეგ",
+    ],
+    importantTermsItems: [
+      "მგზავრების რაოდენობა არ უნდა აღემატებოდეს ადგილების რაოდენობას",
+      "დრო შეიძლება შეთანხმდეს მძღოლთან",
+      "დამატებითი გაჩერება შეიძლება ფასიანი იყოს",
+      "ზუსტი პირობები გადაამოწმე ორგანიზატორთან",
+    ],
+    fullName: "სახელი და გვარი",
+    email: "ელფოსტა",
+    phone: "ტელეფონის ნომერი",
+    travelDate: "მგზავრობის თარიღი",
+    travelTime: "მგზავრობის დრო",
+    passengers: "მგზავრების რაოდენობა",
+    pickupAddress: "აყვანის ზუსტი მისამართი",
+    dropoffAddress: "დანიშნულების ზუსტი მისამართი",
+    specialRequests: "დამატებითი შეტყობინება",
+    route: "მარშრუტი",
+    namePlaceholder: "მაგალითად: Anna Brown",
+    pickupPlaceholder: "მაგალითად: სასტუმრო ლაჰილი, მესტია",
+    dropoffPlaceholder: "მაგალითად: ქუთაისის აეროპორტი",
+    notesPlaceholder: "მაგალითად: გვაქვს დიდი ბარგი...",
+    submitting: "მოთხოვნა იგზავნება...",
+    submitButton: "დაჯავშნის მოთხოვნის გაგზავნა",
+  },
+  en: {
+    invalidTransferId: "Invalid transfer ID.",
+    transferNotFound: "Transfer was not found or is not approved yet.",
+    unknownError: "An unknown error occurred.",
+    transferInfoMissing: "Transfer information could not be found.",
+    nameRequired: "Enter the passenger's full name.",
+    emailRequired: "Enter your email address.",
+    emailInvalid: "The email address is invalid.",
+    phoneRequired: "Enter your phone number.",
+    dateRequired: "Choose a travel date.",
+    pastDate: "You cannot choose a past date.",
+    timeRequired: "Choose a travel time.",
+    passengersMin: "Number of passengers must be at least 1.",
+    pickupRequired: "Enter the exact pickup address.",
+    dropoffRequired: "Enter the exact destination address.",
+    successMessage: "Your transfer request was sent successfully. The driver or organizer will contact you by phone or email.",
+    transferLoadFailed: "Transfer information could not be loaded.",
+    startLocation: "Starting point",
+    destination: "Destination",
+    vehicle: "Vehicle",
+    vehicleNotSpecified: "Vehicle not specified",
+    seats: "Seats",
+    notSpecified: "Not specified",
+    noDescription: "A full transfer description has not been added yet.",
+    bookingInfo: "Booking information",
+    importantTerms: "Important terms",
+    bookingInfoItems: [
+      "Sending a booking request is free",
+      "The driver will contact you to confirm",
+      "You can enter an exact pickup address",
+      "The booking is final only after confirmation",
+    ],
+    importantTermsItems: [
+      "The number of passengers cannot exceed the available seats",
+      "Travel time can be agreed with the driver",
+      "Additional stops may cost extra",
+      "Confirm exact terms with the organizer",
+    ],
+    fullName: "Full name",
+    email: "Email",
+    phone: "Phone / WhatsApp",
+    travelDate: "Travel date",
+    travelTime: "Travel time",
+    passengers: "Number of passengers",
+    pickupAddress: "Exact pickup address",
+    dropoffAddress: "Exact destination address",
+    specialRequests: "Special requests",
+    route: "Route",
+    namePlaceholder: "For example: Anna Brown",
+    pickupPlaceholder: "For example: Hotel Lahili, Mestia",
+    dropoffPlaceholder: "For example: Kutaisi Airport",
+    notesPlaceholder: "For example: We have large luggage...",
+    submitting: "Sending request...",
+    submitButton: "Send booking request",
+  },
+} as const;
 
 function FormField({
   label,
@@ -967,7 +1104,8 @@ function PriceRow({
 }
 
 function formatTransferPrice(
-  transfer: Transfer
+  transfer: Transfer,
+  language: "ka" | "en"
 ) {
   const priceType =
     transfer.price_type || "fixed";
@@ -977,7 +1115,7 @@ function formatTransferPrice(
     transfer.price === null ||
     transfer.price === undefined
   ) {
-    return "ფასი შეთანხმებით";
+    return language === "ka" ? "ფასი შეთანხმებით" : "Contact for price";
   }
 
   const formattedPrice =
@@ -986,10 +1124,10 @@ function formatTransferPrice(
     );
 
   if (priceType === "from") {
-    return `${formattedPrice} ₾-დან`;
+    return language === "ka" ? `${formattedPrice} ₾-დან` : `From ${formattedPrice} GEL`;
   }
 
-  return `${formattedPrice} ₾ მანქანაზე`;
+  return language === "ka" ? `${formattedPrice} ₾ მანქანაზე` : `${formattedPrice} GEL per vehicle`;
 }
 
 function getLocalToday() {
