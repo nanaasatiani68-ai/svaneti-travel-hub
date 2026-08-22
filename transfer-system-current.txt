@@ -1,0 +1,2733 @@
+﻿===== app/dashboard/add-transfer/page.tsx =====
+"use client";
+
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+
+type Profile = {
+  role: string | null;
+  phone: string | null;
+};
+
+const MAX_TRANSFER_IMAGE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TRANSFER_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
+
+export default function AddTransferPage() {
+  const supabase = useMemo(() => createClient(), []);
+
+  const [userId, setUserId] = useState("");
+  const [userRole, setUserRole] = useState("");
+  const [returnPath, setReturnPath] = useState("/dashboard");
+
+  const [checkingUser, setCheckingUser] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const [fromLocation, setFromLocation] = useState("");
+  const [toLocation, setToLocation] = useState("");
+  const [price, setPrice] = useState("");
+  const [vehicle, setVehicle] = useState("");
+  const [seats, setSeats] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
+
+  const [contactPhone, setContactPhone] = useState("");
+  const [hasWhatsapp, setHasWhatsapp] = useState(false);
+  const [hasViber, setHasViber] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<
+    "success" | "error"
+  >("success");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkUser() {
+      setCheckingUser(true);
+
+      try {
+        let {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("User loading error:", userError);
+        }
+
+        if (!user) {
+          const {
+            data: refreshData,
+            error: refreshError,
+          } = await supabase.auth.refreshSession();
+
+          if (refreshError) {
+            console.error(
+              "Session refresh error:",
+              refreshError
+            );
+          }
+
+          user = refreshData.user ?? null;
+        }
+
+        if (!user) {
+          const nextPath = encodeURIComponent(
+            "/dashboard/add-transfer"
+          );
+
+          window.location.replace(
+            `/login?next=${nextPath}`
+          );
+          return;
+        }
+
+        if (!mounted) {
+          return;
+        }
+
+        setUserId(user.id);
+
+        const {
+          data: profileData,
+          error: profileError,
+        } = await supabase
+          .from("profiles")
+          .select("role, phone")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error(
+            "Profile loading error:",
+            profileError
+          );
+        }
+
+        const profile =
+          profileData as Profile | null;
+
+        const role = String(profile?.role ?? "")
+          .trim()
+          .toLowerCase();
+
+        if (profile?.phone) {
+          setContactPhone(profile.phone);
+        }
+
+        if (!mounted) {
+          return;
+        }
+
+        setUserRole(role);
+
+        if (
+          role === "director" ||
+          role === "admin"
+        ) {
+          setReturnPath("/admin-v2");
+        } else if (role === "staff") {
+          setReturnPath("/staff");
+        } else {
+          setReturnPath("/dashboard");
+        }
+      } catch (error) {
+        console.error(
+          "Authentication check error:",
+          error
+        );
+
+        const nextPath = encodeURIComponent(
+          "/dashboard/add-transfer"
+        );
+
+        window.location.replace(
+          `/login?next=${nextPath}`
+        );
+        return;
+      } finally {
+        if (mounted) {
+          setCheckingUser(false);
+        }
+      }
+    }
+
+    checkUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(imageFile);
+    setImagePreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [imageFile]);
+
+  function handleTransferImageChange(
+    event: ChangeEvent<HTMLInputElement>
+  ) {
+    setMessage("");
+
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      return;
+    }
+
+    if (!ALLOWED_TRANSFER_IMAGE_TYPES.includes(file.type)) {
+      setMessage(
+        "შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტო."
+      );
+      setMessageType("error");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_TRANSFER_IMAGE_SIZE) {
+      setMessage("ფოტოს მაქსიმალური ზომაა 10 MB.");
+      setMessageType("error");
+      event.target.value = "";
+      return;
+    }
+
+    setImageFile(file);
+    event.target.value = "";
+  }
+
+  async function uploadTransferImage() {
+    if (!imageFile) {
+      return {
+        publicUrl: null as string | null,
+        filePath: null as string | null,
+      };
+    }
+
+    if (!userId) {
+      throw new Error("მომხმარებელი ვერ მოიძებნა.");
+    }
+
+    const extension =
+      imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+
+    const filePath =
+      `${userId}/transfer-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+    const { error: uploadError } =
+      await supabase.storage
+        .from("transfer-images")
+        .upload(filePath, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: imageFile.type,
+        });
+
+    if (uploadError) {
+      throw new Error(
+        `ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`
+      );
+    }
+
+    const { data: publicUrlData } =
+      supabase.storage
+        .from("transfer-images")
+        .getPublicUrl(filePath);
+
+    return {
+      publicUrl: publicUrlData.publicUrl,
+      filePath,
+    };
+  }
+
+  async function addTransfer(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
+    setMessage("");
+
+    if (!userId) {
+      setMessage(
+        "მომხმარებელი ვერ მოიძებნა. თავიდან შედი ანგარიშზე."
+      );
+      setMessageType("error");
+      return;
+    }
+
+    if (
+      !fromLocation.trim() ||
+      !toLocation.trim()
+    ) {
+      setMessage(
+        "შეავსე ტრანსფერის საწყისი და საბოლოო მდებარეობა."
+      );
+      setMessageType("error");
+      return;
+    }
+
+    const numericPrice = Number(price);
+
+    if (
+      !price ||
+      Number.isNaN(numericPrice) ||
+      numericPrice < 0
+    ) {
+      setMessage("ჩაწერე სწორი ფასი.");
+      setMessageType("error");
+      return;
+    }
+
+    if (seats) {
+      const numericSeats = Number(seats);
+
+      if (
+        !Number.isInteger(numericSeats) ||
+        numericSeats < 1
+      ) {
+        setMessage(
+          "ადგილების რაოდენობა უნდა იყოს მინიმუმ 1."
+        );
+        setMessageType("error");
+        return;
+      }
+    }
+
+    if (!contactPhone.trim()) {
+      setMessage("ჩაწერე საკონტაქტო ტელეფონის ნომერი.");
+      setMessageType("error");
+      return;
+    }
+
+    if (!isValidPhone(contactPhone)) {
+      setMessage("ტელეფონის ნომერი ჩაწერე საერთაშორისო ფორმატში, მაგალითად: +995555123456");
+      setMessageType("error");
+      return;
+    }
+
+    setLoading(true);
+
+    let uploadedFilePath: string | null = null;
+
+    try {
+      const uploadedImage =
+        await uploadTransferImage();
+
+      uploadedFilePath =
+        uploadedImage.filePath;
+
+      const { error } = await supabase
+        .from("transfers")
+        .insert({
+          user_id: userId,
+          from_location: fromLocation.trim(),
+          to_location: toLocation.trim(),
+          price: numericPrice,
+          vehicle: vehicle.trim() || null,
+          seats: seats ? Number(seats) : null,
+          description:
+            description.trim() || null,
+          image_url: uploadedImage.publicUrl,
+          contact_phone: normalizePhone(contactPhone),
+          has_whatsapp: hasWhatsapp,
+          has_viber: hasViber,
+          status: "pending",
+        });
+
+      if (error) {
+        if (uploadedFilePath) {
+          await supabase.storage
+            .from("transfer-images")
+            .remove([uploadedFilePath]);
+        }
+
+        throw error;
+      }
+
+      setMessage(
+        "ტრანსფერი წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
+      );
+      setMessageType("success");
+
+      const destination =
+        userRole === "director" ||
+        userRole === "admin"
+          ? "/admin-v2/transfers"
+          : "/dashboard";
+
+      window.location.assign(destination);
+    } catch (error) {
+      console.error("Add transfer error:", error);
+
+      const errorText =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა მოხდა.";
+
+      setMessage(
+        `ტრანსფერის დამატება ვერ მოხერხდა: ${errorText}`
+      );
+      setMessageType("error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (checkingUser) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="text-center">
+          <div className="text-6xl">🚐</div>
+          <p className="mt-4 text-lg font-semibold">
+            გვერდი იტვირთება...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-10 text-white sm:px-6">
+      <div className="mx-auto max-w-4xl">
+        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+              Georgia Gateway Hub
+            </p>
+
+            <h1 className="mt-3 text-4xl font-black sm:text-5xl">
+              🚐 ტრანსფერის დამატება
+            </h1>
+
+            <p className="mt-3 max-w-2xl leading-7 text-white/60">
+              შეავსე ტრანსფერის ინფორმაცია. ჩანაწერი
+              გამოქვეყნდება ადმინისტრატორის დადასტურების შემდეგ.
+            </p>
+          </div>
+
+          <Link
+            href={returnPath}
+            className="w-fit rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
+          >
+            ← უკან დაბრუნება
+          </Link>
+        </header>
+
+        {message && (
+          <div
+            className={`mt-7 rounded-2xl border p-5 font-semibold ${
+              messageType === "success"
+                ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                : "border-red-400/30 bg-red-500/10 text-red-200"
+            }`}
+          >
+            {messageType === "success" ? "✅ " : "❌ "}
+            {message}
+          </div>
+        )}
+
+        <form
+          onSubmit={addTransfer}
+          className="mt-8 space-y-6 rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-8"
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="საიდან" required>
+              <input
+                type="text"
+                value={fromLocation}
+                onChange={(event) =>
+                  setFromLocation(event.target.value)
+                }
+                placeholder="მაგალითად: ქუთაისის აეროპორტი"
+                required
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+              />
+            </Field>
+
+            <Field label="სადამდე" required>
+              <input
+                type="text"
+                value={toLocation}
+                onChange={(event) =>
+                  setToLocation(event.target.value)
+                }
+                placeholder="მაგალითად: მესტია"
+                required
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+              />
+            </Field>
+
+            <Field label="ფასი (₾)" required>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={price}
+                onChange={(event) =>
+                  setPrice(event.target.value)
+                }
+                placeholder="მაგალითად: 250"
+                required
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+              />
+            </Field>
+
+            <Field label="მანქანა">
+              <input
+                type="text"
+                value={vehicle}
+                onChange={(event) =>
+                  setVehicle(event.target.value)
+                }
+                placeholder="მაგალითად: Mercedes Vito"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+              />
+            </Field>
+
+            <Field label="ადგილების რაოდენობა">
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={seats}
+                onChange={(event) =>
+                  setSeats(event.target.value)
+                }
+                placeholder="მაგალითად: 7"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+              />
+            </Field>
+
+            <Field label="მანქანის ფოტო">
+            <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-5">
+              <label
+                className={`inline-flex w-full cursor-pointer items-center justify-center rounded-2xl px-6 py-3 font-black text-white transition ${
+                  loading
+                    ? "cursor-not-allowed bg-slate-400"
+                    : "bg-cyan-600 hover:bg-cyan-700"
+                }`}
+              >
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleTransferImageChange}
+                  disabled={loading}
+                  className="hidden"
+                />
+
+                📷 მანქანის ფოტოს ატვირთვა
+              </label>
+
+              <p className="mt-3 text-xs text-slate-500">
+                JPG, PNG ან WEBP — მაქსიმუმ 10 MB
+              </p>
+
+              {imagePreview && (
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <img
+                    src={imagePreview}
+                    alt="მანქანის ფოტო"
+                    className="h-64 w-full object-cover"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setImageFile(null)}
+                    disabled={loading}
+                    className="w-full bg-red-50 px-4 py-3 font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                  >
+                    🗑️ ფოტოს მოცილება
+                  </button>
+                </div>
+              )}
+            </div>
+          </Field>
+          </div>
+
+          <Field label="ტრანსფერის აღწერა">
+            <textarea
+              value={description}
+              onChange={(event) =>
+                setDescription(event.target.value)
+              }
+              rows={6}
+              placeholder="აღწერე ტრანსფერი, შეხვედრის ადგილი, მანქანა და სხვა პირობები..."
+              className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+            />
+          </Field>
+
+          <Field label="ტელეფონის ნომერი" required>
+            <input
+              type="tel"
+              value={contactPhone}
+              onChange={(event) =>
+                setContactPhone(event.target.value)
+              }
+              placeholder="+995555123456"
+              required
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label
+              className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                hasWhatsapp
+                  ? "border-emerald-500 bg-emerald-50"
+                  : "border-slate-200 bg-slate-50 hover:border-emerald-300"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={hasWhatsapp}
+                onChange={(event) =>
+                  setHasWhatsapp(event.target.checked)
+                }
+                className="h-5 w-5 accent-emerald-600"
+              />
+
+              <div>
+                <p className="font-black text-slate-900">
+                  WhatsApp
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  ამ ნომერზე WhatsApp ხელმისაწვდომია
+                </p>
+              </div>
+            </label>
+
+            <label
+              className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                hasViber
+                  ? "border-violet-500 bg-violet-50"
+                  : "border-slate-200 bg-slate-50 hover:border-violet-300"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={hasViber}
+                onChange={(event) =>
+                  setHasViber(event.target.checked)
+                }
+                className="h-5 w-5 accent-violet-600"
+              />
+
+              <div>
+                <p className="font-black text-slate-900">
+                  Viber
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  ამ ნომერზე Viber ხელმისაწვდომია
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+            <Link
+              href={returnPath}
+              className="rounded-2xl bg-slate-200 px-7 py-4 text-center font-bold text-slate-700 transition hover:bg-slate-300"
+            >
+              გაუქმება
+            </Link>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-2xl bg-cyan-600 px-8 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {loading
+                ? "ინახება..."
+                : "🚐 ტრანსფერის გაგზავნა"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+  );
+}
+
+function Field({
+  label,
+  required = false,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">
+        {label}
+        {required && (
+          <span className="ml-1 text-red-500">*</span>
+        )}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function normalizePhone(phone: string) {
+  const trimmedPhone = phone.trim();
+  const hasPlus = trimmedPhone.startsWith("+");
+  const digits = trimmedPhone.replace(/\D/g, "");
+  return hasPlus ? `+${digits}` : digits;
+}
+
+function isValidPhone(phone: string) {
+  return /^\+\d{8,15}$/.test(normalizePhone(phone));
+}
+
+===== app/transfers/page.tsx =====
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/app/lib/supabase";
+
+type Transfer = {
+  id: number | string;
+  from_location: string | null;
+  to_location: string | null;
+  price: number | null;
+  vehicle: string | null;
+  seats: number | null;
+  description: string | null;
+  image_url: string | null;
+  contact_phone: string | null;
+  has_whatsapp: boolean | null;
+  has_viber: boolean | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+type SortOption =
+  | "newest"
+  | "price-low"
+  | "price-high"
+  | "seats-high";
+
+export default function TransfersPage() {
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [search, setSearch] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minimumSeats, setMinimumSeats] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+
+  async function loadTransfers() {
+    setLoading(true);
+    setErrorMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from("transfers")
+        .select(
+          `
+            id,
+            from_location,
+            to_location,
+            price,
+            vehicle,
+            seats,
+            description,
+            image_url,
+            contact_phone,
+            has_whatsapp,
+            has_viber,
+            status,
+            created_at
+          `
+        )
+        .eq("status", "approved")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setTransfers((data as Transfer[] | null) ?? []);
+    } catch (error: unknown) {
+      console.error("Transfers loading error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა დაფიქსირდა.";
+
+      setTransfers([]);
+      setErrorMessage(
+        `ტრანსფერების ჩატვირთვა ვერ მოხერხდა. ${message}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadTransfers();
+  }, []);
+
+  const filteredTransfers = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+
+    const minimumPrice =
+      minPrice.trim() === "" ? null : Number(minPrice);
+
+    const maximumPrice =
+      maxPrice.trim() === "" ? null : Number(maxPrice);
+
+    const requestedSeats =
+      minimumSeats.trim() === ""
+        ? null
+        : Number(minimumSeats);
+
+    const result = transfers.filter((transfer) => {
+      const from = String(
+        transfer.from_location ?? ""
+      ).toLowerCase();
+
+      const to = String(
+        transfer.to_location ?? ""
+      ).toLowerCase();
+
+      const vehicle = String(
+        transfer.vehicle ?? ""
+      ).toLowerCase();
+
+      const description = String(
+        transfer.description ?? ""
+      ).toLowerCase();
+
+      const matchesSearch =
+        searchValue === "" ||
+        from.includes(searchValue) ||
+        to.includes(searchValue) ||
+        vehicle.includes(searchValue) ||
+        description.includes(searchValue);
+
+      const numericPrice =
+        transfer.price === null
+          ? null
+          : Number(transfer.price);
+
+      const matchesMinPrice =
+        minimumPrice === null ||
+        (numericPrice !== null &&
+          numericPrice >= minimumPrice);
+
+      const matchesMaxPrice =
+        maximumPrice === null ||
+        (numericPrice !== null &&
+          numericPrice <= maximumPrice);
+
+      const matchesSeats =
+        requestedSeats === null ||
+        transfer.seats === null ||
+        Number(transfer.seats) >= requestedSeats;
+
+      return (
+        matchesSearch &&
+        matchesMinPrice &&
+        matchesMaxPrice &&
+        matchesSeats
+      );
+    });
+
+    return [...result].sort((a, b) => {
+      if (sortBy === "price-low") {
+        const priceA =
+          a.price === null
+            ? Number.POSITIVE_INFINITY
+            : Number(a.price);
+
+        const priceB =
+          b.price === null
+            ? Number.POSITIVE_INFINITY
+            : Number(b.price);
+
+        return priceA - priceB;
+      }
+
+      if (sortBy === "price-high") {
+        const priceA =
+          a.price === null
+            ? Number.NEGATIVE_INFINITY
+            : Number(a.price);
+
+        const priceB =
+          b.price === null
+            ? Number.NEGATIVE_INFINITY
+            : Number(b.price);
+
+        return priceB - priceA;
+      }
+
+      if (sortBy === "seats-high") {
+        return Number(b.seats ?? 0) - Number(a.seats ?? 0);
+      }
+
+      const dateA = a.created_at
+        ? new Date(a.created_at).getTime()
+        : 0;
+
+      const dateB = b.created_at
+        ? new Date(b.created_at).getTime()
+        : 0;
+
+      return dateB - dateA;
+    });
+  }, [
+    transfers,
+    search,
+    minPrice,
+    maxPrice,
+    minimumSeats,
+    sortBy,
+  ]);
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    minPrice.trim() !== "" ||
+    maxPrice.trim() !== "" ||
+    minimumSeats.trim() !== "" ||
+    sortBy !== "newest";
+
+  function clearFilters() {
+    setSearch("");
+    setMinPrice("");
+    setMaxPrice("");
+    setMinimumSeats("");
+    setSortBy("newest");
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="text-center">
+          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-cyan-400" />
+
+          <h1 className="mt-6 text-2xl font-black">
+            ტრანსფერები იტვირთება
+          </h1>
+
+          <p className="mt-2 text-white/55">
+            გთხოვთ, მოიცადოთ...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500 text-2xl shadow-lg">
+              🚐
+            </div>
+
+            <div>
+              <h1 className="font-extrabold">
+                Georgia Gateway Hub
+              </h1>
+
+              <p className="text-xs text-white/50">
+                ტრანსფერები საქართველოში
+              </p>
+            </div>
+          </Link>
+
+          <div className="flex gap-2">
+            <Link
+              href="/dashboard/add-transfer"
+              className="inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold transition hover:bg-cyan-600"
+            >
+              + დამატება
+            </Link>
+
+            <Link
+              href="/"
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/20"
+            >
+              ← მთავარი
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
+            Transfers
+          </p>
+
+          <h2 className="mt-3 text-4xl font-black sm:text-5xl">
+            ტრანსფერების ნახვა
+          </h2>
+
+          <p className="mt-4 max-w-2xl leading-7 text-white/60">
+            მოძებნე ტრანსფერი მარშრუტის, ავტომობილის,
+            ადგილების რაოდენობისა და ფასის მიხედვით.
+          </p>
+
+          <section className="mt-8 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <FilterField label="ძიება">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) =>
+                    setSearch(event.target.value)
+                  }
+                  placeholder="ადგილი ან ავტომობილი..."
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
+                />
+              </FilterField>
+
+              <FilterField label="მინიმალური ფასი">
+                <input
+                  type="number"
+                  min={0}
+                  value={minPrice}
+                  onChange={(event) =>
+                    setMinPrice(event.target.value)
+                  }
+                  placeholder="მაგალითად: 50"
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
+                />
+              </FilterField>
+
+              <FilterField label="მაქსიმალური ფასი">
+                <input
+                  type="number"
+                  min={0}
+                  value={maxPrice}
+                  onChange={(event) =>
+                    setMaxPrice(event.target.value)
+                  }
+                  placeholder="მაგალითად: 500"
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
+                />
+              </FilterField>
+
+              <FilterField label="მინიმალური ადგილები">
+                <input
+                  type="number"
+                  min={1}
+                  value={minimumSeats}
+                  onChange={(event) =>
+                    setMinimumSeats(event.target.value)
+                  }
+                  placeholder="მაგალითად: 4"
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
+                />
+              </FilterField>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]">
+              <FilterField label="დალაგება">
+                <select
+                  value={sortBy}
+                  onChange={(event) =>
+                    setSortBy(
+                      event.target.value as SortOption
+                    )
+                  }
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none focus:border-cyan-500"
+                >
+                  <option value="newest">ჯერ ახალი</option>
+
+                  <option value="price-low">
+                    ფასი: დაბლიდან მაღლა
+                  </option>
+
+                  <option value="price-high">
+                    ფასი: მაღლიდან დაბლა
+                  </option>
+
+                  <option value="seats-high">
+                    მეტი ადგილების მიხედვით
+                  </option>
+                </select>
+              </FilterField>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                  className="w-full rounded-xl border border-white/15 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                >
+                  გასუფთავება
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5 border-t border-white/10 pt-5">
+              <p className="text-sm text-white/60">
+                ნაპოვნია{" "}
+                <span className="font-black text-cyan-300">
+                  {filteredTransfers.length}
+                </span>{" "}
+                ტრანსფერი
+              </p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section className="px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          {errorMessage && (
+            <ErrorState
+              message={errorMessage}
+              onRetry={loadTransfers}
+            />
+          )}
+
+          {!errorMessage && transfers.length === 0 && (
+            <EmptyState
+              title="დამტკიცებული ტრანსფერები ჯერ არ არის"
+              description="ახალი ტრანსფერები აქ გამოჩნდება ადმინისტრატორის მიერ დამტკიცების შემდეგ."
+              showClearButton={false}
+              onClear={clearFilters}
+            />
+          )}
+
+          {!errorMessage &&
+            transfers.length > 0 &&
+            filteredTransfers.length === 0 && (
+              <EmptyState
+                title="შესაბამისი ტრანსფერი ვერ მოიძებნა"
+                description="შეცვალე საძიებო სიტყვა ან გაასუფთავე ფილტრები."
+                showClearButton
+                onClear={clearFilters}
+              />
+            )}
+
+          {!errorMessage &&
+            filteredTransfers.length > 0 && (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredTransfers.map((transfer) => (
+                  <article
+                    key={transfer.id}
+                    className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/10"
+                  >
+                    <div className="relative h-52 overflow-hidden">
+                      {transfer.image_url ? (
+                        <img
+                          src={transfer.image_url}
+                          alt={`${transfer.from_location || ""} - ${
+                            transfer.to_location || ""
+                          }`}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900 text-7xl">
+                          🚐
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-transparent to-transparent" />
+
+                      <span className="absolute left-4 top-4 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-lg">
+                        ხელმისაწვდომია
+                      </span>
+
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h3 className="text-xl font-extrabold sm:text-2xl">
+                          {transfer.from_location ||
+                            "საწყისი ადგილი"}
+
+                          <span className="mx-2 text-cyan-300">
+                            →
+                          </span>
+
+                          {transfer.to_location ||
+                            "დანიშნულება"}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <div className="p-5">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <InfoBox
+                          icon="🚘"
+                          value={
+                            transfer.vehicle ||
+                            "ავტომობილი უცნობია"
+                          }
+                        />
+
+                        <InfoBox
+                          icon="👥"
+                          value={
+                            transfer.seats
+                              ? `${transfer.seats} ადგილი`
+                              : "უცნობია"
+                          }
+                        />
+                      </div>
+
+                      {transfer.description && (
+                        <p className="mt-4 line-clamp-3 leading-7 text-white/55">
+                          {transfer.description}
+                        </p>
+                      )}
+
+                      <div className="mt-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-white/35">
+                            ტრანსფერის ფასი
+                          </p>
+
+                          <p className="mt-1 text-2xl font-black text-cyan-300">
+                            {transfer.price !== null
+                              ? `${Number(
+                                  transfer.price
+                                ).toLocaleString(
+                                  "ka-GE"
+                                )} ₾`
+                              : "შეთანხმებით"}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:min-w-[190px]">
+                          {transfer.contact_phone && (
+                            <a href={`tel:${transfer.contact_phone}`} className="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold transition hover:bg-white/20">
+                              📞 {transfer.contact_phone}
+                            </a>
+                          )}
+                          {transfer.has_whatsapp && transfer.contact_phone && (
+                            <a href={`https://wa.me/${normalizePhoneForLink(transfer.contact_phone)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 font-bold transition hover:bg-emerald-600">💬 WhatsApp</a>
+                          )}
+                          {transfer.has_viber && transfer.contact_phone && (
+                            <a href={`viber://chat?number=%2B${normalizePhoneForLink(transfer.contact_phone)}`} className="inline-flex items-center justify-center rounded-2xl bg-violet-500 px-5 py-3 font-bold transition hover:bg-violet-600">📱 Viber</a>
+                          )}
+                          <Link href={`/book-transfer/${transfer.id}`} className="inline-flex items-center justify-center rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600">ნახვა და დაჯავშნა</Link>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-bold text-white/70">
+        {label}
+      </span>
+
+      {children}
+    </label>
+  );
+}
+
+function InfoBox({
+  icon,
+  value,
+}: {
+  icon: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-black/20 p-3 text-white/70">
+      <span className="mr-2">{icon}</span>
+      <span className="break-words">{value}</span>
+    </div>
+  );
+}
+
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-red-400/30 bg-red-500/10 p-8 text-center text-red-100">
+      <div className="text-6xl">⚠️</div>
+
+      <h2 className="mt-4 text-2xl font-black">
+        ტრანსფერები ვერ ჩაიტვირთა
+      </h2>
+
+      <p className="mx-auto mt-3 max-w-2xl text-red-200/80">
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-6 rounded-2xl bg-red-500 px-6 py-3 font-bold text-white transition hover:bg-red-600"
+      >
+        ხელახლა ცდა
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  description,
+  showClearButton,
+  onClear,
+}: {
+  title: string;
+  description: string;
+  showClearButton: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center shadow-2xl">
+      <div className="text-7xl">🚐</div>
+
+      <h2 className="mt-4 text-2xl font-black">
+        {title}
+      </h2>
+
+      <p className="mt-3 text-white/55">
+        {description}
+      </p>
+
+      {showClearButton ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-6 rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+        >
+          ფილტრების გასუფთავება
+        </button>
+      ) : (
+        <Link
+          href="/dashboard/add-transfer"
+          className="mt-6 inline-flex rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+        >
+          ტრანსფერის დამატება
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function normalizePhoneForLink(phone: string) {
+  return phone.replace(/\D/g, "");
+}
+
+===== app/book-transfer/page.tsx =====
+"use client";
+
+import {
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { supabase } from "@/app/lib/supabase";
+
+type Transfer = {
+  id: string | number;
+  user_id: string | null;
+  from_location: string | null;
+  to_location: string | null;
+  price: number | null;
+  vehicle: string | null;
+  seats: number | null;
+  description: string | null;
+  image_url: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+export default function BookTransferPage() {
+  const params = useParams<{ id: string }>();
+  const transferId = params?.id;
+
+  const [transfer, setTransfer] =
+    useState<Transfer | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [loadError, setLoadError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [successMessage, setSuccessMessage] =
+    useState("");
+
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] =
+    useState("");
+  const [guestPhone, setGuestPhone] =
+    useState("");
+
+  const [travelDate, setTravelDate] = useState("");
+  const [travelTime, setTravelTime] = useState("");
+  const [passengers, setPassengers] = useState(1);
+  const [pickupAddress, setPickupAddress] =
+    useState("");
+  const [dropoffAddress, setDropoffAddress] =
+    useState("");
+  const [notes, setNotes] = useState("");
+
+  const today = getLocalToday();
+
+  async function loadTransfer() {
+    setLoading(true);
+    setLoadError("");
+    setTransfer(null);
+
+    try {
+      if (!transferId) {
+        throw new Error(
+          "ტრანსფერის ID არასწორია."
+        );
+      }
+
+      const { data, error } = await supabase
+        .from("transfers")
+        .select(
+          `
+            id,
+            user_id,
+            from_location,
+            to_location,
+            price,
+            vehicle,
+            seats,
+            description,
+            image_url,
+            status,
+            created_at
+          `
+        )
+        .eq("id", transferId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error(
+          "ტრანსფერი ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული."
+        );
+      }
+
+      const loadedTransfer = data as Transfer;
+
+      setTransfer(loadedTransfer);
+
+      if (loadedTransfer.from_location) {
+        setPickupAddress(
+          loadedTransfer.from_location
+        );
+      }
+
+      if (loadedTransfer.to_location) {
+        setDropoffAddress(
+          loadedTransfer.to_location
+        );
+      }
+    } catch (error: unknown) {
+      console.error(
+        "Transfer loading error:",
+        error
+      );
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა დაფიქსირდა.";
+
+      setLoadError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadCurrentUser() {
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error(
+          "Session loading error:",
+          error
+        );
+        return;
+      }
+
+      const user = session?.user;
+
+      if (!user) {
+        return;
+      }
+
+      setGuestEmail(user.email ?? "");
+
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error(
+          "Profile loading error:",
+          profileError
+        );
+        return;
+      }
+
+      if (profile?.full_name) {
+        setGuestName(profile.full_name);
+      } else if (
+        user.user_metadata?.full_name
+      ) {
+        setGuestName(
+          String(user.user_metadata.full_name)
+        );
+      }
+
+      if (profile?.phone) {
+        setGuestPhone(profile.phone);
+      }
+    } catch (error) {
+      console.error(
+        "User loading error:",
+        error
+      );
+    }
+  }
+
+  useEffect(() => {
+    void loadTransfer();
+  }, [transferId]);
+
+  useEffect(() => {
+    void loadCurrentUser();
+  }, []);
+
+  const totalPrice = useMemo(() => {
+    if (
+      transfer?.price === null ||
+      transfer?.price === undefined
+    ) {
+      return null;
+    }
+
+    return Number(transfer.price);
+  }, [transfer?.price]);
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (submitting) {
+      return;
+    }
+
+    setFormError("");
+    setSuccessMessage("");
+
+    if (!transfer) {
+      setFormError(
+        "ტრანსფერის ინფორმაცია ვერ მოიძებნა."
+      );
+      return;
+    }
+
+    if (!guestName.trim()) {
+      setFormError(
+        "ჩაწერე მგზავრის სახელი და გვარი."
+      );
+      return;
+    }
+
+    if (!guestEmail.trim()) {
+      setFormError("ჩაწერე ელფოსტა.");
+      return;
+    }
+
+    if (!isValidEmail(guestEmail)) {
+      setFormError(
+        "ელფოსტის მისამართი არასწორია."
+      );
+      return;
+    }
+
+    if (!guestPhone.trim()) {
+      setFormError(
+        "ჩაწერე ტელეფონის ნომერი."
+      );
+      return;
+    }
+
+    if (!travelDate) {
+      setFormError(
+        "აირჩიე მგზავრობის თარიღი."
+      );
+      return;
+    }
+
+    if (travelDate < today) {
+      setFormError(
+        "გასული თარიღის არჩევა შეუძლებელია."
+      );
+      return;
+    }
+
+    if (!travelTime) {
+      setFormError(
+        "აირჩიე მგზავრობის დრო."
+      );
+      return;
+    }
+
+    if (
+      !Number.isInteger(passengers) ||
+      passengers < 1
+    ) {
+      setFormError(
+        "მგზავრების რაოდენობა უნდა იყოს მინიმუმ 1."
+      );
+      return;
+    }
+
+    if (
+      transfer.seats &&
+      passengers > transfer.seats
+    ) {
+      setFormError(
+        `ამ ტრანსფერზე მაქსიმალური რაოდენობაა ${transfer.seats} მგზავრი.`
+      );
+      return;
+    }
+
+    if (!pickupAddress.trim()) {
+      setFormError(
+        "ჩაწერე აყვანის ზუსტი მისამართი."
+      );
+      return;
+    }
+
+    if (!dropoffAddress.trim()) {
+      setFormError(
+        "ჩაწერე დანიშნულების ზუსტი მისამართი."
+      );
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error(
+          "Session loading error:",
+          sessionError
+        );
+      }
+
+      const { error } = await supabase
+        .from("transfer_bookings")
+        .insert({
+          transfer_id: transfer.id,
+          user_id: session?.user?.id ?? null,
+          guest_name: guestName.trim(),
+          guest_email: guestEmail.trim(),
+          guest_phone: guestPhone.trim(),
+          travel_date: travelDate,
+          travel_time: travelTime,
+          passengers,
+          pickup_address:
+            pickupAddress.trim(),
+          dropoff_address:
+            dropoffAddress.trim(),
+          total_price: totalPrice,
+          notes: notes.trim() || null,
+          status: "pending",
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      setSuccessMessage(
+        "ტრანსფერის მოთხოვნა წარმატებით გაიგზავნა. მძღოლი ან ორგანიზატორი დაგიკავშირდება ტელეფონზე ან ელფოსტაზე."
+      );
+
+      setTravelDate("");
+      setTravelTime("");
+      setPassengers(1);
+      setNotes("");
+
+      if (transfer.from_location) {
+        setPickupAddress(
+          transfer.from_location
+        );
+      }
+
+      if (transfer.to_location) {
+        setDropoffAddress(
+          transfer.to_location
+        );
+      }
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (error: unknown) {
+      console.error(
+        "Transfer booking error:",
+        error
+      );
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა დაფიქსირდა.";
+
+      setFormError(
+        `ტრანსფერის მოთხოვნა ვერ გაიგზავნა: ${message}`
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="text-center">
+          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-cyan-400" />
+
+          <h1 className="mt-6 text-2xl font-black">
+            ტრანსფერი იტვირთება
+          </h1>
+
+          <p className="mt-2 text-white/55">
+            გთხოვთ, მოიცადოთ...
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!transfer) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl">
+          <div className="text-7xl">🚐</div>
+
+          <h1 className="mt-5 text-2xl font-black">
+            ტრანსფერი ვერ მოიძებნა
+          </h1>
+
+          <p className="mt-3 leading-7 text-white/60">
+            {loadError ||
+              "ტრანსფერის ინფორმაცია ვერ ჩაიტვირთა."}
+          </p>
+
+          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={loadTransfer}
+              className="rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
+            >
+              ხელახლა ცდა
+            </button>
+
+            <Link
+              href="/transfers"
+              className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
+            >
+              ყველა ტრანსფერი
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-3"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500 text-2xl shadow-lg">
+              🚐
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate font-black">
+                Georgia Gateway Hub
+              </p>
+
+              <p className="text-xs text-white/45">
+                ტრანსფერის დეტალები
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/transfers"
+            className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20"
+          >
+            ← ტრანსფერები
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        {successMessage && (
+          <div className="mb-8 rounded-3xl border border-emerald-400/30 bg-emerald-500/15 p-6 text-emerald-100 shadow-xl">
+            <h2 className="text-xl font-black">
+              ✅ მოთხოვნა წარმატებით გაიგზავნა
+            </h2>
+
+            <p className="mt-2 leading-7 text-emerald-100/75">
+              {successMessage}
+            </p>
+          </div>
+        )}
+
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_430px]">
+          <div className="space-y-8">
+            <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-2xl">
+              <div className="relative">
+                {transfer.image_url ? (
+                  <img
+                    src={transfer.image_url}
+                    alt="ტრანსფერი"
+                    className="h-[300px] w-full object-cover sm:h-[500px]"
+                  />
+                ) : (
+                  <div className="flex h-[300px] items-center justify-center bg-gradient-to-br from-cyan-950 to-slate-900 sm:h-[500px]">
+                    <span className="text-9xl">
+                      🚐
+                    </span>
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+                <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+                  <span className="inline-flex rounded-full bg-emerald-500 px-4 py-2 text-xs font-black shadow-lg">
+                    ✓ ხელმისაწვდომია
+                  </span>
+
+                  <h1 className="mt-4 text-3xl font-black drop-shadow-xl sm:text-5xl">
+                    {transfer.from_location ||
+                      "საწყისი ადგილი"}
+
+                    <span className="mx-3 text-cyan-300">
+                      →
+                    </span>
+
+                    {transfer.to_location ||
+                      "დანიშნულება"}
+                  </h1>
+
+                  <p className="mt-3 text-lg text-white/80">
+                    🚘{" "}
+                    {transfer.vehicle ||
+                      "ავტომობილი არ არის მითითებული"}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-7">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <InfoBox
+                  icon="📍"
+                  label="საწყისი ადგილი"
+                  value={
+                    transfer.from_location ||
+                    "არ არის მითითებული"
+                  }
+                />
+
+                <InfoBox
+                  icon="🏁"
+                  label="დანიშნულება"
+                  value={
+                    transfer.to_location ||
+                    "არ არის მითითებული"
+                  }
+                />
+
+                <InfoBox
+                  icon="🚘"
+                  label="ავტომობილი"
+                  value={
+                    transfer.vehicle ||
+                    "არ არის მითითებული"
+                  }
+                />
+
+                <InfoBox
+                  icon="👥"
+                  label="ადგილები"
+                  value={
+                    transfer.seats
+                      ? `${transfer.seats} მგზავრი`
+                      : "არ არის მითითებული"
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                Transfer description
+              </p>
+
+              <h2 className="mt-3 text-3xl font-black">
+                ტრანსფერის აღწერა
+              </h2>
+
+              <p className="mt-5 whitespace-pre-line leading-8 text-white/70">
+                {transfer.description ||
+                  "ტრანსფერის სრული აღწერა ჯერ არ არის დამატებული."}
+              </p>
+            </section>
+
+            <section className="grid gap-5 md:grid-cols-2">
+              <DetailCard
+                icon="✅"
+                title="დაჯავშნის ინფორმაცია"
+                items={[
+                  "მოთხოვნის გაგზავნა უფასოა",
+                  "მძღოლი დაგიკავშირდება დასადასტურებლად",
+                  "შეგიძლია მიუთითო აყვანის ზუსტი მისამართი",
+                  "დაჯავშნა საბოლოოა მხოლოდ დადასტურების შემდეგ",
+                ]}
+              />
+
+              <DetailCard
+                icon="ℹ️"
+                title="მნიშვნელოვანი პირობები"
+                items={[
+                  "მგზავრების რაოდენობა არ უნდა აღემატებოდეს ადგილების რაოდენობას",
+                  "დრო შეიძლება შეთანხმდეს მძღოლთან",
+                  "დამატებითი გაჩერება შეიძლება ფასიანი იყოს",
+                  "ზუსტი პირობები გადაამოწმე ორგანიზატორთან",
+                ]}
+              />
+            </section>
+          </div>
+
+          <aside className="rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
+              Booking
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black">
+              ტრანსფერის დაჯავშნა
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              შეავსე მონაცემები და გააგზავნე
+              მოთხოვნა.
+            </p>
+
+            {formError && (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                ⚠️ {formError}
+              </div>
+            )}
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-7 space-y-5"
+            >
+              <FormField label="სახელი და გვარი">
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(event) =>
+                    setGuestName(
+                      event.target.value
+                    )
+                  }
+                  placeholder="მაგალითად: Anna Brown"
+                  autoComplete="name"
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </FormField>
+
+              <FormField label="ელფოსტა">
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(event) =>
+                    setGuestEmail(
+                      event.target.value
+                    )
+                  }
+                  placeholder="guest@example.com"
+                  autoComplete="email"
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </FormField>
+
+              <FormField label="ტელეფონის ნომერი">
+                <input
+                  type="tel"
+                  value={guestPhone}
+                  onChange={(event) =>
+                    setGuestPhone(
+                      event.target.value
+                    )
+                  }
+                  placeholder="+995 5XX XX XX XX"
+                  autoComplete="tel"
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </FormField>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="მგზავრობის თარიღი">
+                  <input
+                    type="date"
+                    value={travelDate}
+                    min={today}
+                    onChange={(event) =>
+                      setTravelDate(
+                        event.target.value
+                      )
+                    }
+                    required
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  />
+                </FormField>
+
+                <FormField label="მგზავრობის დრო">
+                  <input
+                    type="time"
+                    value={travelTime}
+                    onChange={(event) =>
+                      setTravelTime(
+                        event.target.value
+                      )
+                    }
+                    required
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  />
+                </FormField>
+              </div>
+
+              <FormField label="მგზავრების რაოდენობა">
+                <input
+                  type="number"
+                  min={1}
+                  max={
+                    transfer.seats || undefined
+                  }
+                  value={passengers}
+                  onChange={(event) =>
+                    setPassengers(
+                      normalizePositiveInteger(
+                        event.target.value
+                      )
+                    )
+                  }
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </FormField>
+
+              <FormField label="აყვანის ზუსტი მისამართი">
+                <input
+                  type="text"
+                  value={pickupAddress}
+                  onChange={(event) =>
+                    setPickupAddress(
+                      event.target.value
+                    )
+                  }
+                  placeholder="მაგალითად: სასტუმრო ლაჰილი, მესტია"
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </FormField>
+
+              <FormField label="დანიშნულების ზუსტი მისამართი">
+                <input
+                  type="text"
+                  value={dropoffAddress}
+                  onChange={(event) =>
+                    setDropoffAddress(
+                      event.target.value
+                    )
+                  }
+                  placeholder="მაგალითად: ქუთაისის აეროპორტი"
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+              </FormField>
+
+              <FormField label="დამატებითი შეტყობინება">
+                <textarea
+                  value={notes}
+                  onChange={(event) =>
+                    setNotes(event.target.value)
+                  }
+                  placeholder="მაგალითად: გვაქვს დიდი ბარგი..."
+                  rows={4}
+                  maxLength={1000}
+                  className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                />
+
+                <span className="mt-2 block text-right text-xs text-slate-400">
+                  {notes.length} / 1000
+                </span>
+              </FormField>
+
+              <div className="rounded-2xl bg-slate-100 p-5">
+                <PriceRow
+                  label="მარშრუტი"
+                  value={`${
+                    transfer.from_location ||
+                    "საწყისი ადგილი"
+                  } → ${
+                    transfer.to_location ||
+                    "დანიშნულება"
+                  }`}
+                />
+
+                <PriceRow
+                  label="მგზავრების რაოდენობა"
+                  value={String(passengers)}
+                />
+
+                <div className="mt-4 border-t border-slate-300 pt-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-lg font-black">
+                      ტრანსფერის ფასი
+                    </span>
+
+                    <span className="text-2xl font-black text-cyan-700">
+                      {totalPrice !== null
+                        ? `${totalPrice.toLocaleString(
+                            "ka-GE"
+                          )} ₾`
+                        : "შეთანხმებით"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting
+                  ? "მოთხოვნა იგზავნება..."
+                  : "დაჯავშნის მოთხოვნის გაგზავნა"}
+              </button>
+
+              <p className="text-center text-xs leading-5 text-slate-400">
+                მოთხოვნის გაგზავნა ავტომატურად
+                დადასტურებულ ჯავშანს არ ნიშნავს.
+              </p>
+            </form>
+          </aside>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-bold text-slate-700">
+        {label}
+      </span>
+
+      {children}
+    </label>
+  );
+}
+
+function InfoBox({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">
+          {icon}
+        </span>
+
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-wide text-white/40">
+            {label}
+          </p>
+
+          <p className="mt-1 break-words font-bold text-white">
+            {value}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailCard({
+  icon,
+  title,
+  items,
+}: {
+  icon: string;
+  title: string;
+  items: string[];
+}) {
+  return (
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
+      <div className="text-4xl">{icon}</div>
+
+      <h2 className="mt-4 text-2xl font-black">
+        {title}
+      </h2>
+
+      <div className="mt-5 space-y-3">
+        {items.map((item) => (
+          <div
+            key={item}
+            className="flex items-start gap-3 text-white/70"
+          >
+            <span className="mt-1 text-cyan-300">
+              •
+            </span>
+
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PriceRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-4">
+      <span className="text-sm text-slate-500">
+        {label}
+      </span>
+
+      <span className="text-right font-bold">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function getLocalToday() {
+  const now = new Date();
+  const timezoneOffset =
+    now.getTimezoneOffset() * 60_000;
+
+  return new Date(
+    now.getTime() - timezoneOffset
+  )
+    .toISOString()
+    .split("T")[0];
+}
+
+function normalizePositiveInteger(
+  value: string
+) {
+  const number = Number(value);
+
+  if (
+    Number.isNaN(number) ||
+    number < 1
+  ) {
+    return 1;
+  }
+
+  return Math.floor(number);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    value.trim()
+  );
+}
+
+===== app/admin-v2/transfers/page.tsx =====
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+type Transfer = {
+  id: string;
+  from_location: string;
+  to_location: string;
+  vehicle: string | null;
+  seats: number | null;
+  price: number;
+  status: string;
+  image_url: string | null;
+  contact_phone: string | null;
+  has_whatsapp: boolean | null;
+  has_viber: boolean | null;
+  created_at: string | null;
+};
+
+export default function TransfersPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  const loadTransfers = useCallback(async () => {
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("transfers")
+      .select(
+        `
+          id,
+          from_location,
+          to_location,
+          vehicle,
+          seats,
+          price,
+          status,
+          image_url,
+          contact_phone,
+          has_whatsapp,
+          has_viber,
+          created_at
+        `
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Transfers loading error:", error);
+      setMessage(`ტრანსფერების ჩატვირთვა ვერ მოხერხდა: ${error.message}`);
+      setTransfers([]);
+      setLoading(false);
+      return;
+    }
+
+    setTransfers((data as Transfer[] | null) ?? []);
+    setLoading(false);
+  }, [supabase]);
+
+  useEffect(() => {
+    void loadTransfers();
+  }, [loadTransfers]);
+
+  async function updateStatus(
+    transferId: string,
+    nextStatus: "approved" | "rejected"
+  ) {
+    if (updatingId) return;
+
+    setUpdatingId(transferId);
+    setMessage("");
+
+    const {
+      data: updatedTransfer,
+      error,
+    } = await supabase
+      .from("transfers")
+      .update({ status: nextStatus })
+      .eq("id", transferId)
+      .select("id, status")
+      .maybeSingle();
+
+    if (error) {
+      console.error("Transfer status update error:", error);
+      setMessage(
+        `სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+      );
+      setUpdatingId(null);
+      return;
+    }
+
+    if (!updatedTransfer) {
+      setMessage(
+        "ტრანსფერის სტატუსი ბაზაში არ შეიცვალა. სავარაუდოდ Supabase RLS Update Policy არ გაქვს ჩართული."
+      );
+      setUpdatingId(null);
+      return;
+    }
+
+    setTransfers((currentTransfers) =>
+      currentTransfers.map((transfer) =>
+        transfer.id === transferId
+          ? {
+              ...transfer,
+              status: String(updatedTransfer.status || nextStatus),
+            }
+          : transfer
+      )
+    );
+
+    setMessage(
+      nextStatus === "approved"
+        ? "✅ ტრანსფერი წარმატებით დამტკიცდა."
+        : "❌ ტრანსფერი უარყოფილია."
+    );
+
+    setUpdatingId(null);
+  }
+
+  function normalizePhoneForLink(phone: string) {
+    return phone.replace(/\D/g, "");
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="rounded-3xl border border-white/20 bg-white/10 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-white sm:text-4xl">
+              🚐 Transfers Management
+            </h1>
+
+            <p className="mt-3 text-white/70">
+              ყველა დამატებული ტრანსფერი
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void loadTransfers()}
+            disabled={loading}
+            className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold text-white transition hover:bg-white/20 disabled:opacity-50"
+          >
+            🔄 განახლება
+          </button>
+        </div>
+
+        {message && (
+          <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">
+            {message}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="mt-8 rounded-2xl bg-white/10 p-8 text-center text-white">
+            ტრანსფერები იტვირთება...
+          </div>
+        ) : transfers.length === 0 ? (
+          <div className="mt-8 rounded-2xl bg-white/10 p-8 text-white">
+            ტრანსფერები ჯერ არ არის.
+          </div>
+        ) : (
+          <div className="mt-8 space-y-5">
+            {transfers.map((transfer) => {
+              const isUpdating = updatingId === transfer.id;
+              const isPending =
+                String(transfer.status).toLowerCase() === "pending";
+
+              return (
+                <article
+                  key={transfer.id}
+                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 text-white shadow-xl"
+                >
+                  <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
+                    <div className="min-h-[220px] bg-black/20">
+                      {transfer.image_url ? (
+                        <img
+                          src={transfer.image_url}
+                          alt={`${transfer.from_location} - ${transfer.to_location}`}
+                          className="h-full min-h-[220px] w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full min-h-[220px] items-center justify-center text-7xl">
+                          🚐
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-5 sm:p-6">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h2 className="text-2xl font-black">
+                            🚐 {transfer.from_location} →{" "}
+                            {transfer.to_location}
+                          </h2>
+
+                          <div className="mt-4 grid gap-2 text-white/80 sm:grid-cols-2">
+                            <p>💰 {Number(transfer.price).toLocaleString("ka-GE")} ₾</p>
+
+                            {transfer.vehicle && (
+                              <p>🚙 {transfer.vehicle}</p>
+                            )}
+
+                            {transfer.seats && (
+                              <p>👥 {transfer.seats} Seats</p>
+                            )}
+
+                            {transfer.contact_phone && (
+                              <p>📞 {transfer.contact_phone}</p>
+                            )}
+                          </div>
+
+                          {transfer.contact_phone && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              <a
+                                href={`tel:${transfer.contact_phone}`}
+                                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold hover:bg-white/20"
+                              >
+                                📞 Call
+                              </a>
+
+                              {transfer.has_whatsapp && (
+                                <a
+                                  href={`https://wa.me/${normalizePhoneForLink(
+                                    transfer.contact_phone
+                                  )}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold hover:bg-emerald-600"
+                                >
+                                  WhatsApp
+                                </a>
+                              )}
+
+                              {transfer.has_viber && (
+                                <a
+                                  href={`viber://chat?number=%2B${normalizePhoneForLink(
+                                    transfer.contact_phone
+                                  )}`}
+                                  className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-bold hover:bg-violet-600"
+                                >
+                                  Viber
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <StatusBadge status={transfer.status} />
+                      </div>
+
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void updateStatus(
+                              transfer.id,
+                              "approved"
+                            )
+                          }
+                          disabled={
+                            isUpdating ||
+                            String(transfer.status).toLowerCase() ===
+                              "approved"
+                          }
+                          className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {isUpdating
+                            ? "მუშავდება..."
+                            : "✅ დამტკიცება"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void updateStatus(
+                              transfer.id,
+                              "rejected"
+                            )
+                          }
+                          disabled={
+                            isUpdating ||
+                            String(transfer.status).toLowerCase() ===
+                              "rejected"
+                          }
+                          className="rounded-2xl bg-red-500 px-6 py-3 font-black text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {isUpdating
+                            ? "მუშავდება..."
+                            : "❌ უარყოფა"}
+                        </button>
+
+                        {!isPending && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (updatingId) return;
+                              setUpdatingId(transfer.id);
+
+                              const {
+                                data: updatedTransfer,
+                                error,
+                              } = await supabase
+                                .from("transfers")
+                                .update({ status: "pending" })
+                                .eq("id", transfer.id)
+                                .select("id, status")
+                                .maybeSingle();
+
+                              if (error) {
+                                setMessage(
+                                  `სტატუსის შეცვლა ვერ მოხერხდა: ${error.message}`
+                                );
+                              } else if (!updatedTransfer) {
+                                setMessage(
+                                  "ტრანსფერის სტატუსი ბაზაში არ შეიცვალა. შეამოწმე Supabase RLS Update Policy."
+                                );
+                              } else {
+                                setTransfers((currentTransfers) =>
+                                  currentTransfers.map((item) =>
+                                    item.id === transfer.id
+                                      ? {
+                                          ...item,
+                                          status: "pending",
+                                        }
+                                      : item
+                                  )
+                                );
+                                setMessage(
+                                  "↩️ ტრანსფერი დაბრუნდა მოლოდინში."
+                                );
+                              }
+
+                              setUpdatingId(null);
+                            }}
+                            disabled={isUpdating}
+                            className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-black text-white transition hover:bg-white/20 disabled:opacity-40"
+                          >
+                            ↩️ მოლოდინში დაბრუნება
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const normalized = String(status || "").toLowerCase();
+
+  if (normalized === "approved") {
+    return (
+      <span className="w-fit rounded-full bg-emerald-500/20 px-4 py-2 text-sm font-black text-emerald-300">
+        approved
+      </span>
+    );
+  }
+
+  if (normalized === "rejected") {
+    return (
+      <span className="w-fit rounded-full bg-red-500/20 px-4 py-2 text-sm font-black text-red-300">
+        rejected
+      </span>
+    );
+  }
+
+  return (
+    <span className="w-fit rounded-full bg-yellow-500/20 px-4 py-2 text-sm font-black text-yellow-300">
+      pending
+    </span>
+  );
+}

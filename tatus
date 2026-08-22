@@ -1,0 +1,5 @@
+[33m3542af7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Restore previous weather widget
+[33ma86a898[m Fix Georgian and English weather translations
+[33m463788c[m Apply correct 10 day weather component
+[33m81cb5e8[m Fix 10 day Mestia weather display
+[33md717ecf[m Fix guide pricing with price per day
