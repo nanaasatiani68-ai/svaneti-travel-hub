@@ -10,6 +10,8 @@ import {
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+type PriceType = "fixed" | "negotiable" | "from";
+
 type Profile = {
   role: string | null;
   phone: string | null;
@@ -34,6 +36,7 @@ export default function AddTransferPage() {
 
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
+  const [priceType, setPriceType] = useState<PriceType>("fixed");
   const [price, setPrice] = useState("");
   const [vehicle, setVehicle] = useState("");
   const [seats, setSeats] = useState("");
@@ -289,12 +292,17 @@ export default function AddTransferPage() {
       return;
     }
 
-    const numericPrice = Number(price);
+    const numericPrice =
+      priceType === "negotiable" ? null : Number(price);
 
     if (
-      !price ||
-      Number.isNaN(numericPrice) ||
-      numericPrice < 0
+      priceType !== "negotiable" &&
+      (
+        !price ||
+        numericPrice === null ||
+        Number.isNaN(numericPrice) ||
+        numericPrice < 0
+      )
     ) {
       setMessage("ჩაწერე სწორი ფასი.");
       setMessageType("error");
@@ -346,6 +354,7 @@ export default function AddTransferPage() {
           from_location: fromLocation.trim(),
           to_location: toLocation.trim(),
           price: numericPrice,
+          price_type: priceType,
           vehicle: vehicle.trim() || null,
           seats: seats ? Number(seats) : null,
           description:
@@ -354,11 +363,7 @@ export default function AddTransferPage() {
           contact_phone: normalizePhone(contactPhone),
           has_whatsapp: hasWhatsapp,
           has_viber: hasViber,
-          status:
-            userRole === "director" ||
-            userRole === "admin"
-              ? "approved"
-              : "pending",
+          status: "pending",
         });
 
       if (error) {
@@ -372,10 +377,7 @@ export default function AddTransferPage() {
       }
 
       setMessage(
-        userRole === "director" ||
-        userRole === "admin"
-          ? "ტრანსფერი წარმატებით დაემატა და ავტომატურად დამტკიცდა."
-          : "ტრანსფერი წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
+        "ტრანსფერი წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
       );
       setMessageType("success");
 
@@ -487,20 +489,60 @@ export default function AddTransferPage() {
               />
             </Field>
 
-            <Field label="ფასი (₾)" required>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={price}
-                onChange={(event) =>
-                  setPrice(event.target.value)
-                }
-                placeholder="მაგალითად: 250"
-                required
+            <Field label="ფასის ტიპი" required>
+              <select
+                value={priceType}
+                onChange={(event) => {
+                  const nextType = event.target.value as PriceType;
+                  setPriceType(nextType);
+
+                  if (nextType === "negotiable") {
+                    setPrice("");
+                  }
+                }}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
-              />
+              >
+                <option value="fixed">
+                  Fixed price / ფიქსირებული ფასი
+                </option>
+                <option value="negotiable">
+                  Negotiable / ფასი შეთანხმებით
+                </option>
+                <option value="from">
+                  From / ფასი იწყება
+                </option>
+              </select>
             </Field>
+
+            {priceType !== "negotiable" && (
+              <Field
+                label={
+                  priceType === "from"
+                    ? "საწყისი ფასი (₾)"
+                    : "ფიქსირებული ფასი (₾)"
+                }
+                required
+              >
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={price}
+                  onChange={(event) =>
+                    setPrice(event.target.value)
+                  }
+                  placeholder="მაგალითად: 250"
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-cyan-500"
+                />
+              </Field>
+            )}
+
+            {priceType === "negotiable" && (
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm font-semibold text-cyan-900">
+                ბარათზე გამოჩნდება: „ფასი შეთანხმებით“
+              </div>
+            )}
 
             <Field label="მანქანა">
               <input

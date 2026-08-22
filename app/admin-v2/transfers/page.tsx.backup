@@ -3,13 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+type PriceType = "fixed" | "negotiable" | "from";
+
 type Transfer = {
   id: string;
   from_location: string;
   to_location: string;
   vehicle: string | null;
   seats: number | null;
-  price: number;
+  price: number | null;
+  price_type: PriceType | null;
   status: string;
   image_url: string | null;
   contact_phone: string | null;
@@ -39,6 +42,7 @@ export default function TransfersPage() {
           vehicle,
           seats,
           price,
+          price_type,
           status,
           image_url,
           contact_phone,
@@ -139,23 +143,14 @@ export default function TransfersPage() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <a
-              href="/dashboard/add-transfer"
-              className="rounded-2xl bg-cyan-500 px-5 py-3 text-center font-black text-white transition hover:bg-cyan-600"
-            >
-              + Add Transfer
-            </a>
-
-            <button
-              type="button"
-              onClick={() => void loadTransfers()}
-              disabled={loading}
-              className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold text-white transition hover:bg-white/20 disabled:opacity-50"
-            >
-              🔄 განახლება
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => void loadTransfers()}
+            disabled={loading}
+            className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 font-bold text-white transition hover:bg-white/20 disabled:opacity-50"
+          >
+            🔄 განახლება
+          </button>
         </div>
 
         {message && (
@@ -208,7 +203,7 @@ export default function TransfersPage() {
                           </h2>
 
                           <div className="mt-4 grid gap-2 text-white/80 sm:grid-cols-2">
-                            <p>💰 {Number(transfer.price).toLocaleString("ka-GE")} ₾</p>
+                            <p>💰 {formatTransferPrice(transfer)}</p>
 
                             {transfer.vehicle && (
                               <p>🚙 {transfer.vehicle}</p>
@@ -389,4 +384,36 @@ function StatusBadge({ status }: { status: string }) {
       pending
     </span>
   );
+}
+
+function formatTransferPrice(transfer: Transfer) {
+  const type = normalizePriceType(transfer.price_type);
+
+  if (type === "negotiable") {
+    return "ფასი შეთანხმებით";
+  }
+
+  if (
+    transfer.price === null ||
+    transfer.price === undefined ||
+    Number.isNaN(Number(transfer.price))
+  ) {
+    return "ფასი შეთანხმებით";
+  }
+
+  const formatted = Number(transfer.price).toLocaleString("ka-GE");
+
+  if (type === "from") {
+    return `${formatted} ₾-დან`;
+  }
+
+  return `${formatted} ₾ მანქანაზე`;
+}
+
+function normalizePriceType(value: string | null | undefined): PriceType {
+  if (value === "negotiable" || value === "from") {
+    return value;
+  }
+
+  return "fixed";
 }
