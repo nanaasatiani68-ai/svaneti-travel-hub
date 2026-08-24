@@ -1101,6 +1101,12 @@ export default function AdminV2Page() {
             />
 
             <QuickLink
+              href="/admin-v2/travel-tips"
+              icon="🧭"
+              title="სვანეთის რჩევები"
+            />
+
+            <QuickLink
               href="/admin-v2/emails"
               icon="📧"
               title="ელფოსტა"
