@@ -51,6 +51,139 @@ const emptyForm: FormState = {
   sort_order: 0,
 };
 
+const defaultTravelTips = [
+  {
+    title_ka: "უშგული",
+    title_en: "Ushguli",
+    description_ka: "ისტორიული სვანური სოფელი კოშკებითა და შხარას ულამაზესი ხედებით.",
+    description_en: "A historic Svan village known for medieval towers and dramatic views toward Shkhara.",
+    best_time_ka: "მაისი — ოქტომბერი",
+    best_time_en: "May — October",
+    tip_ka: "დილით გასვლა სჯობს. წვიმისა და თოვლის დროს გზის მდგომარეობა წინასწარ გადაამოწმე.",
+    tip_en: "An early start is best. Check road conditions in advance after rain or snow.",
+    image_url: null,
+    is_published: true,
+    sort_order: 1,
+  },
+  {
+    title_ka: "ქორულდის ტბები",
+    title_en: "Koruldi Lakes",
+    description_ka: "მაღალმთიანი ტბები მესტიის ზემოთ, კავკასიონის პანორამული ხედებით.",
+    description_en: "High-altitude lakes above Mestia with panoramic views across the Caucasus.",
+    best_time_ka: "ივნისი — ოქტომბერი",
+    best_time_en: "June — October",
+    tip_ka: "სუფთა ამინდში დილით წასვლა საუკეთესოა; ავტომობილით ასვლისას 4x4 რეკომენდებულია.",
+    tip_en: "Go early on a clear day; a 4x4 is recommended if driving up.",
+    image_url: null,
+    is_published: true,
+    sort_order: 2,
+  },
+  {
+    title_ka: "ჭალაადის მყინვარი",
+    title_en: "Chalaadi Glacier",
+    description_ka: "მესტიასთან ახლოს პოპულარული ბუნების მარშრუტი ტყით, მდინარით და მყინვარის ხედით.",
+    description_en: "A popular nature route near Mestia with forest, river scenery, and glacier views.",
+    best_time_ka: "მაისი — ოქტომბერი",
+    best_time_en: "May — October",
+    tip_ka: "კარგი ფეხსაცმელი ჩაიცვი; წვიმის შემდეგ ბილიკი შეიძლება სრიალა იყოს.",
+    tip_en: "Wear good walking shoes; the trail can be slippery after rain.",
+    image_url: null,
+    is_published: true,
+    sort_order: 3,
+  },
+  {
+    title_ka: "ჰაწვალი",
+    title_en: "Hatsvali",
+    description_ka: "მესტიასთან ახლოს მარტივად მისადგომი ადგილი ულამაზესი ხედებით და საბაგიროთი.",
+    description_en: "An easy-to-reach mountain spot near Mestia with a cable car and beautiful views.",
+    best_time_ka: "მთელი წელი",
+    best_time_en: "Year-round",
+    tip_ka: "ზაფხულში მზის ჩასვლა განსაკუთრებით ლამაზია; ზამთარში სათხილამურო პირობები გადაამოწმე.",
+    tip_en: "Sunset is especially beautiful in summer; check ski conditions in winter.",
+    image_url: null,
+    is_published: true,
+    sort_order: 4,
+  },
+  {
+    title_ka: "თეთნულდი",
+    title_en: "Tetnuldi",
+    description_ka: "მაღალმთიანი მიმართულება ფართო ალპური ხედებით და ზამთარში სათხილამურო ზონით.",
+    description_en: "A high-mountain destination with broad alpine scenery and winter ski terrain.",
+    best_time_ka: "ივნისი — სექტემბერი / ზამთარი სათხილამუროდ",
+    best_time_en: "June — September / winter for skiing",
+    tip_ka: "ამინდი სწრაფად იცვლება, ამიტომ თბილი ფენა ყოველთვის თან იქონიე.",
+    tip_en: "Weather changes quickly, so bring a warm layer even on a sunny day.",
+    image_url: null,
+    is_published: true,
+    sort_order: 5,
+  },
+  {
+    title_ka: "მაზერი და ბეჩოს ხეობა",
+    title_en: "Mazeri & Becho Valley",
+    description_ka: "მშვიდი ხეობა უშბის შთამბეჭდავი ხედებით, სოფლებითა და ბუნების მარშრუტებით.",
+    description_en: "A peaceful valley with striking Ushba views, villages, and scenic nature routes.",
+    best_time_ka: "მაისი — ოქტომბერი",
+    best_time_en: "May — October",
+    tip_ka: "ფოტოებისთვის დილა ან გვიანი შუადღე განსაკუთრებით კარგია.",
+    tip_en: "Morning or late afternoon usually gives the best light for photos.",
+    image_url: null,
+    is_published: true,
+    sort_order: 6,
+  },
+  {
+    title_ka: "მესტია",
+    title_en: "Mestia",
+    description_ka: "სვანეთის მთავარი ტურისტული ცენტრი კოშკებით, მუზეუმებით, კაფეებითა და ხედებით.",
+    description_en: "Svaneti's main visitor hub with towers, museums, cafés, and mountain views.",
+    best_time_ka: "მთელი წელი",
+    best_time_en: "Year-round",
+    tip_ka: "ქალაქის ცენტრი ფეხით მარტივად მოივლება; დილით კოშკების უბნები უფრო მშვიდია.",
+    tip_en: "The center is easy to explore on foot; tower neighborhoods are quieter in the morning.",
+    image_url: null,
+    is_published: true,
+    sort_order: 7,
+  },
+  {
+    title_ka: "ლატალი",
+    title_en: "Latali",
+    description_ka: "ისტორიული სოფლების ჯგუფი ეკლესიებით, სვანური კოშკებით და მშვიდი ატმოსფეროთი.",
+    description_en: "A historic village area with churches, Svan towers, and a quiet local atmosphere.",
+    best_time_ka: "აპრილი — ოქტომბერი",
+    best_time_en: "April — October",
+    tip_ka: "კარგია მათთვის, ვისაც ნაკლებად ტურისტული და უფრო მშვიდი სვანეთი აინტერესებს.",
+    tip_en: "A good choice if you want a quieter, less touristy side of Svaneti.",
+    image_url: null,
+    is_published: true,
+    sort_order: 8,
+  },
+  {
+    title_ka: "ცვირმი",
+    title_en: "Tsvirmi",
+    description_ka: "ტრადიციული სვანური სოფელი ფართო ხედებით და მშვიდი, ავთენტური გარემოთი.",
+    description_en: "A traditional Svan village with wide views and a quiet, authentic atmosphere.",
+    best_time_ka: "მაისი — ოქტომბერი",
+    best_time_en: "May — October",
+    tip_ka: "გზის პირობები სეზონურად იცვლება; მაღალკლირენსიანი მანქანა ხშირად მოსახერხებელია.",
+    tip_en: "Road conditions vary by season; a higher-clearance vehicle can be useful.",
+    image_url: null,
+    is_published: true,
+    sort_order: 9,
+  },
+  {
+    title_ka: "შდუღრას ჩანჩქერი",
+    title_en: "Shdughra Waterfall",
+    description_ka: "სათავგადასავლო ბუნების მიმართულება მწვანე ხეობებით და მთის შთამბეჭდავი ხედებით.",
+    description_en: "An adventurous nature destination with green valleys and dramatic mountain scenery.",
+    best_time_ka: "ივნისი — სექტემბერი",
+    best_time_en: "June — September",
+    tip_ka: "მოემზადე უფრო აქტიური დღისათვის და წაიღე წყალი, საწვიმარი და კარგი სალაშქრო ფეხსაცმელი.",
+    tip_en: "Plan for an active day and bring water, rain protection, and proper hiking shoes.",
+    image_url: null,
+    is_published: true,
+    sort_order: 10,
+  },
+] as const;
+
 export default function TravelTipsAdminPage() {
   const supabase = useMemo(() => createClient(), []);
 
@@ -59,6 +192,7 @@ export default function TravelTipsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [importingDefaults, setImportingDefaults] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -327,6 +461,56 @@ export default function TravelTipsAdminPage() {
     setDeletingId(null);
   }
 
+  async function importDefaultTravelTips() {
+    setImportingDefaults(true);
+    setMessage("");
+
+    const { data: existingRows, error: existingError } = await supabase
+      .from("travel_tips")
+      .select("title_ka");
+
+    if (existingError) {
+      setMessage(existingError.message);
+      setImportingDefaults(false);
+      return;
+    }
+
+    const existingTitles = new Set(
+      ((existingRows as Array<{ title_ka: string }> | null) ?? []).map(
+        (row) => row.title_ka.trim().toLowerCase()
+      )
+    );
+
+    const rowsToInsert = defaultTravelTips.filter(
+      (item) => !existingTitles.has(item.title_ka.trim().toLowerCase())
+    );
+
+    if (rowsToInsert.length === 0) {
+      setMessage("ℹ️ ავტომატური ადგილები უკვე დამატებულია.");
+      setImportingDefaults(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("travel_tips")
+      .insert(
+        rowsToInsert.map((item) => ({
+          ...item,
+          updated_at: new Date().toISOString(),
+        }))
+      );
+
+    if (error) {
+      setMessage(error.message);
+      setImportingDefaults(false);
+      return;
+    }
+
+    setMessage(`✅ დაემატა ${rowsToInsert.length} ავტომატური ადგილი.`);
+    setImportingDefaults(false);
+    await load();
+  }
+
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -368,6 +552,17 @@ export default function TravelTipsAdminPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void importDefaultTravelTips()}
+              disabled={importingDefaults}
+              className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 font-black text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {importingDefaults
+                ? "იმპორტდება..."
+                : "📥 ავტომატური ადგილების იმპორტი"}
+            </button>
+
             <Link
               href="/admin-v2"
               className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 font-bold transition hover:bg-white/10"
