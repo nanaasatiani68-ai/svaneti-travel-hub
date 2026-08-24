@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
+import { useLanguage } from "@/app/providers/LanguageProvider";
 
 type Tour = {
   id: number | string;
@@ -46,6 +47,8 @@ type Review = {
 };
 
 export default function BookTourPage() {
+  const { language } = useLanguage();
+  const c = bookTourCopy[language];
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const tourId = params?.id;
@@ -113,7 +116,7 @@ export default function BookTourPage() {
 
     setReviews((data as Review[] | null) ?? []);
     setLoadingReviews(false);
-  }, [tourId]);
+  }, [tourId, c]);
 
   const loadTour = useCallback(async () => {
     setLoadingTour(true);
@@ -123,7 +126,7 @@ export default function BookTourPage() {
 
     try {
       if (!tourId) {
-        throw new Error("ტურის ID არასწორია.");
+        throw new Error(c.invalidTourId);
       }
 
       const { data, error } = await supabase
@@ -161,7 +164,7 @@ export default function BookTourPage() {
 
       if (!data) {
         throw new Error(
-          "ტური ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული."
+          c.tourNotFoundError
         );
       }
 
@@ -229,7 +232,7 @@ export default function BookTourPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "ტურის ჩატვირთვისას უცნობი შეცდომა დაფიქსირდა.";
+          : c.unknownLoadError;
 
       setErrorMessage(message);
       setTour(null);
@@ -379,45 +382,45 @@ export default function BookTourPage() {
     setSuccess(false);
 
     if (!tour) {
-      setErrorMessage("ტურის ინფორმაცია ვერ მოიძებნა.");
+      setErrorMessage(c.tourInfoMissing);
       return;
     }
 
     if (!guestName.trim()) {
-      setErrorMessage("ჩაწერე სტუმრის სახელი და გვარი.");
+      setErrorMessage(c.nameRequired);
       return;
     }
 
     if (!guestEmail.trim()) {
-      setErrorMessage("ჩაწერე ელფოსტა.");
+      setErrorMessage(c.emailRequired);
       return;
     }
 
     if (!guestPhone.trim()) {
-      setErrorMessage("ჩაწერე ტელეფონის ნომერი.");
+      setErrorMessage(c.phoneRequired);
       return;
     }
 
     if (!bookingDate) {
-      setErrorMessage("აირჩიე ტურის თარიღი.");
+      setErrorMessage(c.dateRequired);
       return;
     }
 
     if (bookingDate < today) {
-      setErrorMessage("გასული თარიღის არჩევა შეუძლებელია.");
+      setErrorMessage(c.pastDate);
       return;
     }
 
     if (!Number.isInteger(people) || people < 1) {
       setErrorMessage(
-        "სტუმრების რაოდენობა უნდა იყოს მინიმუმ 1."
+        c.peopleMin
       );
       return;
     }
 
     if (tour.max_people && people > tour.max_people) {
       setErrorMessage(
-        `ამ ტურზე მაქსიმალური რაოდენობაა ${tour.max_people} ადამიანი.`
+        `${c.maxPeoplePrefix} ${tour.max_people} ${c.peopleWord}.`
       );
       return;
     }
@@ -466,7 +469,7 @@ export default function BookTourPage() {
       if (!response.ok || !result.success) {
         throw new Error(
           result.error ||
-            "დაჯავშნის მოთხოვნა ვერ გაიგზავნა."
+            c.bookingRequestFailed
         );
       }
 
@@ -489,10 +492,10 @@ export default function BookTourPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "უცნობი შეცდომა დაფიქსირდა.";
+          : c.unknownError;
 
       setErrorMessage(
-        `დაჯავშნის მოთხოვნა ვერ გაიგზავნა: ${message}`
+        `${c.bookingRequestFailed}: ${message}`
       );
     } finally {
       bookingRequestInProgress.current = false;
@@ -508,7 +511,7 @@ export default function BookTourPage() {
     setReviewMessage("");
 
     if (!tour) {
-      setReviewMessage("ტურის ინფორმაცია ვერ მოიძებნა.");
+      setReviewMessage(c.tourInfoMissing);
       setReviewMessageType("error");
       return;
     }
@@ -528,14 +531,14 @@ export default function BookTourPage() {
       reviewRating < 1 ||
       reviewRating > 5
     ) {
-      setReviewMessage("აირჩიე შეფასება 1-დან 5-მდე.");
+      setReviewMessage(c.chooseRating);
       setReviewMessageType("error");
       return;
     }
 
     if (reviewComment.trim().length > 1000) {
       setReviewMessage(
-        "კომენტარი არ უნდა აღემატებოდეს 1000 სიმბოლოს."
+        c.commentTooLong
       );
       setReviewMessageType("error");
       return;
@@ -561,7 +564,7 @@ export default function BookTourPage() {
       console.error("Review saving error:", error);
 
       setReviewMessage(
-        `შეფასების შენახვა ვერ მოხერხდა: ${error.message}`
+        `${c.reviewSaveFailed}: ${error.message}`
       );
 
       setReviewMessageType("error");
@@ -571,8 +574,8 @@ export default function BookTourPage() {
 
     setReviewMessage(
       myReview
-        ? "შეფასება წარმატებით განახლდა."
-        : "შეფასება წარმატებით დაემატა."
+        ? c.reviewUpdated
+        : c.reviewAdded
     );
 
     setReviewMessageType("success");
@@ -587,7 +590,7 @@ export default function BookTourPage() {
     }
 
     const confirmed = window.confirm(
-      "ნამდვილად გინდა შეფასების წაშლა?"
+      c.confirmDeleteReview
     );
 
     if (!confirmed) {
@@ -607,7 +610,7 @@ export default function BookTourPage() {
       console.error("Review deleting error:", error);
 
       setReviewMessage(
-        `შეფასების წაშლა ვერ მოხერხდა: ${error.message}`
+        `${c.reviewDeleteFailed}: ${error.message}`
       );
 
       setReviewMessageType("error");
@@ -617,7 +620,7 @@ export default function BookTourPage() {
 
     setReviewRating(5);
     setReviewComment("");
-    setReviewMessage("შეფასება წარმატებით წაიშალა.");
+    setReviewMessage(c.reviewDeleted);
     setReviewMessageType("success");
     setDeletingReview(false);
 
@@ -631,7 +634,7 @@ export default function BookTourPage() {
           <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-white/20 border-t-cyan-400" />
 
           <p className="mt-5 text-lg font-semibold">
-            ტურის ინფორმაცია იტვირთება...
+            {c.loadingTour}
           </p>
         </div>
       </main>
@@ -645,7 +648,7 @@ export default function BookTourPage() {
           <div className="text-7xl">🏔️</div>
 
           <h1 className="mt-5 text-2xl font-black">
-            ტური ვერ მოიძებნა
+            {c.tourNotFound}
           </h1>
 
           <p className="mt-3 leading-7 text-white/65">
@@ -658,21 +661,21 @@ export default function BookTourPage() {
               onClick={loadTour}
               className="rounded-2xl bg-emerald-500 px-6 py-3 font-bold transition hover:bg-emerald-600"
             >
-              ხელახლა ცდა
+              {c.tryAgain}
             </button>
 
             <Link
               href="/tours"
               className="rounded-2xl bg-cyan-500 px-6 py-3 font-bold transition hover:bg-cyan-600"
             >
-              ყველა ტური
+              {c.allTours}
             </Link>
 
             <Link
               href="/"
               className="rounded-2xl border border-white/15 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
             >
-              მთავარი გვერდი
+              {c.home}
             </Link>
           </div>
         </div>
@@ -696,7 +699,7 @@ export default function BookTourPage() {
               <p>Georgia Gateway Hub</p>
 
               <p className="text-xs font-medium text-white/45">
-                ტურის დეტალები
+                {c.tourDetails}
               </p>
             </div>
           </Link>
@@ -706,7 +709,7 @@ export default function BookTourPage() {
               href="/tours"
               className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold transition hover:bg-white/20"
             >
-              ← ყველა ტური
+              ← {c.allTours}
             </Link>
 
             <Link
@@ -723,7 +726,7 @@ export default function BookTourPage() {
         {success && (
           <div className="mb-8 rounded-3xl border border-emerald-400/30 bg-emerald-500/15 p-6 text-emerald-100 shadow-xl">
             <p className="text-xl font-black">
-              ✅ დაჯავშნის მოთხოვნა წარმატებით გაიგზავნა
+              ✅ {c.bookingSent}
             </p>
 
             <p className="mt-2 leading-7 text-emerald-100/75">
@@ -754,7 +757,7 @@ export default function BookTourPage() {
                 <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
                   <div className="flex flex-wrap gap-2">
                     <span className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black shadow-lg">
-                      ✓ ხელმისაწვდომია
+                      ✓ {c.available}
                     </span>
 
                     {tour.category && (
@@ -765,25 +768,25 @@ export default function BookTourPage() {
                   </div>
 
                   <h1 className="mt-4 text-3xl font-black drop-shadow-xl sm:text-5xl">
-                    {tour.title || "უსახელო ტური"}
+                    {tour.title || c.untitledTour}
                   </h1>
 
                   <p className="mt-3 text-lg text-white/80">
-                    📍 {tour.location || "საქართველო"}
+                    📍 {tour.location || c.georgia}
                   </p>
 
                   <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <StarDisplay rating={averageRating} />
+                    <StarDisplay rating={averageRating} language={language} />
 
                     <span className="font-black">
                       {reviews.length > 0
                         ? averageRating.toFixed(1)
-                        : "ჯერ არ არის შეფასება"}
+                        : c.noRatingYet}
                     </span>
 
                     {reviews.length > 0 && (
                       <span className="text-sm text-white/65">
-                        ({reviews.length} შეფასება)
+                        ({reviews.length} {c.reviewsCount})
                       </span>
                     )}
                   </div>
@@ -796,16 +799,16 @@ export default function BookTourPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                      Tour gallery
+                      {language === "ka" ? "ტურის გალერეა" : "Tour gallery"}
                     </p>
 
                     <h2 className="mt-1 text-xl font-black">
-                      📸 ტურის ფოტოები
+                      📸 {c.tourPhotos}
                     </h2>
                   </div>
 
                   <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/60">
-                    {galleryImages.length} ფოტო
+                    {galleryImages.length} {c.photos}
                   </span>
                 </div>
 
@@ -814,7 +817,7 @@ export default function BookTourPage() {
                   onClick={() => setShowMobileGallery((current) => !current)}
                   className="mt-4 flex w-full items-center justify-between rounded-2xl bg-cyan-500 px-5 py-4 font-black text-white transition hover:bg-cyan-600 sm:hidden"
                 >
-                  <span>📷 ფოტოების ნახვა</span>
+                  <span>📷 {c.viewPhotos}</span>
                   <span>{showMobileGallery ? "▲" : "▼"}</span>
                 </button>
 
@@ -844,11 +847,11 @@ export default function BookTourPage() {
                             ? "border-cyan-400 ring-2 ring-cyan-400/30"
                             : "border-white/10 hover:border-white/30"
                         }`}
-                        aria-label={`ტურის ფოტო ${index + 1}`}
+                        aria-label={`${c.tourPhoto} ${index + 1}`}
                       >
                         <img
                           src={image}
-                          alt={`${tour.title || "ტური"} - ფოტო ${index + 1}`}
+                          alt={`${tour.title || c.tour} - ${c.photo} ${index + 1}`}
                           className="h-24 w-full object-cover transition duration-300 group-hover:scale-105 sm:h-28"
                         />
 
@@ -858,7 +861,7 @@ export default function BookTourPage() {
 
                         {index === 0 && (
                           <span className="absolute bottom-2 left-2 rounded-full bg-cyan-500 px-2 py-1 text-[10px] font-black text-white">
-                            მთავარი
+                            {c.mainPhoto}
                           </span>
                         )}
                       </button>
@@ -871,29 +874,29 @@ export default function BookTourPage() {
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-7">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoBox
-                  label="მდებარეობა"
-                  value={tour.location || "არ არის მითითებული"}
+                  label={c.location}
+                  value={tour.location || c.notSpecified}
                   icon="📍"
                 />
 
                 <InfoBox
-                  label="ხანგრძლივობა"
-                  value={tour.duration || "არ არის მითითებული"}
+                  label={c.duration}
+                  value={tour.duration || c.notSpecified}
                   icon="⏱️"
                 />
 
                 <InfoBox
-                  label="ფასი"
-                  value={formatTourPrice(tour)}
+                  label={c.price}
+                  value={formatTourPrice(tour, language)}
                   icon="💰"
                 />
 
                 <InfoBox
-                  label="მაქსიმუმ"
+                  label={c.maximum}
                   value={
                     tour.max_people
-                      ? `${tour.max_people} ადამიანი`
-                      : "არ არის მითითებული"
+                      ? `${tour.max_people} ${c.peopleWord}`
+                      : c.notSpecified
                   }
                   icon="👥"
                 />
@@ -902,44 +905,44 @@ export default function BookTourPage() {
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                Tour description
+                {language === "ka" ? "ტურის აღწერა" : "Tour description"}
               </p>
 
               <h2 className="mt-3 text-3xl font-black">
-                ტურის აღწერა
+                {c.tourDescription}
               </h2>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-white/70">
                 {tour.description ||
-                  "ტურის სრული აღწერა ჯერ არ არის დამატებული."}
+                  c.noDescription}
               </p>
             </section>
 
-            <OwnerCard tour={tour} />
+            <OwnerCard tour={tour} language={language} />
 
             <section className="grid gap-5 md:grid-cols-2">
               <DetailCard
                 icon="✅"
-                title="რა შეიძლება შედიოდეს ფასში"
+                title={c.mayIncludeTitle}
                 items={[
-                  "პროფესიონალი გიდის მომსახურება",
-                  "მარშრუტის დაგეგმვა",
-                  "ტურის ორგანიზება",
-                  "ტურის დროს მხარდაჭერა",
+                  c.includeGuide,
+                  c.includePlanning,
+                  c.includeOrganization,
+                  c.includeSupport,
                 ]}
-                note="ზუსტი მომსახურებები გადაამოწმე ორგანიზატორთან."
+                note={c.includeNote}
               />
 
               <DetailCard
                 icon="❌"
-                title="რა შეიძლება არ შედიოდეს ფასში"
+                title={c.mayNotIncludeTitle}
                 items={[
-                  "კვება და სასმელი",
-                  "სასტუმროში განთავსება",
-                  "პირადი ხარჯები",
-                  "დამატებითი აქტივობები",
+                  c.excludeFood,
+                  c.excludeHotel,
+                  c.excludePersonal,
+                  c.excludeActivities,
                 ]}
-                note="პირობები შეიძლება განსხვავდებოდეს კონკრეტული ტურის მიხედვით."
+                note={c.excludeNote}
               />
             </section>
 
@@ -947,17 +950,17 @@ export default function BookTourPage() {
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                 <div>
                   <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                    Reviews
+                    {language === "ka" ? "შეფასებები" : "Reviews"}
                   </p>
 
                   <h2 className="mt-3 text-3xl font-black">
-                    ⭐ შეფასებები და კომენტარები
+                    ⭐ {c.reviewsTitle}
                   </h2>
                 </div>
 
                 <div className="rounded-2xl bg-white/10 px-5 py-3">
                   <div className="flex items-center gap-3">
-                    <StarDisplay rating={averageRating} />
+                    <StarDisplay rating={averageRating} language={language} />
 
                     <span className="text-xl font-black">
                       {reviews.length > 0
@@ -967,7 +970,7 @@ export default function BookTourPage() {
                   </div>
 
                   <p className="mt-1 text-sm text-white/50">
-                    {reviews.length} შეფასება
+                    {reviews.length} {c.reviewsCount}
                   </p>
                 </div>
               </div>
@@ -992,18 +995,18 @@ export default function BookTourPage() {
                 >
                   <h3 className="text-2xl font-black">
                     {myReview
-                      ? "შეფასების შეცვლა"
-                      : "ტურის შეფასება"}
+                      ? c.editReview
+                      : c.rateTour}
                   </h3>
 
                   <p className="mt-2 text-sm text-slate-500">
                     აირჩიე ვარსკვლავების რაოდენობა და დაწერე
-                    კომენტარი.
+                    {c.comment}.
                   </p>
 
                   <div className="mt-5">
                     <p className="mb-3 text-sm font-bold text-slate-700">
-                      შენი შეფასება
+                      {c.yourRating}
                     </p>
 
                     <div className="flex flex-wrap gap-2">
@@ -1017,7 +1020,7 @@ export default function BookTourPage() {
                               ? "bg-amber-400 text-white"
                               : "bg-slate-100 text-slate-300 hover:bg-slate-200"
                           }`}
-                          aria-label={`${star} ვარსკვლავი`}
+                          aria-label={`${star} ${c.starWord}`}
                         >
                           ★
                         </button>
@@ -1031,7 +1034,7 @@ export default function BookTourPage() {
 
                   <label className="mt-5 block">
                     <span className="mb-2 block text-sm font-bold text-slate-700">
-                      კომენტარი
+                      {c.comment}
                     </span>
 
                     <textarea
@@ -1039,7 +1042,7 @@ export default function BookTourPage() {
                       onChange={(event) =>
                         setReviewComment(event.target.value)
                       }
-                      placeholder="დაწერე შენი გამოცდილების შესახებ..."
+                      placeholder={c.commentPlaceholder}
                       rows={5}
                       maxLength={1000}
                       className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
@@ -1057,10 +1060,10 @@ export default function BookTourPage() {
                       className="rounded-2xl bg-cyan-600 px-6 py-3 font-black text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {savingReview
-                        ? "ინახება..."
+                        ? c.saving
                         : myReview
-                          ? "შეფასების განახლება"
-                          : "შეფასების დამატება"}
+                          ? c.updateReview
+                          : c.addReview}
                     </button>
 
                     {myReview && (
@@ -1071,8 +1074,8 @@ export default function BookTourPage() {
                         className="rounded-2xl bg-red-600 px-6 py-3 font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {deletingReview
-                          ? "იშლება..."
-                          : "შეფასების წაშლა"}
+                          ? c.deleting
+                          : c.deleteReview}
                       </button>
                     )}
                   </div>
@@ -1080,14 +1083,14 @@ export default function BookTourPage() {
               ) : (
                 <div className="mt-7 rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6 text-center">
                   <p className="font-bold">
-                    შეფასების დასაწერად საჭიროა ავტორიზაცია.
+                    {c.loginToReview}
                   </p>
 
                   <Link
                     href="/login"
                     className="mt-4 inline-flex rounded-2xl bg-cyan-500 px-6 py-3 font-black transition hover:bg-cyan-600"
                   >
-                    შესვლა
+                    {c.login}
                   </Link>
                 </div>
               )}
@@ -1095,18 +1098,18 @@ export default function BookTourPage() {
               <div className="mt-8 space-y-4">
                 {loadingReviews ? (
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-white/60">
-                    შეფასებები იტვირთება...
+                    {c.loadingReviews}
                   </div>
                 ) : reviews.length === 0 ? (
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
                     <div className="text-5xl">⭐</div>
 
                     <h3 className="mt-4 text-xl font-black">
-                      შეფასებები ჯერ არ არის
+                      {c.noReviewsYet}
                     </h3>
 
                     <p className="mt-2 text-white/55">
-                      პირველი შეფასება შენ დაამატე.
+                      {c.beFirstReview}
                     </p>
                   </div>
                 ) : (
@@ -1129,19 +1132,19 @@ export default function BookTourPage() {
                             <div>
                               <h3 className="font-black">
                                 {review.user_id === currentUserId
-                                  ? "შენი შეფასება"
-                                  : "მომხმარებელი"}
+                                  ? "{c.yourRating}"
+                                  : c.user}
                               </h3>
 
                               <p className="text-xs text-white/40">
-                                {formatDate(review.created_at)}
+                                {formatDate(review.created_at, language)}
                               </p>
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <StarDisplay rating={review.rating} />
+                          <StarDisplay rating={review.rating} language={language} />
                         </div>
                       </div>
 
@@ -1158,36 +1161,36 @@ export default function BookTourPage() {
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                Important information
+                {language === "ka" ? "მნიშვნელოვანი ინფორმაცია" : "Important information"}
               </p>
 
               <h2 className="mt-3 text-3xl font-black">
-                მნიშვნელოვანი ინფორმაცია
+                {c.importantInfo}
               </h2>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <NoticeCard
                   icon="📅"
-                  title="წინასწარი დაჯავშნა"
-                  text="ტურის მოთხოვნა სასურველია წინასწარ გააგზავნო."
+                  title={c.advanceBooking}
+                  text={c.advanceBookingText}
                 />
 
                 <NoticeCard
                   icon="🌦️"
-                  title="ამინდი"
-                  text="მარშრუტი შეიძლება შეიცვალოს ამინდის პირობების მიხედვით."
+                  title={c.weather}
+                  text={c.weatherText}
                 />
 
                 <NoticeCard
                   icon="🥾"
-                  title="ტანსაცმელი"
-                  text="თან იქონიე კომფორტული ფეხსაცმელი და შესაბამისი ტანსაცმელი."
+                  title={c.clothing}
+                  text={c.clothingText}
                 />
 
                 <NoticeCard
                   icon="📞"
-                  title="დადასტურება"
-                  text="დაჯავშნა საბოლოოდ დადასტურდება ორგანიზატორთან დაკავშირების შემდეგ."
+                  title={c.confirmation}
+                  text={c.confirmationText}
                 />
               </div>
             </section>
@@ -1195,11 +1198,11 @@ export default function BookTourPage() {
             {ownerTours.length > 0 && (
               <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
                 <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-                  More tours
+                  {language === "ka" ? "სხვა ტურები" : "More tours"}
                 </p>
 
                 <h2 className="mt-3 text-3xl font-black">
-                  სხვა ტურები
+                  {c.otherTours}
                 </h2>
 
                 <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -1225,19 +1228,19 @@ export default function BookTourPage() {
 
                       <div className="p-5">
                         <h3 className="text-xl font-black">
-                          {ownerTour.title || "უსახელო ტური"}
+                          {ownerTour.title || c.untitledTour}
                         </h3>
 
                         <p className="mt-2 text-sm text-white/60">
-                          📍 {ownerTour.location || "საქართველო"}
+                          📍 {ownerTour.location || c.georgia}
                         </p>
 
                         <p className="mt-4 text-xl font-black text-cyan-300">
-                          {formatTourPrice(ownerTour)}
+                          {formatTourPrice(ownerTour, language)}
                         </p>
 
                         <div className="mt-4 text-sm font-bold text-cyan-300">
-                          ტურის ნახვა →
+                          {c.viewTour} →
                         </div>
                       </div>
                     </Link>
@@ -1250,15 +1253,15 @@ export default function BookTourPage() {
           <aside className="rounded-3xl bg-white p-5 text-slate-900 shadow-2xl sm:p-7 lg:sticky lg:top-24">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-600">
-                Booking
+                {language === "ka" ? "დაჯავშნა" : "Booking"}
               </p>
 
               <h2 className="mt-2 text-3xl font-black">
-                ტურის დაჯავშნა
+                {c.bookTour}
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-slate-500">
-                შეავსე მონაცემები და გააგზავნე მოთხოვნა.
+                {c.fillAndSend}
               </p>
             </div>
 
@@ -1269,20 +1272,20 @@ export default function BookTourPage() {
             )}
 
             <form onSubmit={handleSubmit} className="mt-7 space-y-5">
-              <FormField label="სახელი და გვარი">
+              <FormField label={c.fullName}>
                 <input
                   type="text"
                   value={guestName}
                   onChange={(event) =>
                     setGuestName(event.target.value)
                   }
-                  placeholder="მაგალითად: Anna Brown"
+                  placeholder={c.namePlaceholder}
                   required
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                 />
               </FormField>
 
-              <FormField label="ელფოსტა">
+              <FormField label={c.email}>
                 <input
                   type="email"
                   value={guestEmail}
@@ -1295,7 +1298,7 @@ export default function BookTourPage() {
                 />
               </FormField>
 
-              <FormField label="ტელეფონის ნომერი">
+              <FormField label={c.phone}>
                 <input
                   type="tel"
                   value={guestPhone}
@@ -1309,7 +1312,7 @@ export default function BookTourPage() {
               </FormField>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="ტურის თარიღი">
+                <FormField label={c.tourDate}>
                   <input
                     type="date"
                     value={bookingDate}
@@ -1322,7 +1325,7 @@ export default function BookTourPage() {
                   />
                 </FormField>
 
-                <FormField label="ადამიანების რაოდენობა">
+                <FormField label={c.peopleCount}>
                   <input
                     type="number"
                     min={1}
@@ -1343,13 +1346,13 @@ export default function BookTourPage() {
                 </FormField>
               </div>
 
-              <FormField label="დამატებითი შეტყობინება">
+              <FormField label={c.notes}>
                 <textarea
                   value={notes}
                   onChange={(event) =>
                     setNotes(event.target.value)
                   }
-                  placeholder="მაგალითად: გვჭირდება სასტუმროდან აყვანა..."
+                  placeholder={c.notesPlaceholder}
                   rows={4}
                   className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
                 />
@@ -1357,12 +1360,12 @@ export default function BookTourPage() {
 
               <div className="rounded-2xl bg-slate-100 p-5">
                 <PriceRow
-                  label="ფასი"
-                  value={formatTourPrice(tour)}
+                  label={c.price}
+                  value={formatTourPrice(tour, language)}
                 />
 
                 <PriceRow
-                  label="ადამიანების რაოდენობა"
+                  label={c.peopleCount}
                   value={String(people)}
                 />
 
@@ -1378,7 +1381,7 @@ export default function BookTourPage() {
                     </span>
 
                     <span className="text-2xl font-black text-cyan-700">
-                      {formatTourPrice(tour)}
+                      {formatTourPrice(tour, language)}
                     </span>
                   </div>
                 </div>
@@ -1390,8 +1393,8 @@ export default function BookTourPage() {
                 className="w-full rounded-2xl bg-cyan-600 px-6 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting
-                  ? "მოთხოვნა იგზავნება..."
-                  : "დაჯავშნის მოთხოვნის გაგზავნა"}
+                  ? c.submitting
+                  : c.sendBookingRequest}
               </button>
 
               <p className="text-center text-xs leading-5 text-slate-400">
@@ -1407,17 +1410,237 @@ export default function BookTourPage() {
 }
 
 
-function formatTourPrice(tour: Tour) {
+const bookTourCopy = {
+  ka: {
+    invalidTourId: "ტურის ID არასწორია.",
+    tourNotFoundError: "ტური ვერ მოიძებნა ან ჯერ არ არის დამტკიცებული.",
+    unknownLoadError: "ტურის ჩატვირთვისას უცნობი შეცდომა დაფიქსირდა.",
+    unknownError: "უცნობი შეცდომა დაფიქსირდა.",
+    tourInfoMissing: "ტურის ინფორმაცია ვერ მოიძებნა.",
+    nameRequired: "ჩაწერე სტუმრის სახელი და გვარი.",
+    emailRequired: "ჩაწერე ელფოსტა.",
+    phoneRequired: "ჩაწერე ტელეფონის ნომერი.",
+    dateRequired: "აირჩიე ტურის თარიღი.",
+    pastDate: "გასული თარიღის არჩევა შეუძლებელია.",
+    peopleMin: "სტუმრების რაოდენობა უნდა იყოს მინიმუმ 1.",
+    maxPeoplePrefix: "ამ ტურზე მაქსიმალური რაოდენობაა",
+    peopleWord: "ადამიანი",
+    bookingRequestFailed: "დაჯავშნის მოთხოვნა ვერ გაიგზავნა",
+    chooseRating: "აირჩიე შეფასება 1-დან 5-მდე.",
+    commentTooLong: "კომენტარი არ უნდა აღემატებოდეს 1000 სიმბოლოს.",
+    reviewSaveFailed: "შეფასების შენახვა ვერ მოხერხდა",
+    reviewUpdated: "შეფასება წარმატებით განახლდა.",
+    reviewAdded: "შეფასება წარმატებით დაემატა.",
+    confirmDeleteReview: "ნამდვილად გინდა შეფასების წაშლა?",
+    reviewDeleteFailed: "შეფასების წაშლა ვერ მოხერხდა",
+    reviewDeleted: "შეფასება წარმატებით წაიშალა.",
+    loadingTour: "ტურის ინფორმაცია იტვირთება...",
+    tourNotFound: "ტური ვერ მოიძებნა",
+    tryAgain: "ხელახლა ცდა",
+    allTours: "ყველა ტური",
+    home: "მთავარი გვერდი",
+    tourDetails: "ტურის დეტალები",
+    bookingSent: "დაჯავშნის მოთხოვნა წარმატებით გაიგზავნა",
+    bookingSentText: "მოთხოვნა მიღებულია. ტურის ორგანიზატორი დაგიკავშირდება ტელეფონზე ან ელფოსტაზე.",
+    available: "ხელმისაწვდომია",
+    untitledTour: "უსახელო ტური",
+    georgia: "საქართველო",
+    noRatingYet: "ჯერ არ არის შეფასება",
+    reviewsCount: "შეფასება",
+    tourPhotos: "ტურის ფოტოები",
+    photos: "ფოტო",
+    viewPhotos: "ფოტოების ნახვა",
+    tourPhoto: "ტურის ფოტო",
+    photo: "ფოტო",
+    tour: "ტური",
+    mainPhoto: "მთავარი",
+    location: "მდებარეობა",
+    duration: "ხანგრძლივობა",
+    price: "ფასი",
+    maximum: "მაქსიმუმ",
+    notSpecified: "არ არის მითითებული",
+    tourDescription: "ტურის აღწერა",
+    noDescription: "ტურის სრული აღწერა ჯერ არ არის დამატებული.",
+    mayIncludeTitle: "რა შეიძლება შედიოდეს ფასში",
+    includeGuide: "პროფესიონალი გიდის მომსახურება",
+    includePlanning: "მარშრუტის დაგეგმვა",
+    includeOrganization: "ტურის ორგანიზება",
+    includeSupport: "ტურის დროს მხარდაჭერა",
+    includeNote: "ზუსტი მომსახურებები გადაამოწმე ორგანიზატორთან.",
+    mayNotIncludeTitle: "რა შეიძლება არ შედიოდეს ფასში",
+    excludeFood: "კვება და სასმელი",
+    excludeHotel: "სასტუმროში განთავსება",
+    excludePersonal: "პირადი ხარჯები",
+    excludeActivities: "დამატებითი აქტივობები",
+    excludeNote: "პირობები შეიძლება განსხვავდებოდეს კონკრეტული ტურის მიხედვით.",
+    reviewsTitle: "შეფასებები და კომენტარები",
+    editReview: "შეფასების შეცვლა",
+    rateTour: "ტურის შეფასება",
+    reviewHelp: "აირჩიე ვარსკვლავების რაოდენობა და დაწერე კომენტარი.",
+    yourRating: "შენი შეფასება",
+    starWord: "ვარსკვლავი",
+    comment: "კომენტარი",
+    commentPlaceholder: "დაწერე შენი გამოცდილების შესახებ...",
+    saving: "ინახება...",
+    updateReview: "შეფასების განახლება",
+    addReview: "შეფასების დამატება",
+    deleting: "იშლება...",
+    deleteReview: "შეფასების წაშლა",
+    loginToReview: "შეფასების დასაწერად საჭიროა ავტორიზაცია.",
+    login: "შესვლა",
+    loadingReviews: "შეფასებები იტვირთება...",
+    noReviewsYet: "შეფასებები ჯერ არ არის",
+    beFirstReview: "პირველი შეფასება შენ დაამატე.",
+    yourReview: "შენი შეფასება",
+    user: "მომხმარებელი",
+    importantInfo: "მნიშვნელოვანი ინფორმაცია",
+    advanceBooking: "წინასწარი დაჯავშნა",
+    advanceBookingText: "ტურის მოთხოვნა სასურველია წინასწარ გააგზავნო.",
+    weather: "ამინდი",
+    weatherText: "მარშრუტი შეიძლება შეიცვალოს ამინდის პირობების მიხედვით.",
+    clothing: "ტანსაცმელი",
+    clothingText: "თან იქონიე კომფორტული ფეხსაცმელი და შესაბამისი ტანსაცმელი.",
+    confirmation: "დადასტურება",
+    confirmationText: "დაჯავშნა საბოლოოდ დადასტურდება ორგანიზატორთან დაკავშირების შემდეგ.",
+    otherTours: "სხვა ტურები",
+    viewTour: "ტურის ნახვა",
+    bookTour: "ტურის დაჯავშნა",
+    fillAndSend: "შეავსე მონაცემები და გააგზავნე მოთხოვნა.",
+    fullName: "სახელი და გვარი",
+    namePlaceholder: "მაგალითად: Anna Brown",
+    email: "ელფოსტა",
+    phone: "ტელეფონის ნომერი",
+    tourDate: "ტურის თარიღი",
+    peopleCount: "ადამიანების რაოდენობა",
+    notes: "დამატებითი შეტყობინება",
+    notesPlaceholder: "მაგალითად: გვჭირდება სასტუმროდან აყვანა...",
+    pricePeopleNote: "ადამიანების რაოდენობა ფასს არ ცვლის — მითითებული თანხა არის სრული ფასი.",
+    submitting: "მოთხოვნა იგზავნება...",
+    sendBookingRequest: "დაჯავშნის მოთხოვნის გაგზავნა",
+    notAutoConfirmed: "მოთხოვნის გაგზავნა ავტომატურად დადასტურებულ ჯავშანს არ ნიშნავს.",
+  },
+  en: {
+    invalidTourId: "Invalid tour ID.",
+    tourNotFoundError: "Tour was not found or is not approved yet.",
+    unknownLoadError: "An unknown error occurred while loading the tour.",
+    unknownError: "An unknown error occurred.",
+    tourInfoMissing: "Tour information could not be found.",
+    nameRequired: "Enter the guest's full name.",
+    emailRequired: "Enter an email address.",
+    phoneRequired: "Enter a phone number.",
+    dateRequired: "Choose a tour date.",
+    pastDate: "You cannot choose a past date.",
+    peopleMin: "Number of guests must be at least 1.",
+    maxPeoplePrefix: "The maximum number of guests for this tour is",
+    peopleWord: "people",
+    bookingRequestFailed: "Could not send booking request",
+    chooseRating: "Choose a rating from 1 to 5.",
+    commentTooLong: "Comment cannot exceed 1000 characters.",
+    reviewSaveFailed: "Could not save review",
+    reviewUpdated: "Review updated successfully.",
+    reviewAdded: "Review added successfully.",
+    confirmDeleteReview: "Are you sure you want to delete your review?",
+    reviewDeleteFailed: "Could not delete review",
+    reviewDeleted: "Review deleted successfully.",
+    loadingTour: "Loading tour information...",
+    tourNotFound: "Tour not found",
+    tryAgain: "Try again",
+    allTours: "All tours",
+    home: "Home",
+    tourDetails: "Tour details",
+    bookingSent: "Booking request sent successfully",
+    bookingSentText: "Your request has been received. The tour organizer will contact you by phone or email.",
+    available: "Available",
+    untitledTour: "Untitled tour",
+    georgia: "Georgia",
+    noRatingYet: "No rating yet",
+    reviewsCount: "reviews",
+    tourPhotos: "Tour photos",
+    photos: "photos",
+    viewPhotos: "View photos",
+    tourPhoto: "Tour photo",
+    photo: "photo",
+    tour: "tour",
+    mainPhoto: "Main",
+    location: "Location",
+    duration: "Duration",
+    price: "Price",
+    maximum: "Maximum",
+    notSpecified: "Not specified",
+    tourDescription: "Tour description",
+    noDescription: "A full tour description has not been added yet.",
+    mayIncludeTitle: "What may be included",
+    includeGuide: "Professional guide service",
+    includePlanning: "Route planning",
+    includeOrganization: "Tour organization",
+    includeSupport: "Support during the tour",
+    includeNote: "Confirm exact services with the organizer.",
+    mayNotIncludeTitle: "What may not be included",
+    excludeFood: "Food and drinks",
+    excludeHotel: "Hotel accommodation",
+    excludePersonal: "Personal expenses",
+    excludeActivities: "Additional activities",
+    excludeNote: "Terms may vary depending on the specific tour.",
+    reviewsTitle: "Reviews and comments",
+    editReview: "Edit review",
+    rateTour: "Rate this tour",
+    reviewHelp: "Choose the number of stars and write a comment.",
+    yourRating: "Your rating",
+    starWord: "stars",
+    comment: "Comment",
+    commentPlaceholder: "Write about your experience...",
+    saving: "Saving...",
+    updateReview: "Update review",
+    addReview: "Add review",
+    deleting: "Deleting...",
+    deleteReview: "Delete review",
+    loginToReview: "You need to sign in to write a review.",
+    login: "Login",
+    loadingReviews: "Loading reviews...",
+    noReviewsYet: "No reviews yet",
+    beFirstReview: "Be the first to add a review.",
+    yourReview: "Your review",
+    user: "User",
+    importantInfo: "Important information",
+    advanceBooking: "Advance booking",
+    advanceBookingText: "It is best to send your tour request in advance.",
+    weather: "Weather",
+    weatherText: "The route may change depending on weather conditions.",
+    clothing: "Clothing",
+    clothingText: "Bring comfortable shoes and appropriate clothing.",
+    confirmation: "Confirmation",
+    confirmationText: "The booking is final after confirmation with the organizer.",
+    otherTours: "Other tours",
+    viewTour: "View tour",
+    bookTour: "Book Tour",
+    fillAndSend: "Fill in your details and send a request.",
+    fullName: "Full name",
+    namePlaceholder: "For example: Anna Brown",
+    email: "Email",
+    phone: "Phone number",
+    tourDate: "Tour date",
+    peopleCount: "Number of people",
+    notes: "Additional message",
+    notesPlaceholder: "For example: We need hotel pickup...",
+    pricePeopleNote: "The number of people does not change the listed total price.",
+    submitting: "Sending request...",
+    sendBookingRequest: "Send booking request",
+    notAutoConfirmed: "Sending a request does not automatically confirm the booking.",
+  },
+} as const;
+
+
+function formatTourPrice(tour: Tour, language: "ka" | "en") {
   if (
     tour.price_type === "negotiable" ||
     tour.price === null ||
     tour.price === undefined
   ) {
-    return "ფასი შეთანხმებით";
+    return language === "ka" ? "ფასი შეთანხმებით" : "Contact for price";
   }
 
   const amount = Number(tour.price).toLocaleString(
-    "ka-GE",
+    language === "ka" ? "ka-GE" : "en-US",
     { maximumFractionDigits: 2 }
   );
 
@@ -1426,11 +1649,11 @@ function formatTourPrice(tour: Tour) {
     : `${amount} ₾`;
 }
 
-function StarDisplay({ rating }: { rating: number }) {
+function StarDisplay({ rating, language }: { rating: number; language: "ka" | "en" }) {
   return (
     <div
       className="flex gap-1"
-      aria-label={`${rating.toFixed(1)} ვარსკვლავი`}
+      aria-label={`${rating.toFixed(1)} ${language === "ka" ? "ვარსკვლავი" : "stars"}`}
     >
       {[1, 2, 3, 4, 5].map((star) => (
         <span
@@ -1450,18 +1673,20 @@ function StarDisplay({ rating }: { rating: number }) {
 
 function OwnerCard({
   tour,
+  language,
 }: {
   tour: Tour;
+  language: "ka" | "en";
 }) {
   const organizerName =
-    tour.organizer_name?.trim() || "ტურის ორგანიზატორი";
+    tour.organizer_name?.trim() || (language === "ka" ? "ტურის ორგანიზატორი" : "Tour organizer");
 
   const phone = tour.contact_phone?.trim() || "";
 
   return (
     <section className="rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/15 to-white/5 p-6 shadow-xl sm:p-8">
       <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-        Tour organizer
+        {language === "ka" ? "ტურის ორგანიზატორი" : "Tour organizer"}
       </p>
 
       <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
@@ -1483,7 +1708,7 @@ function OwnerCard({
           </div>
 
           <p className="mt-2 text-sm leading-6 text-white/55">
-            ამ ტურის საჯარო ორგანიზატორი
+            {language === "ka" ? "ამ ტურის საჯარო ორგანიზატორი" : "Public organizer for this tour"}
           </p>
 
           {phone ? (
@@ -1502,7 +1727,7 @@ function OwnerCard({
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 font-bold text-white transition hover:bg-emerald-600"
-                  aria-label={`WhatsApp-ზე დაკავშირება: ${phone}`}
+                  aria-label={`${language === "ka" ? "WhatsApp-ზე დაკავშირება" : "Contact on WhatsApp"}: ${phone}`}
                 >
                   <span aria-hidden="true">💬</span>
                   <span>WhatsApp</span>
@@ -1513,7 +1738,7 @@ function OwnerCard({
                 <a
                   href={getViberUrl(phone)}
                   className="inline-flex items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
-                  aria-label={`Viber-ზე დაკავშირება: ${phone}`}
+                  aria-label={`${language === "ka" ? "Viber-ზე დაკავშირება" : "Contact on Viber"}: ${phone}`}
                 >
                   <span aria-hidden="true">📲</span>
                   <span>Viber</span>
@@ -1522,7 +1747,7 @@ function OwnerCard({
             </div>
           ) : (
             <div className="mt-5 inline-flex rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 font-bold text-amber-200">
-              ⚠️ ორგანიზატორის ტელეფონის ნომერი ჯერ არ არის მითითებული
+              {language === "ka" ? "⚠️ ორგანიზატორის ტელეფონის ნომერი ჯერ არ არის მითითებული" : "⚠️ Organizer phone number is not available yet"}
             </div>
           )}
         </div>
@@ -1691,14 +1916,14 @@ function getLocalToday() {
     .split("T")[0];
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, language: "ka" | "en") {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("ka-GE", {
+  return new Intl.DateTimeFormat(language === "ka" ? "ka-GE" : "en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
