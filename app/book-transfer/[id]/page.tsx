@@ -60,6 +60,11 @@ export default function BookTransferPage() {
 
   const [travelDate, setTravelDate] = useState("");
   const [travelTime, setTravelTime] = useState("");
+  const [isReturnTransfer, setIsReturnTransfer] = useState(false);
+  const [returnDate, setReturnDate] = useState("");
+  const [returnTime, setReturnTime] = useState("");
+  const [flightNumber, setFlightNumber] = useState("");
+  const [childSeat, setChildSeat] = useState(false);
   const [passengers, setPassengers] = useState(1);
   const [pickupAddress, setPickupAddress] =
     useState("");
@@ -246,8 +251,10 @@ export default function BookTransferPage() {
       return null;
     }
 
-    return Number(transfer.price);
-  }, [transfer]);
+    const basePrice = Number(transfer.price);
+
+    return isReturnTransfer ? basePrice * 2 : basePrice;
+  }, [transfer, isReturnTransfer]);
 
   const localizedFrom = transfer
     ? localizedValue(
@@ -342,6 +349,31 @@ export default function BookTransferPage() {
       return;
     }
 
+    if (isReturnTransfer) {
+      if (!returnDate) {
+        setFormError(c.returnDateRequired);
+        return;
+      }
+
+      if (!returnTime) {
+        setFormError(c.returnTimeRequired);
+        return;
+      }
+
+      if (returnDate < travelDate) {
+        setFormError(c.returnBeforeDeparture);
+        return;
+      }
+
+      if (
+        returnDate === travelDate &&
+        returnTime <= travelTime
+      ) {
+        setFormError(c.returnTimeBeforeDeparture);
+        return;
+      }
+    }
+
     if (
       !Number.isInteger(passengers) ||
       passengers < 1
@@ -414,6 +446,15 @@ export default function BookTransferPage() {
             transfer.price === undefined
               ? null
               : Number(transfer.price),
+          is_return_transfer: isReturnTransfer,
+          return_date:
+            isReturnTransfer && returnDate && returnTime
+              ? new Date(
+                  `${returnDate}T${returnTime}:00`
+                ).toISOString()
+              : null,
+          flight_number: flightNumber.trim() || null,
+          child_seat: childSeat,
           notes: notes.trim() || null,
           status: "pending",
         });
@@ -428,6 +469,11 @@ export default function BookTransferPage() {
 
       setTravelDate("");
       setTravelTime("");
+      setIsReturnTransfer(false);
+      setReturnDate("");
+      setReturnTime("");
+      setFlightNumber("");
+      setChildSeat(false);
       setPassengers(1);
       setNotes("");
 
@@ -771,6 +817,94 @@ export default function BookTransferPage() {
                 </FormField>
               </div>
 
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isReturnTransfer}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setIsReturnTransfer(checked);
+
+                      if (!checked) {
+                        setReturnDate("");
+                        setReturnTime("");
+                      }
+                    }}
+                    className="h-5 w-5 accent-cyan-600"
+                  />
+
+                  <div>
+                    <p className="font-black text-slate-900">
+                      🔁 {c.returnTransfer}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      {c.returnTransferHint}
+                    </p>
+                  </div>
+                </label>
+
+                {isReturnTransfer && (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <FormField label={c.returnDate}>
+                      <input
+                        type="date"
+                        value={returnDate}
+                        min={travelDate || today}
+                        onChange={(event) =>
+                          setReturnDate(event.target.value)
+                        }
+                        required={isReturnTransfer}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                      />
+                    </FormField>
+
+                    <FormField label={c.returnTime}>
+                      <input
+                        type="time"
+                        value={returnTime}
+                        onChange={(event) =>
+                          setReturnTime(event.target.value)
+                        }
+                        required={isReturnTransfer}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                      />
+                    </FormField>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label={c.flightNumber}>
+                  <input
+                    type="text"
+                    value={flightNumber}
+                    onChange={(event) =>
+                      setFlightNumber(event.target.value)
+                    }
+                    placeholder={c.flightNumberPlaceholder}
+                    maxLength={30}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                  />
+                </FormField>
+
+                <div className="flex items-end">
+                  <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-300 px-4 py-3 transition hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      checked={childSeat}
+                      onChange={(event) =>
+                        setChildSeat(event.target.checked)
+                      }
+                      className="h-5 w-5 accent-cyan-600"
+                    />
+                    <span className="font-bold text-slate-700">
+                      👶 {c.childSeat}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               <FormField label={c.passengers}>
                 <input
                   type="number"
@@ -853,6 +987,30 @@ export default function BookTransferPage() {
                   value={String(passengers)}
                 />
 
+                <PriceRow
+                  label={c.transferType}
+                  value={isReturnTransfer ? c.roundTrip : c.oneWay}
+                />
+
+                {isReturnTransfer && returnDate && returnTime && (
+                  <PriceRow
+                    label={c.returnDateTime}
+                    value={`${returnDate} ${returnTime}`}
+                  />
+                )}
+
+                {flightNumber.trim() && (
+                  <PriceRow
+                    label={c.flightNumber}
+                    value={flightNumber.trim().toUpperCase()}
+                  />
+                )}
+
+                <PriceRow
+                  label={c.childSeat}
+                  value={childSeat ? c.yes : c.no}
+                />
+
                 <div className="mt-4 border-t border-slate-300 pt-4">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-lg font-black">
@@ -860,7 +1018,11 @@ export default function BookTransferPage() {
                     </span>
 
                     <span className="text-2xl font-black text-cyan-700">
-                      {formatTransferPrice(transfer, language)}
+                      {totalPrice !== null
+                        ? language === "ka"
+                          ? `${totalPrice.toLocaleString("ka-GE")} ₾`
+                          : `${totalPrice.toLocaleString("en-US")} GEL`
+                        : formatTransferPrice(transfer, language)}
                     </span>
                   </div>
                 </div>
@@ -903,6 +1065,10 @@ const transferBookingCopy = {
     passengersMin: "მგზავრების რაოდენობა უნდა იყოს მინიმუმ 1.",
     pickupRequired: "ჩაწერე აყვანის ზუსტი მისამართი.",
     dropoffRequired: "ჩაწერე დანიშნულების ზუსტი მისამართი.",
+    returnDateRequired: "აირჩიე დაბრუნების თარიღი.",
+    returnTimeRequired: "აირჩიე დაბრუნების დრო.",
+    returnBeforeDeparture: "დაბრუნების თარიღი ვერ იქნება გამგზავრებამდე.",
+    returnTimeBeforeDeparture: "დაბრუნების დრო უნდა იყოს გამგზავრების დროზე გვიან.",
     successMessage: "ტრანსფერის მოთხოვნა წარმატებით გაიგზავნა. მძღოლი ან ორგანიზატორი დაგიკავშირდება ტელეფონზე ან ელფოსტაზე.",
     transferLoadFailed: "ტრანსფერის ინფორმაცია ვერ ჩაიტვირთა.",
     startLocation: "საწყისი ადგილი",
@@ -934,6 +1100,19 @@ const transferBookingCopy = {
     passengers: "მგზავრების რაოდენობა",
     pickupAddress: "აყვანის ზუსტი მისამართი",
     dropoffAddress: "დანიშნულების ზუსტი მისამართი",
+    returnTransfer: "ორმხრივი ტრანსფერი",
+    returnTransferHint: "მონიშნე, თუ დაბრუნების ტრანსფერიც გჭირდება.",
+    returnDate: "დაბრუნების თარიღი",
+    returnTime: "დაბრუნების დრო",
+    flightNumber: "ფრენის ნომერი",
+    flightNumberPlaceholder: "მაგალითად: W67920",
+    childSeat: "ბავშვის სავარძელი",
+    transferType: "ტრანსფერის ტიპი",
+    oneWay: "ერთი მიმართულება",
+    roundTrip: "ორმხრივი",
+    returnDateTime: "დაბრუნება",
+    yes: "კი",
+    no: "არა",
     specialRequests: "დამატებითი შეტყობინება",
     route: "მარშრუტი",
     namePlaceholder: "მაგალითად: Anna Brown",
@@ -958,6 +1137,10 @@ const transferBookingCopy = {
     passengersMin: "Number of passengers must be at least 1.",
     pickupRequired: "Enter the exact pickup address.",
     dropoffRequired: "Enter the exact destination address.",
+    returnDateRequired: "Choose a return date.",
+    returnTimeRequired: "Choose a return time.",
+    returnBeforeDeparture: "The return date cannot be before the departure date.",
+    returnTimeBeforeDeparture: "Return time must be later than departure time.",
     successMessage: "Your transfer request was sent successfully. The driver or organizer will contact you by phone or email.",
     transferLoadFailed: "Transfer information could not be loaded.",
     startLocation: "Starting point",
@@ -989,6 +1172,19 @@ const transferBookingCopy = {
     passengers: "Number of passengers",
     pickupAddress: "Exact pickup address",
     dropoffAddress: "Exact destination address",
+    returnTransfer: "Return transfer",
+    returnTransferHint: "Select this if you also need a return transfer.",
+    returnDate: "Return date",
+    returnTime: "Return time",
+    flightNumber: "Flight number",
+    flightNumberPlaceholder: "For example: W67920",
+    childSeat: "Child seat",
+    transferType: "Transfer type",
+    oneWay: "One way",
+    roundTrip: "Round trip",
+    returnDateTime: "Return",
+    yes: "Yes",
+    no: "No",
     specialRequests: "Special requests",
     route: "Route",
     namePlaceholder: "For example: Anna Brown",
