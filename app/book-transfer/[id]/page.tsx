@@ -1251,7 +1251,7 @@ function DetailCard({
 }: {
   icon: string;
   title: string;
-  items: string[];
+  items: readonly string[];
 }) {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl">
