@@ -31,6 +31,7 @@ type Tour = {
   is_popular: boolean | null;
   is_recommended: boolean | null;
   is_editors_pick: boolean | null;
+  is_featured: boolean | null;
 };
 
 type OwnerProfile = {
@@ -70,6 +71,7 @@ export default async function AdminToursPage({
       "is_popular",
       "is_recommended",
       "is_editors_pick",
+      "is_featured",
     ] as const;
 
     if (
@@ -119,7 +121,8 @@ export default async function AdminToursPage({
         created_at,
         is_popular,
         is_recommended,
-        is_editors_pick
+        is_editors_pick,
+        is_featured
       `
     )
     .order("created_at", { ascending: false });
@@ -408,7 +411,7 @@ export default async function AdminToursPage({
                     მონიშნე რომელი ნიშანი გამოჩნდეს ამ ტურზე საჯაროდ.
                   </p>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <BadgeToggleButton
                       tourId={tour.id}
                       field="is_popular"
@@ -433,6 +436,15 @@ export default async function AdminToursPage({
                       currentValue={Boolean(tour.is_editors_pick)}
                       label="🏆 Editor’s Pick"
                       activeClassName="border-violet-600 bg-violet-600 text-white"
+                      action={toggleTourBadge}
+                    />
+
+                    <BadgeToggleButton
+                      tourId={tour.id}
+                      field="is_featured"
+                      currentValue={Boolean(tour.is_featured)}
+                      label="⭐ Featured"
+                      activeClassName="border-cyan-600 bg-cyan-600 text-white"
                       action={toggleTourBadge}
                     />
                   </div>
