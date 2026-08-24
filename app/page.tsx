@@ -327,6 +327,7 @@ export default function Home() {
   const [showBeta, setShowBeta] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openTravelTip, setOpenTravelTip] = useState<string | null>(null);
+  const [travelTipsPage, setTravelTipsPage] = useState(0);
 
   const [tours, setTours] = useState<Tour[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -408,6 +409,7 @@ export default function Home() {
 
   useEffect(() => {
     setPages({ tours: 0, transfers: 0, hotels: 0, guides: 0 });
+    setTravelTipsPage(0);
   }, [pageSize]);
 
 
@@ -443,6 +445,21 @@ export default function Home() {
 
     return matchingTour?.image_url || null;
   }
+
+  const travelTipsTotalPages = Math.max(
+    1,
+    Math.ceil(travelTips.length / pageSize)
+  );
+
+  const safeTravelTipsPage = Math.min(
+    travelTipsPage,
+    travelTipsTotalPages - 1
+  );
+
+  const visibleTravelTips = travelTips.slice(
+    safeTravelTipsPage * pageSize,
+    safeTravelTipsPage * pageSize + pageSize
+  );
 
   if (!languageReady) {
     return (
@@ -631,8 +648,8 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            {travelTips.map((tip) => {
+          <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {visibleTravelTips.map((tip) => {
               const isOpen = openTravelTip === tip.id;
               const imageUrl = findTipImage(tip.imageKeywords);
               const title = language === "ka" ? tip.titleKa : tip.titleEn;
@@ -715,6 +732,77 @@ export default function Home() {
                 </article>
               );
             })}
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                setTravelTipsPage(
+                  Math.max(0, safeTravelTipsPage - 1)
+                )
+              }
+              disabled={safeTravelTipsPage === 0}
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              ← {t.previous}
+            </button>
+
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-white/55">
+                {t.page} {safeTravelTipsPage + 1} {t.of}{" "}
+                {travelTipsTotalPages}
+              </span>
+
+              <div className="flex gap-1.5">
+                {Array.from({
+                  length: Math.min(travelTipsTotalPages, 7),
+                }).map((_, index) => {
+                  const dotPage =
+                    travelTipsTotalPages <= 7
+                      ? index
+                      : Math.min(
+                          travelTipsTotalPages - 1,
+                          Math.max(0, safeTravelTipsPage - 3) +
+                            index
+                        );
+
+                  return (
+                    <button
+                      key={`travel-tip-${dotPage}`}
+                      type="button"
+                      onClick={() =>
+                        setTravelTipsPage(dotPage)
+                      }
+                      aria-label={`${t.page} ${dotPage + 1}`}
+                      className={`h-2.5 rounded-full transition ${
+                        dotPage === safeTravelTipsPage
+                          ? "w-6 bg-emerald-400"
+                          : "w-2.5 bg-white/20 hover:bg-white/40"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setTravelTipsPage(
+                  Math.min(
+                    travelTipsTotalPages - 1,
+                    safeTravelTipsPage + 1
+                  )
+                )
+              }
+              disabled={
+                safeTravelTipsPage >= travelTipsTotalPages - 1
+              }
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-bold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              {t.next} →
+            </button>
           </div>
         </div>
       </section>
