@@ -174,150 +174,17 @@ const translations = {
 
 type TravelTip = {
   id: string;
-  titleKa: string;
-  titleEn: string;
-  shortKa: string;
-  shortEn: string;
-  bestTimeKa: string;
-  bestTimeEn: string;
-  tipKa: string;
-  tipEn: string;
-  imageKeywords: string[];
-  fallback: string;
+  title_ka: string;
+  title_en: string | null;
+  description_ka: string | null;
+  description_en: string | null;
+  best_time_ka: string | null;
+  best_time_en: string | null;
+  tip_ka: string | null;
+  tip_en: string | null;
+  image_url: string | null;
+  sort_order: number | null;
 };
-
-const travelTips: TravelTip[] = [
-  {
-    id: "ushguli",
-    titleKa: "უშგული",
-    titleEn: "Ushguli",
-    shortKa: "ისტორიული სვანური სოფელი კოშკებითა და შხარას ულამაზესი ხედებით.",
-    shortEn: "A historic Svan village known for medieval towers and dramatic views toward Shkhara.",
-    bestTimeKa: "მაისი — ოქტომბერი",
-    bestTimeEn: "May — October",
-    tipKa: "დილით გასვლა სჯობს. წვიმისა და თოვლის დროს გზის მდგომარეობა წინასწარ გადაამოწმე.",
-    tipEn: "An early start is best. Check road conditions in advance after rain or snow.",
-    imageKeywords: ["ushguli", "shkhara"],
-    fallback: "🏔️",
-  },
-  {
-    id: "koruldi",
-    titleKa: "ქორულდის ტბები",
-    titleEn: "Koruldi Lakes",
-    shortKa: "მაღალმთიანი ტბები მესტიის ზემოთ, კავკასიონის პანორამული ხედებით.",
-    shortEn: "High-altitude lakes above Mestia with panoramic views across the Caucasus.",
-    bestTimeKa: "ივნისი — ოქტომბერი",
-    bestTimeEn: "June — October",
-    tipKa: "სუფთა ამინდში დილით წასვლა საუკეთესოა; ავტომობილით ასვლისას 4x4 რეკომენდებულია.",
-    tipEn: "Go early on a clear day; a 4x4 is recommended if driving up.",
-    imageKeywords: ["koruldi"],
-    fallback: "💧",
-  },
-  {
-    id: "chalaadi",
-    titleKa: "ჭალაადის მყინვარი",
-    titleEn: "Chalaadi Glacier",
-    shortKa: "მესტიასთან ახლოს პოპულარული ბუნების მარშრუტი ტყით, მდინარით და მყინვარის ხედით.",
-    shortEn: "A popular nature route near Mestia with forest, river scenery, and glacier views.",
-    bestTimeKa: "მაისი — ოქტომბერი",
-    bestTimeEn: "May — October",
-    tipKa: "კარგი ფეხსაცმელი ჩაიცვი; წვიმის შემდეგ ბილიკი შეიძლება სრიალა იყოს.",
-    tipEn: "Wear good walking shoes; the trail can be slippery after rain.",
-    imageKeywords: ["chalaadi", "glacier"],
-    fallback: "🧊",
-  },
-  {
-    id: "hatsvali",
-    titleKa: "ჰაწვალი",
-    titleEn: "Hatsvali",
-    shortKa: "მესტიასთან ახლოს მარტივად მისადგომი ადგილი ულამაზესი ხედებით და საბაგიროთი.",
-    shortEn: "An easy-to-reach mountain spot near Mestia with a cable car and beautiful views.",
-    bestTimeKa: "მთელი წელი",
-    bestTimeEn: "Year-round",
-    tipKa: "ზაფხულში მზის ჩასვლა განსაკუთრებით ლამაზია; ზამთარში სათხილამურო პირობები გადაამოწმე.",
-    tipEn: "Sunset is especially beautiful in summer; check ski conditions in winter.",
-    imageKeywords: ["hatsvali"],
-    fallback: "🚡",
-  },
-  {
-    id: "tetnuldi",
-    titleKa: "თეთნულდი",
-    titleEn: "Tetnuldi",
-    shortKa: "მაღალმთიანი მიმართულება ფართო ალპური ხედებით და ზამთარში სათხილამურო ზონით.",
-    shortEn: "A high-mountain destination with broad alpine scenery and winter ski terrain.",
-    bestTimeKa: "ივნისი — სექტემბერი / ზამთარი სათხილამუროდ",
-    bestTimeEn: "June — September / winter for skiing",
-    tipKa: "ამინდი სწრაფად იცვლება, ამიტომ თბილი ფენა ყოველთვის თან იქონიე.",
-    tipEn: "Weather changes quickly, so bring a warm layer even on a sunny day.",
-    imageKeywords: ["tetnuldi"],
-    fallback: "⛷️",
-  },
-  {
-    id: "mazeri",
-    titleKa: "მაზერი და ბეჩოს ხეობა",
-    titleEn: "Mazeri & Becho Valley",
-    shortKa: "მშვიდი ხეობა უშბის შთამბეჭდავი ხედებით, სოფლებითა და ბუნების მარშრუტებით.",
-    shortEn: "A peaceful valley with striking Ushba views, villages, and scenic nature routes.",
-    bestTimeKa: "მაისი — ოქტომბერი",
-    bestTimeEn: "May — October",
-    tipKa: "ფოტოებისთვის დილა ან გვიანი შუადღე განსაკუთრებით კარგია.",
-    tipEn: "Morning or late afternoon usually gives the best light for photos.",
-    imageKeywords: ["mazeri", "becho", "ushba"],
-    fallback: "🌄",
-  },
-  {
-    id: "mestia",
-    titleKa: "მესტია",
-    titleEn: "Mestia",
-    shortKa: "სვანეთის მთავარი ტურისტული ცენტრი კოშკებით, მუზეუმებით, კაფეებითა და ხედებით.",
-    shortEn: "Svaneti's main visitor hub with towers, museums, cafés, and mountain views.",
-    bestTimeKa: "მთელი წელი",
-    bestTimeEn: "Year-round",
-    tipKa: "ქალაქის ცენტრი ფეხით მარტივად მოივლება; დილით კოშკების უბნები უფრო მშვიდია.",
-    tipEn: "The center is easy to explore on foot; tower neighborhoods are quieter in the morning.",
-    imageKeywords: ["mestia"],
-    fallback: "🏘️",
-  },
-  {
-    id: "latali",
-    titleKa: "ლატალი",
-    titleEn: "Latali",
-    shortKa: "ისტორიული სოფლების ჯგუფი ეკლესიებით, სვანური კოშკებით და მშვიდი ატმოსფეროთი.",
-    shortEn: "A historic village area with churches, Svan towers, and a quiet local atmosphere.",
-    bestTimeKa: "აპრილი — ოქტომბერი",
-    bestTimeEn: "April — October",
-    tipKa: "კარგია მათთვის, ვისაც ნაკლებად ტურისტული და უფრო მშვიდი სვანეთი აინტერესებს.",
-    tipEn: "A good choice if you want a quieter, less touristy side of Svaneti.",
-    imageKeywords: ["latali"],
-    fallback: "⛪",
-  },
-  {
-    id: "tsvirmi",
-    titleKa: "ცვირმი",
-    titleEn: "Tsvirmi",
-    shortKa: "ტრადიციული სვანური სოფელი ფართო ხედებით და მშვიდი, ავთენტური გარემოთი.",
-    shortEn: "A traditional Svan village with wide views and a quiet, authentic atmosphere.",
-    bestTimeKa: "მაისი — ოქტომბერი",
-    bestTimeEn: "May — October",
-    tipKa: "გზის პირობები სეზონურად იცვლება; მაღალკლირენსიანი მანქანა ხშირად მოსახერხებელია.",
-    tipEn: "Road conditions vary by season; a higher-clearance vehicle can be useful.",
-    imageKeywords: ["tsvirmi"],
-    fallback: "🏡",
-  },
-  {
-    id: "shdughra",
-    titleKa: "შდუღრას ჩანჩქერი",
-    titleEn: "Shdughra Waterfall",
-    shortKa: "სათავგადასავლო ბუნების მიმართულება მწვანე ხეობებით და მთის შთამბეჭდავი ხედებით.",
-    shortEn: "An adventurous nature destination with green valleys and dramatic mountain scenery.",
-    bestTimeKa: "ივნისი — სექტემბერი",
-    bestTimeEn: "June — September",
-    tipKa: "მოემზადე უფრო აქტიური დღისათვის და წაიღე წყალი, საწვიმარი და კარგი სალაშქრო ფეხსაცმელი.",
-    tipEn: "Plan for an active day and bring water, rain protection, and proper hiking shoes.",
-    imageKeywords: ["shdughra", "waterfall"],
-    fallback: "💦",
-  },
-];
 
 export default function Home() {
   const router = useRouter();
@@ -333,6 +200,7 @@ export default function Home() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [guides, setGuides] = useState<Guide[]>([]);
+  const [travelTips, setTravelTips] = useState<TravelTip[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -356,8 +224,13 @@ export default function Home() {
       setLoading(true);
       setLoadError("");
 
-      const [toursResult, transfersResult, hotelsResult, guidesResult] =
-        await Promise.all([
+      const [
+        toursResult,
+        transfersResult,
+        hotelsResult,
+        guidesResult,
+        travelTipsResult,
+      ] = await Promise.all([
           supabase
             .from("tours")
             .select(
@@ -383,6 +256,25 @@ export default function Home() {
             .select("*")
             .eq("status", "approved")
             .order("created_at", { ascending: false }),
+
+          supabase
+            .from("travel_tips")
+            .select(`
+              id,
+              title_ka,
+              title_en,
+              description_ka,
+              description_en,
+              best_time_ka,
+              best_time_en,
+              tip_ka,
+              tip_en,
+              image_url,
+              sort_order
+            `)
+            .eq("is_published", true)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: false }),
         ]);
 
       const errors = [
@@ -390,6 +282,7 @@ export default function Home() {
         transfersResult.error,
         hotelsResult.error,
         guidesResult.error,
+        travelTipsResult.error,
       ].filter(Boolean);
 
       if (errors.length > 0) {
@@ -401,6 +294,9 @@ export default function Home() {
       setTransfers((transfersResult.data as Transfer[] | null) ?? []);
       setHotels((hotelsResult.data as Hotel[] | null) ?? []);
       setGuides((guidesResult.data as Guide[] | null) ?? []);
+      setTravelTips(
+        (travelTipsResult.data as TravelTip[] | null) ?? []
+      );
       setLoading(false);
     }
 
@@ -433,17 +329,6 @@ export default function Home() {
 
   function setSectionPage(section: SectionKey, page: number) {
     setPages((current) => ({ ...current, [section]: page }));
-  }
-
-  function findTipImage(keywords: string[]) {
-    const matchingTour = tours.find((tour) => {
-      const haystack = `${tour.title || ""} ${tour.location || ""}`.toLowerCase();
-      return keywords.some((keyword) =>
-        haystack.includes(keyword.toLowerCase())
-      );
-    });
-
-    return matchingTour?.image_url || null;
   }
 
   const travelTipsTotalPages = Math.max(
@@ -648,15 +533,31 @@ export default function Home() {
             </p>
           </div>
 
+          {visibleTravelTips.length === 0 ? (
+            <div className="mt-7 rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50">
+              {t.noItems}
+            </div>
+          ) : (
           <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             {visibleTravelTips.map((tip) => {
               const isOpen = openTravelTip === tip.id;
-              const imageUrl = findTipImage(tip.imageKeywords);
-              const title = language === "ka" ? tip.titleKa : tip.titleEn;
-              const short = language === "ka" ? tip.shortKa : tip.shortEn;
+              const imageUrl = tip.image_url;
+              const title =
+                language === "ka"
+                  ? tip.title_ka
+                  : tip.title_en || tip.title_ka;
+              const short =
+                language === "ka"
+                  ? tip.description_ka || ""
+                  : tip.description_en || tip.description_ka || "";
               const bestTime =
-                language === "ka" ? tip.bestTimeKa : tip.bestTimeEn;
-              const quickTip = language === "ka" ? tip.tipKa : tip.tipEn;
+                language === "ka"
+                  ? tip.best_time_ka || t.notSpecified
+                  : tip.best_time_en || tip.best_time_ka || t.notSpecified;
+              const quickTip =
+                language === "ka"
+                  ? tip.tip_ka || ""
+                  : tip.tip_en || tip.tip_ka || "";
 
               return (
                 <article
@@ -682,7 +583,7 @@ export default function Home() {
                         />
                       ) : (
                         <div className="flex h-32 items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-5xl sm:h-36">
-                          {tip.fallback}
+                          🏔️
                         </div>
                       )}
 
@@ -733,6 +634,7 @@ export default function Home() {
               );
             })}
           </div>
+          )}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <button
