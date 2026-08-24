@@ -108,6 +108,14 @@ const translations = {
     addTransfer: "ტრანსფერის დამატება",
     addHotel: "სასტუმროს დამატება",
     addGuide: "გიდის დამატება",
+    travelTipsEyebrow: "LOCAL TIPS",
+    travelTipsTitle: "სვანეთის ადგილები და რჩევები",
+    travelTipsText:
+      "მოკლე ადგილობრივი რჩევები — სად წავიდეთ, როდის ჯობია და რას მივაქციოთ ყურადღება.",
+    bestTime: "საუკეთესო დრო",
+    quickTip: "რჩევა",
+    openInfo: "ინფოს ნახვა",
+    closeInfo: "დახურვა",
   },
   en: {
     betaTitle: "Welcome to Public Beta",
@@ -153,8 +161,163 @@ const translations = {
     addTransfer: "Add Transfer",
     addHotel: "Add Hotel",
     addGuide: "Add Guide",
+    travelTipsEyebrow: "LOCAL TIPS",
+    travelTipsTitle: "Svaneti Places & Local Tips",
+    travelTipsText:
+      "Quick local guidance on where to go, the best time to visit, and what to keep in mind.",
+    bestTime: "Best time",
+    quickTip: "Tip",
+    openInfo: "View info",
+    closeInfo: "Close",
   },
 };
+
+type TravelTip = {
+  id: string;
+  titleKa: string;
+  titleEn: string;
+  shortKa: string;
+  shortEn: string;
+  bestTimeKa: string;
+  bestTimeEn: string;
+  tipKa: string;
+  tipEn: string;
+  imageKeywords: string[];
+  fallback: string;
+};
+
+const travelTips: TravelTip[] = [
+  {
+    id: "ushguli",
+    titleKa: "უშგული",
+    titleEn: "Ushguli",
+    shortKa: "ისტორიული სვანური სოფელი კოშკებითა და შხარას ულამაზესი ხედებით.",
+    shortEn: "A historic Svan village known for medieval towers and dramatic views toward Shkhara.",
+    bestTimeKa: "მაისი — ოქტომბერი",
+    bestTimeEn: "May — October",
+    tipKa: "დილით გასვლა სჯობს. წვიმისა და თოვლის დროს გზის მდგომარეობა წინასწარ გადაამოწმე.",
+    tipEn: "An early start is best. Check road conditions in advance after rain or snow.",
+    imageKeywords: ["ushguli", "shkhara"],
+    fallback: "🏔️",
+  },
+  {
+    id: "koruldi",
+    titleKa: "ქორულდის ტბები",
+    titleEn: "Koruldi Lakes",
+    shortKa: "მაღალმთიანი ტბები მესტიის ზემოთ, კავკასიონის პანორამული ხედებით.",
+    shortEn: "High-altitude lakes above Mestia with panoramic views across the Caucasus.",
+    bestTimeKa: "ივნისი — ოქტომბერი",
+    bestTimeEn: "June — October",
+    tipKa: "სუფთა ამინდში დილით წასვლა საუკეთესოა; ავტომობილით ასვლისას 4x4 რეკომენდებულია.",
+    tipEn: "Go early on a clear day; a 4x4 is recommended if driving up.",
+    imageKeywords: ["koruldi"],
+    fallback: "💧",
+  },
+  {
+    id: "chalaadi",
+    titleKa: "ჭალაადის მყინვარი",
+    titleEn: "Chalaadi Glacier",
+    shortKa: "მესტიასთან ახლოს პოპულარული ბუნების მარშრუტი ტყით, მდინარით და მყინვარის ხედით.",
+    shortEn: "A popular nature route near Mestia with forest, river scenery, and glacier views.",
+    bestTimeKa: "მაისი — ოქტომბერი",
+    bestTimeEn: "May — October",
+    tipKa: "კარგი ფეხსაცმელი ჩაიცვი; წვიმის შემდეგ ბილიკი შეიძლება სრიალა იყოს.",
+    tipEn: "Wear good walking shoes; the trail can be slippery after rain.",
+    imageKeywords: ["chalaadi", "glacier"],
+    fallback: "🧊",
+  },
+  {
+    id: "hatsvali",
+    titleKa: "ჰაწვალი",
+    titleEn: "Hatsvali",
+    shortKa: "მესტიასთან ახლოს მარტივად მისადგომი ადგილი ულამაზესი ხედებით და საბაგიროთი.",
+    shortEn: "An easy-to-reach mountain spot near Mestia with a cable car and beautiful views.",
+    bestTimeKa: "მთელი წელი",
+    bestTimeEn: "Year-round",
+    tipKa: "ზაფხულში მზის ჩასვლა განსაკუთრებით ლამაზია; ზამთარში სათხილამურო პირობები გადაამოწმე.",
+    tipEn: "Sunset is especially beautiful in summer; check ski conditions in winter.",
+    imageKeywords: ["hatsvali"],
+    fallback: "🚡",
+  },
+  {
+    id: "tetnuldi",
+    titleKa: "თეთნულდი",
+    titleEn: "Tetnuldi",
+    shortKa: "მაღალმთიანი მიმართულება ფართო ალპური ხედებით და ზამთარში სათხილამურო ზონით.",
+    shortEn: "A high-mountain destination with broad alpine scenery and winter ski terrain.",
+    bestTimeKa: "ივნისი — სექტემბერი / ზამთარი სათხილამუროდ",
+    bestTimeEn: "June — September / winter for skiing",
+    tipKa: "ამინდი სწრაფად იცვლება, ამიტომ თბილი ფენა ყოველთვის თან იქონიე.",
+    tipEn: "Weather changes quickly, so bring a warm layer even on a sunny day.",
+    imageKeywords: ["tetnuldi"],
+    fallback: "⛷️",
+  },
+  {
+    id: "mazeri",
+    titleKa: "მაზერი და ბეჩოს ხეობა",
+    titleEn: "Mazeri & Becho Valley",
+    shortKa: "მშვიდი ხეობა უშბის შთამბეჭდავი ხედებით, სოფლებითა და ბუნების მარშრუტებით.",
+    shortEn: "A peaceful valley with striking Ushba views, villages, and scenic nature routes.",
+    bestTimeKa: "მაისი — ოქტომბერი",
+    bestTimeEn: "May — October",
+    tipKa: "ფოტოებისთვის დილა ან გვიანი შუადღე განსაკუთრებით კარგია.",
+    tipEn: "Morning or late afternoon usually gives the best light for photos.",
+    imageKeywords: ["mazeri", "becho", "ushba"],
+    fallback: "🌄",
+  },
+  {
+    id: "mestia",
+    titleKa: "მესტია",
+    titleEn: "Mestia",
+    shortKa: "სვანეთის მთავარი ტურისტული ცენტრი კოშკებით, მუზეუმებით, კაფეებითა და ხედებით.",
+    shortEn: "Svaneti's main visitor hub with towers, museums, cafés, and mountain views.",
+    bestTimeKa: "მთელი წელი",
+    bestTimeEn: "Year-round",
+    tipKa: "ქალაქის ცენტრი ფეხით მარტივად მოივლება; დილით კოშკების უბნები უფრო მშვიდია.",
+    tipEn: "The center is easy to explore on foot; tower neighborhoods are quieter in the morning.",
+    imageKeywords: ["mestia"],
+    fallback: "🏘️",
+  },
+  {
+    id: "latali",
+    titleKa: "ლატალი",
+    titleEn: "Latali",
+    shortKa: "ისტორიული სოფლების ჯგუფი ეკლესიებით, სვანური კოშკებით და მშვიდი ატმოსფეროთი.",
+    shortEn: "A historic village area with churches, Svan towers, and a quiet local atmosphere.",
+    bestTimeKa: "აპრილი — ოქტომბერი",
+    bestTimeEn: "April — October",
+    tipKa: "კარგია მათთვის, ვისაც ნაკლებად ტურისტული და უფრო მშვიდი სვანეთი აინტერესებს.",
+    tipEn: "A good choice if you want a quieter, less touristy side of Svaneti.",
+    imageKeywords: ["latali"],
+    fallback: "⛪",
+  },
+  {
+    id: "tsvirmi",
+    titleKa: "ცვირმი",
+    titleEn: "Tsvirmi",
+    shortKa: "ტრადიციული სვანური სოფელი ფართო ხედებით და მშვიდი, ავთენტური გარემოთი.",
+    shortEn: "A traditional Svan village with wide views and a quiet, authentic atmosphere.",
+    bestTimeKa: "მაისი — ოქტომბერი",
+    bestTimeEn: "May — October",
+    tipKa: "გზის პირობები სეზონურად იცვლება; მაღალკლირენსიანი მანქანა ხშირად მოსახერხებელია.",
+    tipEn: "Road conditions vary by season; a higher-clearance vehicle can be useful.",
+    imageKeywords: ["tsvirmi"],
+    fallback: "🏡",
+  },
+  {
+    id: "shdughra",
+    titleKa: "შდუღრას ჩანჩქერი",
+    titleEn: "Shdughra Waterfall",
+    shortKa: "სათავგადასავლო ბუნების მიმართულება მწვანე ხეობებით და მთის შთამბეჭდავი ხედებით.",
+    shortEn: "An adventurous nature destination with green valleys and dramatic mountain scenery.",
+    bestTimeKa: "ივნისი — სექტემბერი",
+    bestTimeEn: "June — September",
+    tipKa: "მოემზადე უფრო აქტიური დღისათვის და წაიღე წყალი, საწვიმარი და კარგი სალაშქრო ფეხსაცმელი.",
+    tipEn: "Plan for an active day and bring water, rain protection, and proper hiking shoes.",
+    imageKeywords: ["shdughra", "waterfall"],
+    fallback: "💦",
+  },
+];
 
 export default function Home() {
   const router = useRouter();
@@ -163,6 +326,7 @@ export default function Home() {
   const { language, languageReady } = useLanguage();
   const [showBeta, setShowBeta] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openTravelTip, setOpenTravelTip] = useState<string | null>(null);
 
   const [tours, setTours] = useState<Tour[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -269,6 +433,17 @@ export default function Home() {
     setPages((current) => ({ ...current, [section]: page }));
   }
 
+  function findTipImage(keywords: string[]) {
+    const matchingTour = tours.find((tour) => {
+      const haystack = `${tour.title || ""} ${tour.location || ""}`.toLowerCase();
+      return keywords.some((keyword) =>
+        haystack.includes(keyword.toLowerCase())
+      );
+    });
+
+    return matchingTour?.image_url || null;
+  }
+
   if (!languageReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
@@ -322,6 +497,9 @@ export default function Home() {
             </Link>
 
             <nav className="hidden items-center gap-6 lg:flex">
+              <a href="#travel-tips" className="font-semibold text-white/75 hover:text-cyan-300">
+                {language === "ka" ? "რჩევები" : "Local Tips"}
+              </a>
               <a href="#tours" className="font-semibold text-white/75 hover:text-cyan-300">{t.tours}</a>
               <a href="#transfers" className="font-semibold text-white/75 hover:text-cyan-300">{t.transfers}</a>
               <a href="#hotels" className="font-semibold text-white/75 hover:text-cyan-300">{t.hotels}</a>
@@ -367,6 +545,7 @@ export default function Home() {
 
               <div className="mt-8 space-y-3">
                 {[
+                  ["#travel-tips", language === "ka" ? "რჩევები" : "Local Tips"],
                   ["#tours", t.tours],
                   ["#transfers", t.transfers],
                   ["#hotels", t.hotels],
@@ -432,6 +611,113 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <section
+        id="travel-tips"
+        className="scroll-mt-24 border-b border-white/10 bg-gradient-to-b from-slate-950 to-slate-900/80 px-4 py-12 sm:px-6 lg:px-8"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-emerald-300">
+              🧭 {t.travelTipsEyebrow}
+            </p>
+
+            <h2 className="mt-2 text-3xl font-black sm:text-4xl">
+              {t.travelTipsTitle}
+            </h2>
+
+            <p className="mt-4 leading-7 text-white/60">
+              {t.travelTipsText}
+            </p>
+          </div>
+
+          <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            {travelTips.map((tip) => {
+              const isOpen = openTravelTip === tip.id;
+              const imageUrl = findTipImage(tip.imageKeywords);
+              const title = language === "ka" ? tip.titleKa : tip.titleEn;
+              const short = language === "ka" ? tip.shortKa : tip.shortEn;
+              const bestTime =
+                language === "ka" ? tip.bestTimeKa : tip.bestTimeEn;
+              const quickTip = language === "ka" ? tip.tipKa : tip.tipEn;
+
+              return (
+                <article
+                  key={tip.id}
+                  className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg transition hover:-translate-y-1 hover:border-emerald-300/30 hover:bg-white/10"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenTravelTip((current) =>
+                        current === tip.id ? null : tip.id
+                      )
+                    }
+                    aria-expanded={isOpen}
+                    className="block w-full text-left"
+                  >
+                    <div className="relative overflow-hidden bg-white/5">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={title}
+                          className="h-32 w-full object-cover transition duration-300 group-hover:scale-105 sm:h-36"
+                        />
+                      ) : (
+                        <div className="flex h-32 items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 text-5xl sm:h-36">
+                          {tip.fallback}
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+
+                      <div className="absolute bottom-2 left-2 rounded-full border border-white/10 bg-slate-950/75 px-2.5 py-1 text-[10px] font-black backdrop-blur">
+                        📍 {title}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5">
+                      <h3 className="text-sm font-black sm:text-base">
+                        {title}
+                      </h3>
+
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/55">
+                        {short}
+                      </p>
+
+                      <div className="mt-3 rounded-xl bg-emerald-400/10 px-3 py-2">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-emerald-300">
+                          🗓️ {t.bestTime}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-white/80">
+                          {bestTime}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between text-xs font-black text-cyan-300">
+                        <span>{isOpen ? t.closeInfo : t.openInfo}</span>
+                        <span>{isOpen ? "−" : "+"}</span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t border-white/10 bg-black/15 p-3.5">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-amber-300">
+                        💡 {t.quickTip}
+                      </p>
+
+                      <p className="mt-2 text-xs leading-6 text-white/70">
+                        {quickTip}
+                      </p>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       <ShowcaseSection
         id="tours"
