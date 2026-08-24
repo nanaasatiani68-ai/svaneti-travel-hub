@@ -21,6 +21,7 @@ type Tour = {
   duration?: string | null;
   category?: string | null;
   created_at?: string | null;
+  is_featured?: boolean | null;
 };
 
 type Transfer = {
@@ -116,6 +117,11 @@ const translations = {
     quickTip: "რჩევა",
     openInfo: "ინფოს ნახვა",
     closeInfo: "დახურვა",
+    featuredEyebrow: "TOP PICKS",
+    featuredTitle: "რჩეული ტურები",
+    featuredText:
+      "ჩვენი გამორჩეული ტურები — Director Panel-იდან მონიშნული საუკეთესო არჩევანი.",
+    featuredBadge: "რჩეული",
   },
   en: {
     betaTitle: "Welcome to Public Beta",
@@ -169,6 +175,11 @@ const translations = {
     quickTip: "Tip",
     openInfo: "View info",
     closeInfo: "Close",
+    featuredEyebrow: "TOP PICKS",
+    featuredTitle: "Featured Tours",
+    featuredText:
+      "Hand-picked tours selected from the Director Panel.",
+    featuredBadge: "Featured",
   },
 };
 
@@ -234,7 +245,7 @@ export default function Home() {
           supabase
             .from("tours")
             .select(
-              "id,title,location,price,price_type,price_currency,image_url,duration,category,created_at"
+              "id,title,location,price,price_type,price_currency,image_url,duration,category,created_at,is_featured"
             )
             .eq("status", "approved")
             .order("created_at", { ascending: false }),
@@ -344,6 +355,11 @@ export default function Home() {
   const visibleTravelTips = travelTips.slice(
     safeTravelTipsPage * pageSize,
     safeTravelTipsPage * pageSize + pageSize
+  );
+
+  const featuredTours = useMemo(
+    () => tours.filter((tour) => Boolean(tour.is_featured)).slice(0, 6),
+    [tours]
   );
 
   if (!languageReady) {
@@ -512,6 +528,63 @@ export default function Home() {
             {loadError}
           </div>
         </div>
+      )}
+
+      {!loading && featuredTours.length > 0 && (
+        <section
+          id="featured-tours"
+          className="scroll-mt-24 border-b border-white/10 bg-gradient-to-b from-cyan-950/35 to-slate-950 px-4 py-12 sm:px-6 lg:px-8"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-300">
+                  ⭐ {t.featuredEyebrow}
+                </p>
+                <h2 className="mt-2 text-3xl font-black sm:text-4xl">
+                  {t.featuredTitle}
+                </h2>
+                <p className="mt-4 leading-7 text-white/60">
+                  {t.featuredText}
+                </p>
+              </div>
+
+              <Link
+                href="/tours"
+                className="w-fit rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-black transition hover:bg-white/10"
+              >
+                {t.viewAll} →
+              </Link>
+            </div>
+
+            <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              {featuredTours.map((tour) => (
+                <div key={String(tour.id)} className="relative">
+                  <div className="pointer-events-none absolute left-2 top-2 z-10 rounded-full border border-amber-300/30 bg-slate-950/85 px-2.5 py-1 text-[10px] font-black text-amber-300 shadow-lg backdrop-blur">
+                    ⭐ {t.featuredBadge}
+                  </div>
+
+                  <SmallCard
+                    href={`/book-tour/${tour.id}#tour-description`}
+                    imageUrl={tour.image_url}
+                    fallback="🏔️"
+                    title={tour.title || t.tours}
+                    subtitle={tour.location || t.georgia}
+                    meta={tour.duration || tour.category || t.notSpecified}
+                    price={formatPrice(
+                      tour.price,
+                      tour.price_type,
+                      tour.price_currency,
+                      language,
+                      t.negotiable
+                    )}
+                    actionLabel={t.details}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
       <section
