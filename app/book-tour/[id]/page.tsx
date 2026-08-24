@@ -18,16 +18,21 @@ type Tour = {
   id: number | string;
   user_id: string | null;
   title: string | null;
+  title_en: string | null;
   description: string | null;
+  description_en: string | null;
   location: string | null;
+  location_en: string | null;
   price: number | null;
   price_type: "fixed" | "negotiable" | null;
   price_currency: "GEL" | "USD" | null;
   image_url: string | null;
   image_urls: string[] | null;
   duration: string | null;
+  duration_en: string | null;
   max_people: number | null;
   category: string | null;
+  category_en: string | null;
   status: string | null;
   created_at: string | null;
   organizer_name: string | null;
@@ -136,16 +141,21 @@ export default function BookTourPage() {
             id,
             user_id,
             title,
+            title_en,
             description,
+            description_en,
             location,
+            location_en,
             price,
             price_type,
             price_currency,
             image_url,
             image_urls,
             duration,
+            duration_en,
             max_people,
             category,
+            category_en,
             status,
             created_at,
             organizer_name,
@@ -192,16 +202,21 @@ export default function BookTourPage() {
             id,
             user_id,
             title,
+            title_en,
             description,
+            description_en,
             location,
+            location_en,
             price,
             price_type,
             price_currency,
             image_url,
             image_urls,
             duration,
+            duration_en,
             max_people,
             category,
+            category_en,
             status,
             created_at,
             organizer_name,
@@ -683,6 +698,32 @@ export default function BookTourPage() {
     );
   }
 
+  const tourTitle = getLocalizedTourField(
+    tour.title,
+    tour.title_en,
+    language
+  );
+  const tourDescription = getLocalizedTourField(
+    tour.description,
+    tour.description_en,
+    language
+  );
+  const tourLocation = getLocalizedTourField(
+    tour.location,
+    tour.location_en,
+    language
+  );
+  const tourDuration = getLocalizedTourField(
+    tour.duration,
+    tour.duration_en,
+    language
+  );
+  const tourCategory = getLocalizedTourField(
+    tour.category,
+    tour.category_en,
+    language
+  );
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-white">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/85 backdrop-blur-xl">
@@ -743,7 +784,7 @@ export default function BookTourPage() {
                 {selectedImage ? (
                   <img
                     src={selectedImage}
-                    alt={tour.title || "Tour"}
+                    alt={tourTitle || "Tour"}
                     className="h-[300px] w-full object-cover sm:h-[480px]"
                   />
                 ) : (
@@ -760,19 +801,19 @@ export default function BookTourPage() {
                       ✓ {c.available}
                     </span>
 
-                    {tour.category && (
+                    {tourCategory && (
                       <span className="rounded-full border border-white/20 bg-slate-950/60 px-4 py-2 text-xs font-bold backdrop-blur-md">
-                        {tour.category}
+                        {tourCategory}
                       </span>
                     )}
                   </div>
 
                   <h1 className="mt-4 text-3xl font-black drop-shadow-xl sm:text-5xl">
-                    {tour.title || c.untitledTour}
+                    {tourTitle || c.untitledTour}
                   </h1>
 
                   <p className="mt-3 text-lg text-white/80">
-                    📍 {tour.location || c.georgia}
+                    📍 {tourLocation || c.georgia}
                   </p>
 
                   <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -851,7 +892,7 @@ export default function BookTourPage() {
                       >
                         <img
                           src={image}
-                          alt={`${tour.title || c.tour} - ${c.photo} ${index + 1}`}
+                          alt={`${tourTitle || c.tour} - ${c.photo} ${index + 1}`}
                           className="h-24 w-full object-cover transition duration-300 group-hover:scale-105 sm:h-28"
                         />
 
@@ -875,13 +916,13 @@ export default function BookTourPage() {
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <InfoBox
                   label={c.location}
-                  value={tour.location || c.notSpecified}
+                  value={tourLocation || c.notSpecified}
                   icon="📍"
                 />
 
                 <InfoBox
                   label={c.duration}
-                  value={tour.duration || c.notSpecified}
+                  value={tourDuration || c.notSpecified}
                   icon="⏱️"
                 />
 
@@ -913,8 +954,7 @@ export default function BookTourPage() {
               </h2>
 
               <p className="mt-5 whitespace-pre-line leading-8 text-white/70">
-                {tour.description ||
-                  c.noDescription}
+                {tourDescription || c.noDescription}
               </p>
             </section>
 
@@ -1216,7 +1256,13 @@ export default function BookTourPage() {
                         {ownerTour.image_url ? (
                           <img
                             src={ownerTour.image_url}
-                            alt={ownerTour.title || "Tour"}
+                            alt={
+                              getLocalizedTourField(
+                                ownerTour.title,
+                                ownerTour.title_en,
+                                language
+                              ) || "Tour"
+                            }
                             className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                           />
                         ) : (
@@ -1228,11 +1274,20 @@ export default function BookTourPage() {
 
                       <div className="p-5">
                         <h3 className="text-xl font-black">
-                          {ownerTour.title || c.untitledTour}
+                          {getLocalizedTourField(
+                              ownerTour.title,
+                              ownerTour.title_en,
+                              language
+                            ) || c.untitledTour}
                         </h3>
 
                         <p className="mt-2 text-sm text-white/60">
-                          📍 {ownerTour.location || c.georgia}
+                          📍{" "}
+                          {getLocalizedTourField(
+                            ownerTour.location,
+                            ownerTour.location_en,
+                            language
+                          ) || c.georgia}
                         </p>
 
                         <p className="mt-4 text-xl font-black text-cyan-300">
@@ -1629,6 +1684,19 @@ const bookTourCopy = {
   },
 } as const;
 
+
+
+function getLocalizedTourField(
+  kaValue: string | null | undefined,
+  enValue: string | null | undefined,
+  language: "ka" | "en"
+) {
+  if (language === "en") {
+    return enValue?.trim() || kaValue?.trim() || "";
+  }
+
+  return kaValue?.trim() || enValue?.trim() || "";
+}
 
 function formatTourPrice(tour: Tour, language: "ka" | "en") {
   if (
