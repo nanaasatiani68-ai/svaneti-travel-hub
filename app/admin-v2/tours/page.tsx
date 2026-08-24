@@ -645,7 +645,7 @@ function BadgeToggleButton({
   action,
 }: {
   tourId: number | string;
-  field: "is_popular" | "is_recommended" | "is_editors_pick";
+  field: "is_popular" | "is_recommended" | "is_editors_pick" | "is_featured";
   currentValue: boolean;
   label: string;
   activeClassName: string;
