@@ -26,12 +26,20 @@ type Tour = {
   user_id: string | null;
   image_url: string | null;
   location: string | null;
+  organizer_name: string | null;
+  contact_phone: string | null;
+  has_whatsapp: boolean | null;
+  has_viber: boolean | null;
 };
 
 type PreparedBooking = Booking & {
   tour_title: string;
   tour_image: string | null;
   tour_location: string | null;
+  organizer_name: string | null;
+  contact_phone: string | null;
+  has_whatsapp: boolean;
+  has_viber: boolean;
 };
 
 type ActiveTab = "my-bookings" | "received-bookings";
@@ -142,7 +150,7 @@ export default function DashboardBookingsPage() {
     const { data: ownerToursData, error: ownerToursError } =
       await supabase
         .from("tours")
-        .select("id, title, user_id, image_url, location")
+        .select("id, title, user_id, image_url, location, organizer_name, contact_phone, has_whatsapp, has_viber")
         .eq("user_id", user.id);
 
     if (ownerToursError) {
@@ -217,7 +225,7 @@ export default function DashboardBookingsPage() {
     if (allTourIds.length > 0) {
       const { data: toursData, error: toursError } = await supabase
         .from("tours")
-        .select("id, title, user_id, image_url, location")
+        .select("id, title, user_id, image_url, location, organizer_name, contact_phone, has_whatsapp, has_viber")
         .in("id", allTourIds);
 
       if (toursError) {
@@ -251,6 +259,10 @@ export default function DashboardBookingsPage() {
           tour_title: tour?.title || "უცნობი ტური",
           tour_image: tour?.image_url || null,
           tour_location: tour?.location || null,
+          organizer_name: tour?.organizer_name || null,
+          contact_phone: tour?.contact_phone || null,
+          has_whatsapp: Boolean(tour?.has_whatsapp),
+          has_viber: Boolean(tour?.has_viber),
         };
       });
 
@@ -645,6 +657,50 @@ export default function DashboardBookingsPage() {
                       )}
 
                       {activeTab === "my-bookings" &&
+                        booking.contact_phone &&
+                        status !== "cancelled" &&
+                        status !== "rejected" && (
+                          <div className="mt-6 rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
+                            <p className="text-sm font-black uppercase tracking-wide text-cyan-700">
+                              ორგანიზატორის კონტაქტი
+                            </p>
+
+                            <p className="mt-2 font-black text-slate-900">
+                              {booking.organizer_name || "ტურის ორგანიზატორი"}
+                            </p>
+
+                            <div className="mt-4 flex flex-wrap gap-3">
+                              <a
+                                href={`tel:${booking.contact_phone}`}
+                                className="rounded-2xl bg-cyan-600 px-5 py-3 font-bold text-white transition hover:bg-cyan-700"
+                              >
+                                📞 {booking.contact_phone}
+                              </a>
+
+                              {booking.has_whatsapp && (
+                                <a
+                                  href={getWhatsAppUrl(booking.contact_phone)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700"
+                                >
+                                  💬 WhatsApp
+                                </a>
+                              )}
+
+                              {booking.has_viber && (
+                                <a
+                                  href={getViberUrl(booking.contact_phone)}
+                                  className="rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
+                                >
+                                  📲 Viber
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                      {activeTab === "my-bookings" &&
                         isPending && (
                           <div className="mt-6 border-t border-slate-200 pt-6">
                             <button
@@ -665,9 +721,11 @@ export default function DashboardBookingsPage() {
                         status === "completed" && (
                           <div className="mt-6 border-t border-slate-200 pt-6">
                             <Link
-                              href={`/dashboard/reviews/new?booking=${encodeURIComponent(
-                                booking.id
-                              )}`}
+                              href={
+                                booking.tour_id
+                                  ? `/book-tour/${booking.tour_id}#reviews`
+                                  : "/tours"
+                              }
                               className="inline-flex rounded-2xl bg-amber-500 px-6 py-3 font-black text-slate-950 transition hover:bg-amber-400"
                             >
                               ⭐ შეფასების დატოვება
@@ -790,6 +848,35 @@ function InfoItem({
       </p>
     </div>
   );
+}
+
+
+function normalizePhoneForMessenger(value: string) {
+  const trimmedValue = value.trim();
+  const hasPlus = trimmedValue.startsWith("+");
+  const digits = trimmedValue.replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  return hasPlus ? `+${digits}` : digits;
+}
+
+function getWhatsAppUrl(phone: string) {
+  const normalizedPhone = normalizePhoneForMessenger(phone).replace(/^\+/, "");
+
+  return normalizedPhone
+    ? `https://wa.me/${normalizedPhone}`
+    : "https://www.whatsapp.com/";
+}
+
+function getViberUrl(phone: string) {
+  const normalizedPhone = normalizePhoneForMessenger(phone);
+
+  return normalizedPhone
+    ? `viber://chat?number=${encodeURIComponent(normalizedPhone)}`
+    : "viber://chat";
 }
 
 function formatDate(value: string | null) {

@@ -1,4 +1,4 @@
-"use client";
+
 
 import {
   FormEvent,
@@ -65,6 +65,9 @@ export default function BookTourPage() {
   const [showMobileGallery, setShowMobileGallery] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [hasBookingForTour, setHasBookingForTour] = useState(false);
+  const [hasCompletedBookingForTour, setHasCompletedBookingForTour] = useState(false);
   const [loadingTour, setLoadingTour] = useState(true);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -280,6 +283,9 @@ export default function BookTourPage() {
 
         if (!user) {
           setCurrentUserId("");
+          setHasBookingForTour(false);
+          setHasCompletedBookingForTour(false);
+          setCheckingAuth(false);
           return;
         }
 
@@ -309,16 +315,44 @@ export default function BookTourPage() {
         if (profile?.phone) {
           setGuestPhone(profile.phone);
         }
+
+        if (tourId) {
+          const { data: bookingRows, error: bookingLookupError } =
+            await supabase
+              .from("bookings")
+              .select("id,status")
+              .eq("tour_id", tourId)
+              .eq("user_id", user.id);
+
+          if (bookingLookupError) {
+            console.error(
+              "Booking access lookup error:",
+              bookingLookupError
+            );
+          } else {
+            const rows =
+              (bookingRows as { id: string; status: string | null }[] | null) ??
+              [];
+
+            setHasBookingForTour(rows.length > 0);
+            setHasCompletedBookingForTour(
+              rows.some((row) => row.status === "completed")
+            );
+          }
+        }
+
+        setCheckingAuth(false);
       } catch (error) {
         console.error(
           "Current user loading error:",
           error
         );
+        setCheckingAuth(false);
       }
     }
 
     void loadCurrentUser();
-  }, []);
+  }, [tourId]);
 
   useEffect(() => {
     loadReviews();
@@ -401,6 +435,13 @@ export default function BookTourPage() {
       return;
     }
 
+    if (!currentUserId) {
+      router.push(
+        `/login?next=${encodeURIComponent(`/book-tour/${tour.id}`)}`
+      );
+      return;
+    }
+
     if (!guestName.trim()) {
       setErrorMessage(c.nameRequired);
       return;
@@ -456,6 +497,13 @@ export default function BookTourPage() {
         );
       }
 
+      if (!session?.user || !session.access_token) {
+        router.push(
+          `/login?next=${encodeURIComponent(`/book-tour/${tour.id}`)}`
+        );
+        return;
+      }
+
       const response = await fetch("/api/bookings/create", {
         method: "POST",
         headers: {
@@ -493,6 +541,7 @@ export default function BookTourPage() {
       }
 
       setSuccess(true);
+      setHasBookingForTour(true);
       setBookingDate("");
       setPeople(1);
       setNotes("");
@@ -527,6 +576,16 @@ export default function BookTourPage() {
 
     if (!tour) {
       setReviewMessage(c.tourInfoMissing);
+      setReviewMessageType("error");
+      return;
+    }
+
+    if (!hasCompletedBookingForTour) {
+      setReviewMessage(
+        language === "ka"
+          ? "შეფასების დატოვება შესაძლებელია მხოლოდ შესრულებული ჯავშნის შემდეგ."
+          : "You can leave a review only after a completed booking."
+      );
       setReviewMessageType("error");
       return;
     }
@@ -958,7 +1017,7 @@ export default function BookTourPage() {
               </p>
             </section>
 
-            <OwnerCard tour={tour} language={language} />
+            <OwnerCard tour={tour} language={language} canViewContact={hasBookingForTour} />
 
             <section className="grid gap-5 md:grid-cols-2">
               <DetailCard
@@ -1028,7 +1087,7 @@ export default function BookTourPage() {
                 </div>
               )}
 
-              {currentUserId ? (
+              {currentUserId && hasCompletedBookingForTour ? (
                 <form
                   onSubmit={saveReview}
                   className="mt-7 rounded-3xl bg-white p-6 text-slate-900"
@@ -1120,6 +1179,21 @@ export default function BookTourPage() {
                     )}
                   </div>
                 </form>
+              ) : currentUserId ? (
+                <div className="mt-7 rounded-3xl border border-amber-400/20 bg-amber-500/10 p-6 text-center">
+                  <p className="font-bold">
+                    {language === "ka"
+                      ? "შეფასების დატოვება შესაძლებელი გახდება მას შემდეგ, რაც თქვენი ჯავშანი შესრულებულად მოინიშნება."
+                      : "You can leave a review after your booking is marked as completed."}
+                  </p>
+
+                  <Link
+                    href="/dashboard/bookings"
+                    className="mt-4 inline-flex rounded-2xl bg-amber-500 px-6 py-3 font-black text-slate-950 transition hover:bg-amber-400"
+                  >
+                    {language === "ka" ? "ჩემი ჯავშნები" : "My bookings"}
+                  </Link>
+                </div>
               ) : (
                 <div className="mt-7 rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-6 text-center">
                   <p className="font-bold">
@@ -1127,7 +1201,7 @@ export default function BookTourPage() {
                   </p>
 
                   <Link
-                    href="/login"
+                    href={`/login?next=${encodeURIComponent(`/book-tour/${tour.id}`)}`}
                     className="mt-4 inline-flex rounded-2xl bg-cyan-500 px-6 py-3 font-black transition hover:bg-cyan-600"
                   >
                     {c.login}
@@ -1326,6 +1400,44 @@ export default function BookTourPage() {
               </div>
             )}
 
+            {checkingAuth ? (
+              <div className="mt-7 rounded-3xl bg-slate-100 p-7 text-center">
+                <div className="text-4xl">⏳</div>
+                <p className="mt-3 font-bold text-slate-600">
+                  {language === "ka" ? "ანგარიში მოწმდება..." : "Checking your account..."}
+                </p>
+              </div>
+            ) : !currentUserId ? (
+              <div className="mt-7 rounded-3xl border border-cyan-200 bg-cyan-50 p-7 text-center">
+                <div className="text-5xl">🔐</div>
+                <h3 className="mt-4 text-2xl font-black text-slate-900">
+                  {language === "ka"
+                    ? "ტურის დასაჯავშნად გაიარე ავტორიზაცია"
+                    : "Sign in to book this tour"}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {language === "ka"
+                    ? "რეგისტრირებული მომხმარებელი Dashboard-ში ნახავს ჯავშნის სტატუსს და დაჯავშნის შემდეგ ექნება ორგანიზატორის კონტაქტზე წვდომა."
+                    : "Registered users can track booking status in the Dashboard and access the organizer contact after booking."}
+                </p>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <Link
+                    href={`/login?next=${encodeURIComponent(`/book-tour/${tour.id}`)}`}
+                    className="rounded-2xl bg-cyan-600 px-5 py-3 font-black text-white transition hover:bg-cyan-700"
+                  >
+                    {language === "ka" ? "შესვლა" : "Login"}
+                  </Link>
+
+                  <Link
+                    href={`/signup?next=${encodeURIComponent(`/book-tour/${tour.id}`)}`}
+                    className="rounded-2xl bg-slate-900 px-5 py-3 font-black text-white transition hover:bg-slate-800"
+                  >
+                    {language === "ka" ? "რეგისტრაცია" : "Sign Up"}
+                  </Link>
+                </div>
+              </div>
+            ) : (
             <form onSubmit={handleSubmit} className="mt-7 space-y-5">
               <FormField label={c.fullName}>
                 <input
@@ -1457,6 +1569,7 @@ export default function BookTourPage() {
                 ჯავშანს არ ნიშნავს.
               </p>
             </form>
+            )}
           </aside>
         </div>
       </div>
@@ -1742,9 +1855,11 @@ function StarDisplay({ rating, language }: { rating: number; language: "ka" | "e
 function OwnerCard({
   tour,
   language,
+  canViewContact,
 }: {
   tour: Tour;
   language: "ka" | "en";
+  canViewContact: boolean;
 }) {
   const organizerName =
     tour.organizer_name?.trim() || (language === "ka" ? "ტურის ორგანიზატორი" : "Tour organizer");
@@ -1779,7 +1894,7 @@ function OwnerCard({
             {language === "ka" ? "ამ ტურის საჯარო ორგანიზატორი" : "Public organizer for this tour"}
           </p>
 
-          {phone ? (
+          {phone && canViewContact ? (
             <div className="mt-5 flex flex-wrap gap-3">
               <a
                 href={`tel:${phone}`}
@@ -1815,7 +1930,13 @@ function OwnerCard({
             </div>
           ) : (
             <div className="mt-5 inline-flex rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 font-bold text-amber-200">
-              {language === "ka" ? "⚠️ ორგანიზატორის ტელეფონის ნომერი ჯერ არ არის მითითებული" : "⚠️ Organizer phone number is not available yet"}
+              {phone
+                ? language === "ka"
+                  ? "🔒 ორგანიზატორის ნომერი გამოჩნდება ამ ტურის დაჯავშნის შემდეგ."
+                  : "🔒 Organizer contact becomes visible after you book this tour."
+                : language === "ka"
+                  ? "⚠️ ორგანიზატორის ტელეფონის ნომერი ჯერ არ არის მითითებული"
+                  : "⚠️ Organizer phone number is not available yet"}
             </div>
           )}
         </div>
