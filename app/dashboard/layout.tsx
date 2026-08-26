@@ -1,9 +1,17 @@
-"use client";
 
-import { useCallback, useEffect, useState } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardLayout({
   children,
@@ -13,100 +21,212 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
 
+  const supabase = useMemo(() => createClient(), []);
+
+  const [authReady, setAuthReady] = useState(false);
+  const [userId, setUserId] = useState("");
+
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsLoading, setNotificationsLoading] =
+    useState(true);
 
-  const loadUnreadNotifications = useCallback(async () => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setUnreadCount(0);
-      setNotificationsLoading(false);
-      return;
-    }
-
-    const { count, error } = await supabase
-      .from("notifications")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("user_id", user.id)
-      .eq("is_read", false);
-
-    if (error) {
-      console.error("Unread notifications loading error:", error);
-      setUnreadCount(0);
-      setNotificationsLoading(false);
-      return;
-    }
-
-    setUnreadCount(count ?? 0);
-    setNotificationsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadUnreadNotifications();
-  }, [loadUnreadNotifications, pathname]);
-
-  useEffect(() => {
-    let channelName = "";
-    let isMounted = true;
-
-    async function subscribeToNotifications() {
+  const ensureSession = useCallback(async () => {
+    try {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: sessionData,
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (!user || !isMounted) {
+      if (sessionError) {
+        console.error(
+          "Session loading error:",
+          sessionError
+        );
+      }
+
+      let user = sessionData.session?.user ?? null;
+
+      if (!user) {
+        const {
+          data: userData,
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error(
+            "User loading error:",
+            userError
+          );
+        }
+
+        user = userData.user;
+      }
+
+      if (!user) {
+        const {
+          data: refreshData,
+          error: refreshError,
+        } = await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error(
+            "Session refresh error:",
+            refreshError
+          );
+        }
+
+        user = refreshData.user ?? null;
+      }
+
+      if (!user) {
+        const nextPath = encodeURIComponent(
+          window.location.pathname || "/dashboard"
+        );
+
+        window.location.replace(
+          `/login?next=${nextPath}`
+        );
+
         return;
       }
 
-      channelName = `dashboard-notifications-${user.id}`;
+      setUserId(user.id);
+      setAuthReady(true);
+    } catch (error) {
+      console.error(
+        "Authentication error:",
+        error
+      );
 
-      supabase
-        .channel(channelName)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            loadUnreadNotifications();
-          }
-        )
-        .subscribe();
+      const nextPath = encodeURIComponent(
+        window.location.pathname || "/dashboard"
+      );
+
+      window.location.replace(
+        `/login?next=${nextPath}`
+      );
     }
+  }, [supabase]);
 
-    subscribeToNotifications();
+  const loadUnreadNotifications =
+    useCallback(async () => {
+      if (!userId) {
+        setUnreadCount(0);
+        setNotificationsLoading(false);
+        return;
+      }
 
-    return () => {
-      isMounted = false;
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
+        .eq("user_id", userId)
+        .eq("is_read", false);
 
-      if (channelName) {
-        const channel = supabase.getChannels().find(
-          (currentChannel) => currentChannel.topic === `realtime:${channelName}`
+      if (error) {
+        console.error(
+          "Unread notifications loading error:",
+          error
         );
 
-        if (channel) {
-          supabase.removeChannel(channel);
-        }
+        setUnreadCount(0);
+        setNotificationsLoading(false);
+        return;
       }
-    };
-  }, [loadUnreadNotifications]);
+
+      setUnreadCount(count ?? 0);
+      setNotificationsLoading(false);
+    }, [supabase, userId]);
 
   useEffect(() => {
+    void ensureSession();
+  }, [ensureSession]);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const user = session?.user ?? null;
+
+        if (user) {
+          setUserId(user.id);
+          setAuthReady(true);
+          return;
+        }
+
+        if (event === "SIGNED_OUT") {
+          setUserId("");
+          setAuthReady(false);
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!authReady || !userId) {
+      return;
+    }
+
+    loadUnreadNotifications();
+  }, [
+    authReady,
+    userId,
+    pathname,
+    loadUnreadNotifications,
+  ]);
+
+  useEffect(() => {
+    if (!authReady || !userId) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`dashboard-notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          loadUnreadNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    authReady,
+    userId,
+    supabase,
+    loadUnreadNotifications,
+  ]);
+
+  useEffect(() => {
+    if (!authReady || !userId) {
+      return;
+    }
+
     function refreshNotifications() {
       loadUnreadNotifications();
     }
 
-    window.addEventListener("focus", refreshNotifications);
+    window.addEventListener(
+      "focus",
+      refreshNotifications
+    );
+
     window.addEventListener(
       "notifications-updated",
       refreshNotifications as EventListener
@@ -117,20 +237,32 @@ export default function DashboardLayout({
     }, 30000);
 
     return () => {
-      window.removeEventListener("focus", refreshNotifications);
+      window.removeEventListener(
+        "focus",
+        refreshNotifications
+      );
+
       window.removeEventListener(
         "notifications-updated",
         refreshNotifications as EventListener
       );
+
       window.clearInterval(interval);
     };
-  }, [loadUnreadNotifications]);
+  }, [
+    authReady,
+    userId,
+    loadUnreadNotifications,
+  ]);
 
   async function logout() {
     setUnreadCount(0);
+    setUserId("");
+    setAuthReady(false);
+
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+
+    window.location.replace("/login");
   }
 
   function isMenuActive(href: string) {
@@ -138,7 +270,10 @@ export default function DashboardLayout({
       return pathname === "/dashboard";
     }
 
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return (
+      pathname === href ||
+      pathname.startsWith(`${href}/`)
+    );
   }
 
   const menu = [
@@ -153,6 +288,21 @@ export default function DashboardLayout({
       icon: "➕",
     },
     {
+      name: "Add Transfer",
+      href: "/dashboard/add-transfer",
+      icon: "🚐",
+    },
+    {
+      name: "Add Hotel",
+      href: "/dashboard/add-hotel",
+      icon: "🏨",
+    },
+    {
+      name: "Add Guide",
+      href: "/dashboard/add-guide",
+      icon: "🧑‍💼",
+    },
+    {
       name: "My Tours",
       href: "/dashboard/my-tours",
       icon: "🏔️",
@@ -161,6 +311,11 @@ export default function DashboardLayout({
       name: "Bookings",
       href: "/dashboard/bookings",
       icon: "📅",
+    },
+    {
+      name: "Messages",
+      href: "/dashboard/messages",
+      icon: "💬",
     },
     {
       name: "Favorites",
@@ -174,9 +329,22 @@ export default function DashboardLayout({
     },
   ];
 
+  if (!authReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="text-center">
+          <div className="text-6xl">🔐</div>
+
+          <p className="mt-4 text-lg font-semibold">
+            ანგარიშის სესია მოწმდება...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-100">
-      {/* Sidebar */}
       <aside className="hidden w-72 shrink-0 flex-col bg-slate-900 text-white md:flex">
         <div className="border-b border-slate-700 p-6">
           <h1 className="text-2xl font-bold leading-tight">
@@ -188,7 +356,7 @@ export default function DashboardLayout({
           </p>
         </div>
 
-        <nav className="flex-1 space-y-2 p-4">
+        <nav className="flex-1 space-y-2 overflow-y-auto p-4">
           {menu.map((item) => {
             const active = isMenuActive(item.href);
 
@@ -202,8 +370,13 @@ export default function DashboardLayout({
                     : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
-                <span className="font-medium">{item.name}</span>
+                <span className="text-lg">
+                  {item.icon}
+                </span>
+
+                <span className="font-medium">
+                  {item.name}
+                </span>
               </Link>
             );
           })}
@@ -220,7 +393,6 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Content */}
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
           <div className="flex min-h-20 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
@@ -244,18 +416,25 @@ export default function DashboardLayout({
                 }
                 title="შეტყობინებები"
                 className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl shadow-sm transition ${
-                  pathname.startsWith("/dashboard/notifications")
+                  pathname.startsWith(
+                    "/dashboard/notifications"
+                  )
                     ? "border-violet-500 bg-violet-500 text-white"
                     : "border-slate-200 bg-white text-slate-700 hover:border-violet-300 hover:bg-violet-50"
                 }`}
               >
-                <span aria-hidden="true">🔔</span>
+                <span aria-hidden="true">
+                  🔔
+                </span>
 
-                {!notificationsLoading && unreadCount > 0 && (
-                  <span className="absolute -right-2 -top-2 flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1.5 text-xs font-black leading-none text-white shadow-lg">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
+                {!notificationsLoading &&
+                  unreadCount > 0 && (
+                    <span className="absolute -right-2 -top-2 flex min-h-6 min-w-6 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1.5 text-xs font-black leading-none text-white shadow-lg">
+                      {unreadCount > 99
+                        ? "99+"
+                        : unreadCount}
+                    </span>
+                  )}
               </Link>
 
               <Link
@@ -267,7 +446,6 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Mobile navigation */}
           <nav className="flex gap-2 overflow-x-auto border-t border-slate-100 px-4 py-3 md:hidden">
             {menu.map((item) => {
               const active = isMenuActive(item.href);
