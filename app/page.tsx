@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -807,6 +807,99 @@ export default function Home() {
         </div>
       </section>
 
+      <ShowcaseSection
+        id="tours"
+        icon="🏔️"
+        title={t.tours}
+        items={tours}
+        page={pages.tours}
+        pageSize={pageSize}
+        loading={loading}
+        viewAllHref="/tours"
+        viewAllLabel={t.viewAll}
+        pageLabel={t.page}
+        ofLabel={t.of}
+        previousLabel={t.previous}
+        nextLabel={t.next}
+        emptyLabel={t.noItems}
+        onPageChange={(page) => setSectionPage("tours", page)}
+        renderItem={(tour) => (
+          <SmallCard
+            href={`/book-tour/${tour.id}#tour-description`}
+            imageUrl={tour.image_url}
+            fallback="🏔️"
+            title={tour.title || t.tours}
+            subtitle={tour.location || t.georgia}
+            meta={tour.duration || tour.category || t.notSpecified}
+            price={formatPrice(tour.price, tour.price_type, tour.price_currency, language, t.negotiable)}
+            actionLabel={t.details}
+          />
+        )}
+      />
+
+      <ShowcaseSection
+        id="transfers"
+        icon="🚐"
+        title={t.transfers}
+        items={transfers}
+        page={pages.transfers}
+        pageSize={pageSize}
+        loading={loading}
+        viewAllHref="/transfers"
+        viewAllLabel={t.viewAll}
+        pageLabel={t.page}
+        ofLabel={t.of}
+        previousLabel={t.previous}
+        nextLabel={t.next}
+        emptyLabel={t.noItems}
+        onPageChange={(page) => setSectionPage("transfers", page)}
+        renderItem={(transfer) => (
+          <SmallCard
+            href={`/book-transfer/${transfer.id}`}
+            imageUrl={transfer.image_url}
+            fallback="🚐"
+            title={`${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
+            subtitle={transfer.vehicle || t.transfers}
+            meta={transfer.to_location || t.georgia}
+            price={formatTransferPrice(transfer, language)}
+            actionLabel={t.details}
+          />
+        )}
+      />
+
+      <ShowcaseSection
+        id="guides"
+        icon="🧑‍💼"
+        title={t.guides}
+        items={guides}
+        page={pages.guides}
+        pageSize={pageSize}
+        loading={loading}
+        viewAllHref="/guides"
+        viewAllLabel={t.viewAll}
+        pageLabel={t.page}
+        ofLabel={t.of}
+        previousLabel={t.previous}
+        nextLabel={t.next}
+        emptyLabel={t.noItems}
+        onPageChange={(page) => setSectionPage("guides", page)}
+        renderItem={(guide) => {
+          const guidePrice = guide.price_per_day ?? guide.price ?? null;
+          return (
+            <SmallCard
+              href="/guides"
+              imageUrl={guide.image_url}
+              fallback="🧑‍💼"
+              title={guide.full_name || t.guides}
+              subtitle={guide.location || t.georgia}
+              meta={guide.languages || (guide.experience_years ? `${guide.experience_years} ${language === "ka" ? "წელი გამოცდილება" : "years experience"}` : t.notSpecified)}
+              price={formatPrice(guidePrice, guide.price_type, guide.price_currency, language, t.negotiable)}
+              actionLabel={t.details}
+            />
+          );
+        }}
+      />
+
       <section
         id="horse-tours"
         className="scroll-mt-24 border-b border-white/10 bg-gradient-to-b from-emerald-950/25 to-slate-950 px-4 py-12 sm:px-6 lg:px-8"
@@ -875,66 +968,6 @@ export default function Home() {
       </section>
 
       <ShowcaseSection
-        id="tours"
-        icon="🏔️"
-        title={t.tours}
-        items={tours}
-        page={pages.tours}
-        pageSize={pageSize}
-        loading={loading}
-        viewAllHref="/tours"
-        viewAllLabel={t.viewAll}
-        pageLabel={t.page}
-        ofLabel={t.of}
-        previousLabel={t.previous}
-        nextLabel={t.next}
-        emptyLabel={t.noItems}
-        onPageChange={(page) => setSectionPage("tours", page)}
-        renderItem={(tour) => (
-          <SmallCard
-            href={`/book-tour/${tour.id}#tour-description`}
-            imageUrl={tour.image_url}
-            fallback="🏔️"
-            title={tour.title || t.tours}
-            subtitle={tour.location || t.georgia}
-            meta={tour.duration || tour.category || t.notSpecified}
-            price={formatPrice(tour.price, tour.price_type, tour.price_currency, language, t.negotiable)}
-            actionLabel={t.details}
-          />
-        )}
-      />
-
-      <ShowcaseSection
-        id="transfers"
-        icon="🚐"
-        title={t.transfers}
-        items={transfers}
-        page={pages.transfers}
-        pageSize={pageSize}
-        loading={loading}
-        viewAllHref="/transfers"
-        viewAllLabel={t.viewAll}
-        pageLabel={t.page}
-        ofLabel={t.of}
-        previousLabel={t.previous}
-        nextLabel={t.next}
-        emptyLabel={t.noItems}
-        onPageChange={(page) => setSectionPage("transfers", page)}
-        renderItem={(transfer) => (
-          <SmallCard
-            href={`/book-transfer/${transfer.id}`}
-            imageUrl={transfer.image_url}
-            fallback="🚐"
-            title={`${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
-            subtitle={transfer.vehicle || t.transfers}
-            meta={transfer.to_location || t.georgia}
-            price={formatTransferPrice(transfer, language)}
-            actionLabel={t.details}
-          />
-        )}
-      />
-
-      <ShowcaseSection
         id="hotels"
         icon="🏨"
         title={t.hotels}
@@ -961,39 +994,6 @@ export default function Home() {
               subtitle={hotel.location || hotel.city || t.georgia}
               meta={hotelPrice !== null ? t.perNight : t.notSpecified}
               price={formatSimplePrice(hotelPrice, language, t.negotiable)}
-              actionLabel={t.details}
-            />
-          );
-        }}
-      />
-
-      <ShowcaseSection
-        id="guides"
-        icon="🧑‍💼"
-        title={t.guides}
-        items={guides}
-        page={pages.guides}
-        pageSize={pageSize}
-        loading={loading}
-        viewAllHref="/guides"
-        viewAllLabel={t.viewAll}
-        pageLabel={t.page}
-        ofLabel={t.of}
-        previousLabel={t.previous}
-        nextLabel={t.next}
-        emptyLabel={t.noItems}
-        onPageChange={(page) => setSectionPage("guides", page)}
-        renderItem={(guide) => {
-          const guidePrice = guide.price_per_day ?? guide.price ?? null;
-          return (
-            <SmallCard
-              href="/guides"
-              imageUrl={guide.image_url}
-              fallback="🧑‍💼"
-              title={guide.full_name || t.guides}
-              subtitle={guide.location || t.georgia}
-              meta={guide.languages || (guide.experience_years ? `${guide.experience_years} ${language === "ka" ? "წელი გამოცდილება" : "years experience"}` : t.notSpecified)}
-              price={formatPrice(guidePrice, guide.price_type, guide.price_currency, language, t.negotiable)}
               actionLabel={t.details}
             />
           );
