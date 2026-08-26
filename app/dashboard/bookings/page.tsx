@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -40,6 +40,7 @@ type PreparedBooking = Booking & {
   contact_phone: string | null;
   has_whatsapp: boolean;
   has_viber: boolean;
+  tour_provider_id: string | null;
 };
 
 type ActiveTab = "my-bookings" | "received-bookings";
@@ -57,6 +58,7 @@ export default function DashboardBookingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [openingChatId, setOpeningChatId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
 
   const [errorMessage, setErrorMessage] = useState("");
@@ -263,6 +265,7 @@ export default function DashboardBookingsPage() {
           contact_phone: tour?.contact_phone || null,
           has_whatsapp: Boolean(tour?.has_whatsapp),
           has_viber: Boolean(tour?.has_viber),
+          tour_provider_id: tour?.user_id || null,
         };
       });
 
@@ -404,6 +407,100 @@ export default function DashboardBookingsPage() {
 
     setSuccessMessage("ჯავშანი წარმატებით გაუქმდა.");
     setUpdatingId(null);
+  }
+
+  async function openTourConversation(booking: PreparedBooking) {
+    if (
+      !currentUserId ||
+      !booking.tour_id ||
+      !booking.tour_provider_id
+    ) {
+      setErrorMessage(
+        "მიმოწერის დასაწყებად ტურის ორგანიზატორის ინფორმაცია ვერ მოიძებნა."
+      );
+      return;
+    }
+
+    if (booking.tour_provider_id === currentUserId) {
+      setErrorMessage(
+        "საკუთარ თავთან მიმოწერის დაწყება შეუძლებელია."
+      );
+      return;
+    }
+
+    setOpeningChatId(booking.id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const { data: existingConversation, error: existingError } =
+        await supabase
+          .from("conversations")
+          .select("id")
+          .eq("customer_id", currentUserId)
+          .eq("provider_id", booking.tour_provider_id)
+          .eq("tour_id", booking.tour_id)
+          .is("guide_id", null)
+          .maybeSingle();
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      if (existingConversation?.id) {
+        window.location.href =
+          `/dashboard/messages/${existingConversation.id}`;
+        return;
+      }
+
+      const { data: createdConversation, error: createError } =
+        await supabase
+          .from("conversations")
+          .insert({
+            customer_id: currentUserId,
+            provider_id: booking.tour_provider_id,
+            tour_id: booking.tour_id,
+            guide_id: null,
+          })
+          .select("id")
+          .single();
+
+      if (createError) {
+        // If two clicks/requests created a race, try to find the conversation once more.
+        const { data: retryConversation, error: retryError } =
+          await supabase
+            .from("conversations")
+            .select("id")
+            .eq("customer_id", currentUserId)
+            .eq("provider_id", booking.tour_provider_id)
+            .eq("tour_id", booking.tour_id)
+            .is("guide_id", null)
+            .maybeSingle();
+
+        if (retryError || !retryConversation?.id) {
+          throw createError;
+        }
+
+        window.location.href =
+          `/dashboard/messages/${retryConversation.id}`;
+        return;
+      }
+
+      window.location.href =
+        `/dashboard/messages/${createdConversation.id}`;
+    } catch (error) {
+      console.error("Open conversation error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა მოხდა.";
+
+      setErrorMessage(
+        `მიმოწერის გახსნა ვერ მოხერხდა: ${message}`
+      );
+      setOpeningChatId(null);
+    }
   }
 
   const visibleBookings = useMemo(
@@ -688,6 +785,22 @@ export default function DashboardBookingsPage() {
                                 </a>
                               )}
 
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void openTourConversation(booking)
+                                }
+                                disabled={
+                                  openingChatId === booking.id ||
+                                  !booking.tour_provider_id
+                                }
+                                className="rounded-2xl bg-indigo-600 px-5 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {openingChatId === booking.id
+                                  ? "იხსნება..."
+                                  : "✉️ მიმოწერა"}
+                              </button>
+
                               {booking.has_viber && (
                                 <a
                                   href={getViberUrl(booking.contact_phone)}
@@ -896,5 +1009,3 @@ function formatDate(value: string | null) {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
-}
