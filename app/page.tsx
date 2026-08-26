@@ -110,7 +110,7 @@ const translations = {
     addHotel: "სასტუმროს დამატება",
     addGuide: "გიდის დამატება",
     travelTipsEyebrow: "LOCAL TIPS",
-    travelTipsTitle: "სვანეთის ადგილები და რჩევები",
+    travelTipsTitle: "ტურისტული ადგილები და რჩევები",
     travelTipsText:
       "მოკლე ადგილობრივი რჩევები — სად წავიდეთ, როდის ჯობია და რას მივაქციოთ ყურადღება.",
     bestTime: "საუკეთესო დრო",
@@ -171,7 +171,7 @@ const translations = {
     addHotel: "Add Hotel",
     addGuide: "Add Guide",
     travelTipsEyebrow: "LOCAL TIPS",
-    travelTipsTitle: "Svaneti Places & Local Tips",
+    travelTipsTitle: "Tourist Places & Local Tips",
     travelTipsText:
       "Quick local guidance on where to go, the best time to visit, and what to keep in mind.",
     bestTime: "Best time",
