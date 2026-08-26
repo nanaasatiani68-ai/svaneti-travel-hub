@@ -1,4 +1,4 @@
-"use client";
+
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -12,10 +12,7 @@ type Tour = {
   description: string | null;
   location: string | null;
   price: number | null;
-  price_type: "fixed" | "negotiable" | null;
-  price_currency: "GEL" | "USD" | null;
   image_url: string | null;
-  organizer_name: string | null;
   duration: string | null;
   max_people: number | null;
   category: string | null;
@@ -48,6 +45,7 @@ export default function PublicToursPage() {
   );
 
   const [currentUserId, setCurrentUserId] = useState("");
+  const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [favoriteLoadingId, setFavoriteLoadingId] = useState<
     string | null
@@ -81,10 +79,7 @@ export default function PublicToursPage() {
             description,
             location,
             price,
-            price_type,
-            price_currency,
             image_url,
-            organizer_name,
             duration,
             max_people,
             category,
@@ -156,17 +151,36 @@ export default function PublicToursPage() {
 
   async function loadUserAndFavorites() {
     try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
 
       if (sessionError) {
         console.error("Session loading error:", sessionError);
-        return;
       }
 
-      const user = session?.user;
+      let user = sessionData.session?.user ?? null;
+
+      if (!user) {
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("User loading error:", userError);
+        }
+
+        user = userData.user;
+      }
+
+      if (!user) {
+        const { data: refreshData, error: refreshError } =
+          await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error("Session refresh error:", refreshError);
+        }
+
+        user = refreshData.user ?? null;
+      }
 
       if (!user) {
         setCurrentUserId("");
@@ -197,6 +211,8 @@ export default function PublicToursPage() {
       );
     } catch (error) {
       console.error("User or favorites loading error:", error);
+    } finally {
+      setAuthReady(true);
     }
   }
 
@@ -245,8 +261,7 @@ export default function PublicToursPage() {
         tour.category ?? ""
       ).toLowerCase();
       const authorName = String(
-        tour.organizer_name?.trim() ||
-          (tour.user_id ? authorNames[tour.user_id] ?? "" : "")
+        tour.user_id ? authorNames[tour.user_id] ?? "" : ""
       ).toLowerCase();
 
       const matchesSearch =
@@ -364,9 +379,38 @@ export default function PublicToursPage() {
   async function toggleFavorite(tour: Tour) {
     setFavoriteMessage("");
 
-    if (!currentUserId) {
-      router.push("/login");
+    if (!authReady) {
+      setFavoriteMessage(
+        "ანგარიშის ინფორმაცია ჯერ იტვირთება. სცადე კიდევ ერთხელ."
+      );
+      setFavoriteMessageType("error");
       return;
+    }
+
+    let userId = currentUserId;
+
+    if (!userId) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      userId = sessionData.session?.user?.id || "";
+
+      if (!userId) {
+        const { data: userData } = await supabase.auth.getUser();
+        userId = userData.user?.id || "";
+      }
+
+      if (!userId) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        userId = refreshData.user?.id || "";
+      }
+
+      if (!userId) {
+        router.push(
+          `/login?next=${encodeURIComponent("/tours")}`
+        );
+        return;
+      }
+
+      setCurrentUserId(userId);
     }
 
     const tourKey = String(tour.id);
@@ -379,12 +423,10 @@ export default function PublicToursPage() {
         const { error } = await supabase
           .from("favorites")
           .delete()
-          .eq("user_id", currentUserId)
+          .eq("user_id", userId)
           .eq("tour_id", tour.id);
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         setFavoriteTourIds((current) => {
           const updated = new Set(current);
@@ -392,9 +434,7 @@ export default function PublicToursPage() {
           return updated;
         });
 
-        setFavoriteMessage(
-          "ტური ფავორიტებიდან ამოიღე."
-        );
+        setFavoriteMessage("ტური ფავორიტებიდან ამოიღე.");
         setFavoriteMessageType("success");
         return;
       }
@@ -402,7 +442,7 @@ export default function PublicToursPage() {
       const { error } = await supabase
         .from("favorites")
         .insert({
-          user_id: currentUserId,
+          user_id: userId,
           tour_id: tour.id,
         });
 
@@ -789,11 +829,10 @@ export default function PublicToursPage() {
                         </p>
 
                         <p className="truncate font-bold text-white">
-                          {tour.organizer_name?.trim() ||
-                            (tour.user_id
-                              ? authorNames[tour.user_id] ||
-                                "ტურის ორგანიზატორი"
-                              : "ტურის ორგანიზატორი")}
+                          {tour.user_id
+                            ? authorNames[tour.user_id] ||
+                              "ტურის ორგანიზატორი"
+                            : "ტურის ორგანიზატორი"}
                         </p>
                       </div>
                     </div>
@@ -811,7 +850,13 @@ export default function PublicToursPage() {
                         </p>
 
                         <p className="mt-1 text-2xl font-extrabold text-cyan-300">
-                          {formatTourPrice(tour)}
+                          {tour.price !== null
+                            ? `${Number(
+                                tour.price
+                              ).toLocaleString(
+                                "ka-GE"
+                              )} ₾`
+                            : "შეთანხმებით"}
                         </p>
                       </div>
 
@@ -873,26 +918,6 @@ function TourInfoBox({
       <span>{value}</span>
     </div>
   );
-}
-
-
-function formatTourPrice(tour: Tour) {
-  if (
-    tour.price_type === "negotiable" ||
-    tour.price === null ||
-    tour.price === undefined
-  ) {
-    return "ფასი შეთანხმებით";
-  }
-
-  const amount = Number(tour.price).toLocaleString(
-    "ka-GE",
-    { maximumFractionDigits: 2 }
-  );
-
-  return tour.price_currency === "USD"
-    ? `$${amount}`
-    : `${amount} ₾`;
 }
 
 function ErrorState({

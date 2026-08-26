@@ -754,7 +754,6 @@ export default function DashboardBookingsPage() {
                       )}
 
                       {activeTab === "my-bookings" &&
-                        booking.contact_phone &&
                         status !== "cancelled" &&
                         status !== "rejected" && (
                           <div className="mt-6 rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
@@ -767,23 +766,26 @@ export default function DashboardBookingsPage() {
                             </p>
 
                             <div className="mt-4 flex flex-wrap gap-3">
-                              <a
-                                href={`tel:${booking.contact_phone}`}
-                                className="rounded-2xl bg-cyan-600 px-5 py-3 font-bold text-white transition hover:bg-cyan-700"
-                              >
-                                📞 {booking.contact_phone}
-                              </a>
-
-                              {booking.has_whatsapp && (
+                              {booking.contact_phone && (
                                 <a
-                                  href={getWhatsAppUrl(booking.contact_phone)}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700"
+                                  href={`tel:${booking.contact_phone}`}
+                                  className="rounded-2xl bg-cyan-600 px-5 py-3 font-bold text-white transition hover:bg-cyan-700"
                                 >
-                                  💬 WhatsApp
+                                  📞 {booking.contact_phone}
                                 </a>
                               )}
+
+                              {booking.contact_phone &&
+                                booking.has_whatsapp && (
+                                  <a
+                                    href={getWhatsAppUrl(booking.contact_phone)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-2xl bg-emerald-600 px-5 py-3 font-bold text-white transition hover:bg-emerald-700"
+                                  >
+                                    💬 WhatsApp
+                                  </a>
+                                )}
 
                               <button
                                 type="button"
@@ -801,15 +803,22 @@ export default function DashboardBookingsPage() {
                                   : "✉️ მიმოწერა"}
                               </button>
 
-                              {booking.has_viber && (
-                                <a
-                                  href={getViberUrl(booking.contact_phone)}
-                                  className="rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
-                                >
-                                  📲 Viber
-                                </a>
-                              )}
+                              {booking.contact_phone &&
+                                booking.has_viber && (
+                                  <a
+                                    href={getViberUrl(booking.contact_phone)}
+                                    className="rounded-2xl bg-violet-600 px-5 py-3 font-bold text-white transition hover:bg-violet-700"
+                                  >
+                                    📲 Viber
+                                  </a>
+                                )}
                             </div>
+
+                            {!booking.contact_phone && (
+                              <p className="mt-3 text-sm font-semibold text-slate-500">
+                                ტელეფონის ნომერი არ არის მითითებული, მაგრამ შიდა მიმოწერა ხელმისაწვდომია.
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -1009,5 +1018,3 @@ function formatDate(value: string | null) {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
-}
