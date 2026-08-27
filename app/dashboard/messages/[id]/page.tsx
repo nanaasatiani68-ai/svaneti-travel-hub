@@ -50,6 +50,7 @@ export default function ConversationPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [userId, setUserId] = useState("");
+  const [currentRole, setCurrentRole] = useState("user");
   const [conversation, setConversation] =
     useState<Conversation | null>(null);
   const [messages, setMessages] = useState<
@@ -141,6 +142,27 @@ export default function ConversationPage() {
         setUserId(user.id);
 
         const {
+          data: currentProfile,
+          error: currentProfileError,
+        } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (currentProfileError) {
+          throw currentProfileError;
+        }
+
+        const normalizedRole = String(
+          currentProfile?.role ?? "user"
+        ).toLowerCase();
+
+        if (mounted) {
+          setCurrentRole(normalizedRole);
+        }
+
+        const {
           data: conversationData,
           error: conversationError,
         } = await supabase
@@ -170,10 +192,15 @@ export default function ConversationPage() {
         const row =
           conversationData as Conversation;
 
-        if (
-          row.customer_id !== user.id &&
-          row.provider_id !== user.id
-        ) {
+        const isParticipant =
+          row.customer_id === user.id ||
+          row.provider_id === user.id;
+
+        const isAdminViewer =
+          normalizedRole === "admin" ||
+          normalizedRole === "director";
+
+        if (!isParticipant && !isAdminViewer) {
           throw new Error(
             "ამ საუბარზე წვდომა არ გაქვს."
           );
@@ -183,16 +210,38 @@ export default function ConversationPage() {
           setConversation(row);
         }
 
+        const isParticipant =
+          row.customer_id === user.id ||
+          row.provider_id === user.id;
+
         const otherUserId =
           row.customer_id === user.id
             ? row.provider_id
             : row.customer_id;
 
-        const profilePromise = supabase
-          .from("profiles")
-          .select("id, full_name")
-          .eq("id", otherUserId)
-          .maybeSingle();
+        const profilePromise = isParticipant
+          ? supabase
+              .from("profiles")
+              .select("id, full_name")
+              .eq("id", otherUserId)
+              .maybeSingle()
+          : Promise.resolve({
+              data: null,
+              error: null,
+            });
+
+        const adminParticipantsPromise = !isParticipant
+          ? supabase
+              .from("profiles")
+              .select("id, full_name")
+              .in("id", [
+                row.customer_id,
+                row.provider_id,
+              ])
+          : Promise.resolve({
+              data: null,
+              error: null,
+            });
 
         const subjectPromise = row.guide_id
           ? supabase
@@ -213,10 +262,12 @@ export default function ConversationPage() {
 
         const [
           profileResult,
+          adminParticipantsResult,
           subjectResult,
           messagesResult,
         ] = await Promise.all([
           profilePromise,
+          adminParticipantsPromise,
           subjectPromise,
           supabase
             .from("messages")
@@ -245,6 +296,34 @@ export default function ConversationPage() {
 
           setOtherName(
             profile.full_name || "მომხმარებელი"
+          );
+        }
+
+        if (
+          adminParticipantsResult.data &&
+          mounted
+        ) {
+          const participants =
+            adminParticipantsResult.data as Profile[];
+
+          const customer =
+            participants.find(
+              (item) =>
+                item.id === row.customer_id
+            );
+
+          const provider =
+            participants.find(
+              (item) =>
+                item.id === row.provider_id
+            );
+
+          setOtherName(
+            `${
+              customer?.full_name || "მომხმარებელი"
+            } ↔ ${
+              provider?.full_name || "პროვაიდერი"
+            }`
           );
         }
 
@@ -287,22 +366,24 @@ export default function ConversationPage() {
           );
         }
 
-        const { error: readError } =
-          await supabase
-            .from("messages")
-            .update({ is_read: true })
-            .eq(
-              "conversation_id",
-              conversationId
-            )
-            .neq("sender_id", user.id)
-            .eq("is_read", false);
+        if (isParticipant) {
+          const { error: readError } =
+            await supabase
+              .from("messages")
+              .update({ is_read: true })
+              .eq(
+                "conversation_id",
+                conversationId
+              )
+              .neq("sender_id", user.id)
+              .eq("is_read", false);
 
-        if (readError) {
-          console.error(
-            "Mark messages read error:",
-            readError
-          );
+          if (readError) {
+            console.error(
+              "Mark messages read error:",
+              readError
+            );
+          }
         }
       } catch (error) {
         console.error("Load chat error:", error);
@@ -364,6 +445,11 @@ export default function ConversationPage() {
           });
 
           if (
+            conversation &&
+            (
+              conversation.customer_id === userId ||
+              conversation.provider_id === userId
+            ) &&
             nextMessage.sender_id !== userId
           ) {
             void supabase
@@ -399,7 +485,7 @@ export default function ConversationPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, supabase, userId]);
+  }, [conversationId, supabase, userId, conversation]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -412,10 +498,18 @@ export default function ConversationPage() {
   ) {
     event.preventDefault();
 
+    const isParticipant =
+      conversation &&
+      (
+        conversation.customer_id === userId ||
+        conversation.provider_id === userId
+      );
+
     if (
       sending ||
       !userId ||
-      !conversation
+      !conversation ||
+      !isParticipant
     ) {
       return;
     }
@@ -644,45 +738,59 @@ export default function ConversationPage() {
         <div ref={bottomRef} />
       </div>
 
-      <form
-        onSubmit={sendMessage}
-        className="mt-4 flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-      >
-        <textarea
-          value={newMessage}
-          onChange={(event) =>
-            setNewMessage(event.target.value)
-          }
-          onKeyDown={(event) => {
-            if (
-              event.key === "Enter" &&
-              !event.shiftKey
-            ) {
-              event.preventDefault();
-              event.currentTarget
-                .form?.requestSubmit();
-            }
-          }}
-          placeholder="დაწერე შეტყობინება..."
-          rows={2}
-          maxLength={2000}
-          className="min-h-[52px] flex-1 resize-none rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none focus:border-cyan-500"
-        />
+      {conversation &&
+      (
+        conversation.customer_id === userId ||
+        conversation.provider_id === userId
+      ) ? (
+        <>
+          <form
+            onSubmit={sendMessage}
+            className="mt-4 flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+          >
+            <textarea
+              value={newMessage}
+              onChange={(event) =>
+                setNewMessage(event.target.value)
+              }
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey
+                ) {
+                  event.preventDefault();
+                  event.currentTarget
+                    .form?.requestSubmit();
+                }
+              }}
+              placeholder="დაწერე შეტყობინება..."
+              rows={2}
+              maxLength={2000}
+              className="min-h-[52px] flex-1 resize-none rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none focus:border-cyan-500"
+            />
 
-        <button
-          type="submit"
-          disabled={
-            sending || !newMessage.trim()
-          }
-          className="self-end rounded-xl bg-cyan-600 px-5 py-3 font-black text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {sending ? "..." : "გაგზავნა"}
-        </button>
-      </form>
+            <button
+              type="submit"
+              disabled={
+                sending || !newMessage.trim()
+              }
+              className="self-end rounded-xl bg-cyan-600 px-5 py-3 font-black text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? "..." : "გაგზავნა"}
+            </button>
+          </form>
 
-      <p className="mt-2 text-center text-xs text-slate-400">
-        Enter — გაგზავნა • Shift + Enter — ახალი ხაზი
-      </p>
+          <p className="mt-2 text-center text-xs text-slate-400">
+            Enter — გაგზავნა • Shift + Enter — ახალი ხაზი
+          </p>
+        </>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center text-sm font-bold text-amber-800">
+          👁️ {currentRole === "director"
+            ? "Director"
+            : "Admin"} რეჟიმი — საუბრის ნახვა შეგიძლიათ, მაგრამ შეტყობინების გაგზავნა მხოლოდ მონაწილეებს შეუძლიათ.
+        </div>
+      )}
     </main>
   );
 }
