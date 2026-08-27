@@ -13,6 +13,25 @@ import {
 } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type DashboardRole =
+  | "director"
+  | "admin"
+  | "staff"
+  | "user";
+
+type ProfileAccess = {
+  role: DashboardRole;
+  can_publish_services: boolean;
+  provider_status: string;
+  is_active: boolean;
+};
+
+type MenuItem = {
+  name: string;
+  href: string;
+  icon: string;
+};
+
 export default function DashboardLayout({
   children,
 }: {
@@ -25,6 +44,15 @@ export default function DashboardLayout({
 
   const [authReady, setAuthReady] = useState(false);
   const [userId, setUserId] = useState("");
+  const [accessReady, setAccessReady] = useState(false);
+
+  const [profileAccess, setProfileAccess] =
+    useState<ProfileAccess>({
+      role: "user",
+      can_publish_services: false,
+      provider_status: "none",
+      is_active: true,
+    });
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] =
@@ -108,6 +136,71 @@ export default function DashboardLayout({
     }
   }, [supabase]);
 
+  const loadProfileAccess = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    setAccessReady(false);
+
+    try {
+      const {
+        data,
+        error,
+      } = await supabase
+        .from("profiles")
+        .select(
+          `
+            role,
+            can_publish_services,
+            provider_status,
+            is_active
+          `
+        )
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      const roleValue = String(
+        data?.role ?? "user"
+      ).toLowerCase();
+
+      const role: DashboardRole =
+        roleValue === "director" ||
+        roleValue === "admin" ||
+        roleValue === "staff"
+          ? roleValue
+          : "user";
+
+      setProfileAccess({
+        role,
+        can_publish_services:
+          Boolean(data?.can_publish_services),
+        provider_status:
+          String(data?.provider_status ?? "none"),
+        is_active:
+          data?.is_active !== false,
+      });
+    } catch (error) {
+      console.error(
+        "Profile access loading error:",
+        error
+      );
+
+      setProfileAccess({
+        role: "user",
+        can_publish_services: false,
+        provider_status: "none",
+        is_active: true,
+      });
+    } finally {
+      setAccessReady(true);
+    }
+  }, [supabase, userId]);
+
   const loadUnreadNotifications =
     useCallback(async () => {
       if (!userId) {
@@ -160,6 +253,7 @@ export default function DashboardLayout({
         if (event === "SIGNED_OUT") {
           setUserId("");
           setAuthReady(false);
+          setAccessReady(false);
         }
       }
     );
@@ -168,6 +262,91 @@ export default function DashboardLayout({
       subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    if (!authReady || !userId) {
+      return;
+    }
+
+    void loadProfileAccess();
+  }, [
+    authReady,
+    userId,
+    loadProfileAccess,
+  ]);
+
+  const isAdmin =
+    profileAccess.role === "admin" ||
+    profileAccess.role === "director";
+
+  const isDirector =
+    profileAccess.role === "director";
+
+  const isProvider =
+    isAdmin ||
+    (
+      profileAccess.can_publish_services &&
+      profileAccess.provider_status === "approved"
+    );
+
+  useEffect(() => {
+    if (!authReady || !accessReady) {
+      return;
+    }
+
+    if (!profileAccess.is_active) {
+      void supabase.auth.signOut();
+      window.location.replace("/login");
+      return;
+    }
+
+    const providerOnlyPrefixes = [
+      "/dashboard/add-tour",
+      "/dashboard/add-transfer",
+      "/dashboard/add-hotel",
+      "/dashboard/add-guide",
+      "/dashboard/my-tours",
+      "/dashboard/my-transfers",
+    ];
+
+    const adminOnlyPrefixes = [
+      "/dashboard/provider-applications",
+    ];
+
+    const onProviderOnlyRoute =
+      providerOnlyPrefixes.some(
+        (prefix) =>
+          pathname === prefix ||
+          pathname.startsWith(`${prefix}/`)
+      );
+
+    const onAdminOnlyRoute =
+      adminOnlyPrefixes.some(
+        (prefix) =>
+          pathname === prefix ||
+          pathname.startsWith(`${prefix}/`)
+      );
+
+    if (onAdminOnlyRoute && !isAdmin) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    if (onProviderOnlyRoute && !isProvider) {
+      router.replace(
+        "/dashboard/provider-request"
+      );
+    }
+  }, [
+    authReady,
+    accessReady,
+    pathname,
+    profileAccess.is_active,
+    isAdmin,
+    isProvider,
+    router,
+    supabase,
+  ]);
 
   useEffect(() => {
     if (!authReady || !userId) {
@@ -259,6 +438,7 @@ export default function DashboardLayout({
     setUnreadCount(0);
     setUserId("");
     setAuthReady(false);
+    setAccessReady(false);
 
     await supabase.auth.signOut();
 
@@ -276,36 +456,11 @@ export default function DashboardLayout({
     );
   }
 
-  const menu = [
+  const baseMenu: MenuItem[] = [
     {
       name: "Dashboard",
       href: "/dashboard",
       icon: "🏠",
-    },
-    {
-      name: "Add Tour",
-      href: "/dashboard/add-tour",
-      icon: "➕",
-    },
-    {
-      name: "Add Transfer",
-      href: "/dashboard/add-transfer",
-      icon: "🚐",
-    },
-    {
-      name: "Add Hotel",
-      href: "/dashboard/add-hotel",
-      icon: "🏨",
-    },
-    {
-      name: "Add Guide",
-      href: "/dashboard/add-guide",
-      icon: "🧑‍💼",
-    },
-    {
-      name: "My Tours",
-      href: "/dashboard/my-tours",
-      icon: "🏔️",
     },
     {
       name: "Bookings",
@@ -322,6 +477,68 @@ export default function DashboardLayout({
       href: "/dashboard/favorites",
       icon: "❤️",
     },
+  ];
+
+  const providerMenu: MenuItem[] = isProvider
+    ? [
+        {
+          name: "Add Tour",
+          href: "/dashboard/add-tour",
+          icon: "➕",
+        },
+        {
+          name: "Add Transfer",
+          href: "/dashboard/add-transfer",
+          icon: "🚐",
+        },
+        {
+          name: "Add Hotel",
+          href: "/dashboard/add-hotel",
+          icon: "🏨",
+        },
+        {
+          name: "Add Guide",
+          href: "/dashboard/add-guide",
+          icon: "🧑‍💼",
+        },
+        {
+          name: "My Tours",
+          href: "/dashboard/my-tours",
+          icon: "🏔️",
+        },
+        {
+          name: "My Transfers",
+          href: "/dashboard/my-transfers",
+          icon: "🚐",
+        },
+      ]
+    : [
+        {
+          name:
+            profileAccess.provider_status === "pending"
+              ? "Provider Request (Pending)"
+              : "Become a Provider",
+          href: "/dashboard/provider-request",
+          icon: "🧳",
+        },
+      ];
+
+  const adminMenu: MenuItem[] = isAdmin
+    ? [
+        {
+          name: "Provider Applications",
+          href: "/dashboard/provider-applications",
+          icon: "🛡️",
+        },
+        {
+          name: "Admin Panel",
+          href: "/admin-v2",
+          icon: isDirector ? "👑" : "⚙️",
+        },
+      ]
+    : [];
+
+  const profileMenu: MenuItem[] = [
     {
       name: "Profile",
       href: "/profile",
@@ -329,14 +546,21 @@ export default function DashboardLayout({
     },
   ];
 
-  if (!authReady) {
+  const menu = [
+    ...baseMenu,
+    ...providerMenu,
+    ...adminMenu,
+    ...profileMenu,
+  ];
+
+  if (!authReady || !accessReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
           <div className="text-6xl">🔐</div>
 
           <p className="mt-4 text-lg font-semibold">
-            ანგარიშის სესია მოწმდება...
+            ანგარიშის უფლებები მოწმდება...
           </p>
         </div>
       </div>
@@ -352,7 +576,13 @@ export default function DashboardLayout({
           </h1>
 
           <p className="mt-1 text-sm text-slate-400">
-            User Dashboard
+            {isDirector
+              ? "Director Dashboard"
+              : isAdmin
+                ? "Admin Dashboard"
+                : isProvider
+                  ? "Provider Dashboard"
+                  : "User Dashboard"}
           </p>
         </div>
 
@@ -383,6 +613,22 @@ export default function DashboardLayout({
         </nav>
 
         <div className="border-t border-slate-700 p-4">
+          <div className="mb-3 rounded-xl bg-slate-800 px-3 py-2 text-xs text-slate-300">
+            <div>
+              Role:{" "}
+              <strong className="text-white">
+                {profileAccess.role}
+              </strong>
+            </div>
+
+            <div className="mt-1">
+              Provider:{" "}
+              <strong className="text-white">
+                {isProvider ? "Yes" : "No"}
+              </strong>
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={logout}
@@ -398,7 +644,13 @@ export default function DashboardLayout({
           <div className="flex min-h-20 items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div className="min-w-0">
               <h2 className="truncate text-xl font-bold text-slate-900 sm:text-2xl">
-                Dashboard
+                {isDirector
+                  ? "Director Dashboard"
+                  : isAdmin
+                    ? "Admin Dashboard"
+                    : isProvider
+                      ? "Provider Dashboard"
+                      : "Dashboard"}
               </h2>
 
               <p className="hidden text-sm text-slate-500 sm:block">
@@ -436,6 +688,15 @@ export default function DashboardLayout({
                     </span>
                   )}
               </Link>
+
+              {isAdmin && (
+                <Link
+                  href="/admin-v2"
+                  className="hidden h-12 items-center justify-center rounded-2xl bg-violet-600 px-4 text-sm font-bold text-white transition hover:bg-violet-700 sm:flex"
+                >
+                  {isDirector ? "👑 Director" : "🛡️ Admin"}
+                </Link>
+              )}
 
               <Link
                 href="/dashboard"
