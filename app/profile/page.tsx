@@ -4,12 +4,13 @@ import {
   ChangeEvent,
   FormEvent,
   ReactNode,
+  useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type ProfileForm = {
   full_name: string;
@@ -38,7 +39,7 @@ const ALLOWED_AVATAR_TYPES = [
 ];
 
 export default function ProfilePage() {
-  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [profile, setProfile] =
     useState<ProfileForm>(emptyProfile);
@@ -60,18 +61,58 @@ export default function ProfilePage() {
     "success" | "error"
   >("success");
 
+  const getAuthenticatedUser = useCallback(async () => {
+    const {
+      data: sessionData,
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      console.error("Profile session error:", sessionError);
+    }
+
+    let user = sessionData.session?.user ?? null;
+
+    if (!user) {
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Profile user error:", userError);
+      }
+
+      user = userData.user;
+    }
+
+    if (!user) {
+      const {
+        data: refreshData,
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error("Profile refresh error:", refreshError);
+      }
+
+      user = refreshData.user ?? null;
+    }
+
+    return user;
+  }, [supabase]);
+
   useEffect(() => {
     async function loadProfile() {
       setLoading(true);
       setMessage("");
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const user = await getAuthenticatedUser();
 
-      if (userError || !user) {
-        router.replace("/login");
+      if (!user) {
+        window.location.replace(
+          `/login?next=${encodeURIComponent("/profile")}`
+        );
         return;
       }
 
@@ -123,7 +164,7 @@ export default function ProfilePage() {
     }
 
     loadProfile();
-  }, [router]);
+  }, [getAuthenticatedUser, supabase]);
 
   useEffect(() => {
     return () => {
@@ -374,12 +415,9 @@ export default function ProfilePage() {
     setSaving(true);
     setMessage("");
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
 
-    if (userError || !user) {
+    if (!user) {
       setMessage(
         "პროფილის შესანახად საჭიროა ავტორიზაცია."
       );
