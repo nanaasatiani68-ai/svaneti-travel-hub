@@ -430,18 +430,47 @@ export default function ConversationPage() {
     setErrorMessage("");
 
     try {
-      const { error } = await supabase
+      const {
+        data: insertedMessage,
+        error,
+      } = await supabase
         .from("messages")
         .insert({
           conversation_id: conversation.id,
           sender_id: userId,
           message: text,
           is_read: false,
-        });
+        })
+        .select(
+          `
+            id,
+            conversation_id,
+            sender_id,
+            message,
+            is_read,
+            created_at
+          `
+        )
+        .single();
 
       if (error) {
         throw error;
       }
+
+      const savedMessage =
+        insertedMessage as Message;
+
+      setMessages((current) => {
+        if (
+          current.some(
+            (item) => item.id === savedMessage.id
+          )
+        ) {
+          return current;
+        }
+
+        return [...current, savedMessage];
+      });
 
       setNewMessage("");
 
@@ -666,7 +695,7 @@ function formatTime(value: string) {
   }
 
   return new Intl.DateTimeFormat("ka-GE", {
-    month: "short",
+  month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
