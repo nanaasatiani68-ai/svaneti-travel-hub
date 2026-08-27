@@ -490,11 +490,6 @@ export default function ProviderApplicationsPage() {
                       </p>
 
                       <p>
-                        <strong>Email:</strong>{" "}
-                        {profile?.email ?? "—"}
-                      </p>
-
-                      <p>
                         <strong>Phone:</strong>{" "}
                         {profile?.phone ?? "—"}
                       </p>
