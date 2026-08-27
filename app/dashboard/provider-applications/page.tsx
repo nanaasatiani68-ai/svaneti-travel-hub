@@ -24,7 +24,6 @@ type ProviderApplication = {
 type Profile = {
   id: string;
   full_name: string | null;
-  email: string | null;
   phone: string | null;
   role: string | null;
   can_publish_services: boolean | null;
@@ -195,7 +194,6 @@ export default function ProviderApplicationsPage() {
           `
             id,
             full_name,
-            email,
             phone,
             role,
             can_publish_services,
@@ -466,9 +464,7 @@ export default function ProviderApplicationsPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <h2 className="text-xl font-black text-slate-900">
-                        {profile?.full_name ||
-                          profile?.email ||
-                          "Unknown user"}
+                        {profile?.full_name || "Unknown user"}
                       </h2>
 
                       <span
