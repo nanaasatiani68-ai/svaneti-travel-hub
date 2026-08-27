@@ -1,9 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type Notification = {
   id: string;
@@ -17,6 +22,7 @@ type Notification = {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,17 +33,68 @@ export default function NotificationsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
 
+  const getAuthenticatedUser = useCallback(async () => {
+    const {
+      data: sessionData,
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      console.error(
+        "Notifications session error:",
+        sessionError
+      );
+    }
+
+    let user = sessionData.session?.user ?? null;
+
+    if (!user) {
+      const {
+        data: userData,
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error(
+          "Notifications user error:",
+          userError
+        );
+      }
+
+      user = userData.user;
+    }
+
+    if (!user) {
+      const {
+        data: refreshData,
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error(
+          "Notifications refresh error:",
+          refreshError
+        );
+      }
+
+      user = refreshData.user ?? null;
+    }
+
+    return user;
+  }, [supabase]);
+
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     setMessage("");
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
 
-    if (userError || !user) {
-      router.replace("/login");
+    if (!user) {
+      window.location.replace(
+        `/login?next=${encodeURIComponent(
+          "/dashboard/notifications"
+        )}`
+      );
       return;
     }
 
@@ -70,7 +127,7 @@ export default function NotificationsPage() {
 
     setNotifications((data as Notification[] | null) ?? []);
     setLoading(false);
-  }, [router]);
+  }, [getAuthenticatedUser, supabase]);
 
   useEffect(() => {
     loadNotifications();
@@ -158,13 +215,14 @@ export default function NotificationsPage() {
     setMarkingAll(true);
     setMessage("");
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
 
-    if (userError || !user) {
-      router.replace("/login");
+    if (!user) {
+      window.location.replace(
+        `/login?next=${encodeURIComponent(
+          "/dashboard/notifications"
+        )}`
+      );
       return;
     }
 
