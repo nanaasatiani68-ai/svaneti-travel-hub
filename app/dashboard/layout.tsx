@@ -1,7 +1,5 @@
 ﻿"use client";
 
-
-
 import {
   useCallback,
   useEffect,
@@ -282,52 +280,52 @@ export default function DashboardLayout({
     {
       name: "Dashboard",
       href: "/dashboard",
-      icon: "ðŸ ",
+      icon: "🏠",
     },
     {
       name: "Add Tour",
       href: "/dashboard/add-tour",
-      icon: "âž•",
+      icon: "➕",
     },
     {
       name: "Add Transfer",
       href: "/dashboard/add-transfer",
-      icon: "ðŸš",
+      icon: "🚐",
     },
     {
       name: "Add Hotel",
       href: "/dashboard/add-hotel",
-      icon: "ðŸ¨",
+      icon: "🏨",
     },
     {
       name: "Add Guide",
       href: "/dashboard/add-guide",
-      icon: "ðŸ§‘â€ðŸ’¼",
+      icon: "🧑‍💼",
     },
     {
       name: "My Tours",
       href: "/dashboard/my-tours",
-      icon: "ðŸ”ï¸",
+      icon: "🏔️",
     },
     {
       name: "Bookings",
       href: "/dashboard/bookings",
-      icon: "ðŸ“…",
+      icon: "📅",
     },
     {
       name: "Messages",
       href: "/dashboard/messages",
-      icon: "ðŸ’¬",
+      icon: "💬",
     },
     {
       name: "Favorites",
       href: "/dashboard/favorites",
-      icon: "â¤ï¸",
+      icon: "❤️",
     },
     {
       name: "Profile",
       href: "/profile",
-      icon: "ðŸ‘¤",
+      icon: "👤",
     },
   ];
 
@@ -335,10 +333,10 @@ export default function DashboardLayout({
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
-          <div className="text-6xl">ðŸ”</div>
+          <div className="text-6xl">🔐</div>
 
           <p className="mt-4 text-lg font-semibold">
-            áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ˜áƒ¡ áƒ¡áƒ”áƒ¡áƒ˜áƒ áƒ›áƒáƒ¬áƒ›áƒ“áƒ”áƒ‘áƒ...
+            ანგარიშის სესია მოწმდება...
           </p>
         </div>
       </div>
@@ -390,7 +388,7 @@ export default function DashboardLayout({
             onClick={logout}
             className="w-full rounded-xl bg-red-500 py-3 font-semibold transition hover:bg-red-600"
           >
-            ðŸšª Logout
+            🚪 Logout
           </button>
         </div>
       </aside>
@@ -413,10 +411,10 @@ export default function DashboardLayout({
                 href="/dashboard/notifications"
                 aria-label={
                   unreadCount > 0
-                    ? `${unreadCount} áƒ¬áƒáƒ£áƒ™áƒ˜áƒ—áƒ®áƒáƒ•áƒ˜ áƒ¨áƒ”áƒ¢áƒ§áƒáƒ‘áƒ˜áƒœáƒ”áƒ‘áƒ`
-                    : "áƒ¨áƒ”áƒ¢áƒ§áƒáƒ‘áƒ˜áƒœáƒ”áƒ‘áƒ”áƒ‘áƒ˜"
+                    ? `${unreadCount} წაუკითხავი შეტყობინება`
+                    : "შეტყობინებები"
                 }
-                title="áƒ¨áƒ”áƒ¢áƒ§áƒáƒ‘áƒ˜áƒœáƒ”áƒ‘áƒ”áƒ‘áƒ˜"
+                title="შეტყობინებები"
                 className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border text-2xl shadow-sm transition ${
                   pathname.startsWith(
                     "/dashboard/notifications"
@@ -426,7 +424,7 @@ export default function DashboardLayout({
                 }`}
               >
                 <span aria-hidden="true">
-                  ðŸ””
+                  🔔
                 </span>
 
                 {!notificationsLoading &&
@@ -443,7 +441,7 @@ export default function DashboardLayout({
                 href="/dashboard"
                 className="flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-slate-800 md:hidden"
               >
-                ðŸ 
+                🏠
               </Link>
             </div>
           </div>
@@ -477,4 +475,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
