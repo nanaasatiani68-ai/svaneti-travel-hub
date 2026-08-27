@@ -1,9 +1,9 @@
-"use client";
+
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type Tour = {
   id: string | number;
@@ -37,6 +37,7 @@ type SortOption =
 
 export default function PublicToursPage() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [tours, setTours] = useState<Tour[]>([]);
   const [authorNames, setAuthorNames] = useState<Record<string, string>>({});
