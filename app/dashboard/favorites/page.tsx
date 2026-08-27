@@ -398,3 +398,4 @@ function InfoBox({
       <span>{value}</span>
     </div>
   );
+}
