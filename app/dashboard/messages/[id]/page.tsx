@@ -210,10 +210,6 @@ export default function ConversationPage() {
           setConversation(row);
         }
 
-        const isParticipant =
-          row.customer_id === user.id ||
-          row.provider_id === user.id;
-
         const otherUserId =
           row.customer_id === user.id
             ? row.provider_id
