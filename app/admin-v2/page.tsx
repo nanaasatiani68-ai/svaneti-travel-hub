@@ -1,5 +1,6 @@
 "use client";
 
+
 import {
   useCallback,
   useEffect,
@@ -66,6 +67,7 @@ type DashboardStats = {
   totalRevenue: number;
 
   totalUsers: number;
+  pendingProviderApplications: number;
 
   totalTours: number;
   pendingTours: number;
@@ -96,6 +98,7 @@ const initialStats: DashboardStats = {
   totalRevenue: 0,
 
   totalUsers: 0,
+  pendingProviderApplications: 0,
 
   totalTours: 0,
   pendingTours: 0,
@@ -239,6 +242,7 @@ export default function AdminV2Page() {
         bookingsResult,
         toursResult,
         usersCountResult,
+        pendingProviderApplicationsResult,
         transfersCountResult,
         pendingTransfersCountResult,
         approvedTransfersCountResult,
@@ -285,6 +289,14 @@ export default function AdminV2Page() {
             count: "exact",
             head: true,
           }),
+
+        supabase
+          .from("provider_applications")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("status", "pending"),
 
         supabase
           .from("transfers")
@@ -351,6 +363,13 @@ export default function AdminV2Page() {
         console.error(
           "Users count error:",
           usersCountResult.error
+        );
+      }
+
+      if (pendingProviderApplicationsResult.error) {
+        console.error(
+          "Pending provider applications count error:",
+          pendingProviderApplicationsResult.error
         );
       }
 
@@ -539,6 +558,8 @@ export default function AdminV2Page() {
         totalRevenue,
 
         totalUsers: usersCountResult.count ?? 0,
+        pendingProviderApplications:
+          pendingProviderApplicationsResult.count ?? 0,
 
         totalTours: tours.length,
         pendingTours: pendingTours.length,
@@ -615,6 +636,20 @@ export default function AdminV2Page() {
         href: "/admin-v2/users",
         color: "from-purple-500 to-violet-500",
         directorOnly: true,
+      },
+      {
+        title: "Provider მოთხოვნები",
+        value: formatNumber(
+          stats.pendingProviderApplications
+        ),
+        note:
+          stats.pendingProviderApplications > 0
+            ? "მოლოდინშია დამტკიცება"
+            : "ახალი მოთხოვნა არ არის",
+        icon: "🧳",
+        href: "/dashboard/provider-applications",
+        color: "from-fuchsia-500 to-violet-600",
+        directorOnly: false,
       },
       {
         title: "სულ ტურები",
@@ -1098,12 +1133,6 @@ export default function AdminV2Page() {
               href="/admin-v2/guides"
               icon="🧑‍💼"
               title="გიდები"
-            />
-
-            <QuickLink
-              href="/admin-v2/travel-tips"
-              icon="🧭"
-              title="სვანეთის რჩევები"
             />
 
             <QuickLink
