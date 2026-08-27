@@ -1,9 +1,13 @@
-"use client";
 
-import { useCallback, useEffect, useState } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type Tour = {
   id: number | string;
@@ -31,7 +35,7 @@ type FavoriteTour = {
 };
 
 export default function FavoritesPage() {
-  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
 
   const [favorites, setFavorites] = useState<FavoriteTour[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,20 +47,60 @@ export default function FavoritesPage() {
     setLoading(true);
     setErrorMessage("");
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: sessionData,
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-    if (userError || !user) {
-      router.replace("/login");
-      return;
-    }
+      if (sessionError) {
+        console.error("Favorites session error:", sessionError);
+      }
 
-    const { data, error } = await supabase
-      .from("favorites")
-      .select(
-        `
+      let user = sessionData.session?.user ?? null;
+
+      if (!user) {
+        const {
+          data: userData,
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("Favorites user error:", userError);
+        }
+
+        user = userData.user;
+      }
+
+      if (!user) {
+        const {
+          data: refreshData,
+          error: refreshError,
+        } = await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.error(
+            "Favorites session refresh error:",
+            refreshError
+          );
+        }
+
+        user = refreshData.user ?? null;
+      }
+
+      if (!user) {
+        window.location.replace(
+          `/login?next=${encodeURIComponent(
+            "/dashboard/favorites"
+          )}`
+        );
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("favorites")
+        .select(
+          `
           id,
           tour_id,
           created_at,
@@ -72,25 +116,19 @@ export default function FavoritesPage() {
             category,
             status
           )
-        `
-      )
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+          `
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Favorites loading error:", error);
-      setErrorMessage(
-        `ფავორიტების ჩატვირთვა ვერ მოხერხდა: ${error.message}`
-      );
-      setFavorites([]);
-      setLoading(false);
-      return;
-    }
+      if (error) {
+        throw error;
+      }
 
-    const rows = (data as FavoriteRow[] | null) ?? [];
+      const rows = (data as FavoriteRow[] | null) ?? [];
 
-    const preparedFavorites: FavoriteTour[] = rows
-      .map((row) => {
+      const preparedFavorites: FavoriteTour[] = rows
+        .map((row) => {
         const relatedTour = Array.isArray(row.tours)
           ? row.tours[0]
           : row.tours;
@@ -103,15 +141,29 @@ export default function FavoritesPage() {
           favoriteId: row.id,
           tour: relatedTour,
         };
-      })
-      .filter(
-        (item): item is FavoriteTour =>
-          item !== null && item.tour.status === "approved"
-      );
+        })
+        .filter(
+          (item): item is FavoriteTour =>
+            item !== null && item.tour.status === "approved"
+        );
 
-    setFavorites(preparedFavorites);
-    setLoading(false);
-  }, [router]);
+      setFavorites(preparedFavorites);
+    } catch (error) {
+      console.error("Favorites loading error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "უცნობი შეცდომა მოხდა.";
+
+      setErrorMessage(
+        `ფავორიტების ჩატვირთვა ვერ მოხერხდა: ${message}`
+      );
+      setFavorites([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     loadFavorites();
@@ -346,4 +398,3 @@ function InfoBox({
       <span>{value}</span>
     </div>
   );
-}
