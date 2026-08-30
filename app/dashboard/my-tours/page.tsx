@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -96,7 +96,7 @@ export default function MyToursPage() {
       console.error("Tours loading error:", error);
 
       setMessage(
-        `ტურების ჩატვირთვა ვერ მოხერხდა: ${error.message}`
+        `áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ˜áƒ¡ áƒ©áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ•áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ: ${error.message}`
       );
 
       setMessageType("error");
@@ -109,7 +109,7 @@ export default function MyToursPage() {
     setTours(ownTours);
 
     if (ownTours.length === 0) {
-      setMessage("შენ ჯერ არცერთი ტური არ დაგიმატებია.");
+      setMessage("áƒ¨áƒ”áƒœ áƒ¯áƒ”áƒ  áƒáƒ áƒªáƒ”áƒ áƒ—áƒ˜ áƒ¢áƒ£áƒ áƒ˜ áƒáƒ  áƒ“áƒáƒ’áƒ˜áƒ›áƒáƒ¢áƒ”áƒ‘áƒ˜áƒ.");
       setMessageType("info");
     }
 
@@ -122,15 +122,15 @@ export default function MyToursPage() {
 
   async function deleteTour(tour: Tour) {
     if (!currentUserId || tour.user_id !== currentUserId) {
-      setMessage("ამ ტურის წაშლის უფლება არ გაქვს.");
+      setMessage("áƒáƒ› áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¬áƒáƒ¨áƒšáƒ˜áƒ¡ áƒ£áƒ¤áƒšáƒ”áƒ‘áƒ áƒáƒ  áƒ’áƒáƒ¥áƒ•áƒ¡.");
       setMessageType("error");
       return;
     }
 
     const confirmed = window.confirm(
-      `ნამდვილად გინდა ტურის „${
-        tour.title || "უსახელო ტური"
-      }“ წაშლა?\n\nწაშლის შემდეგ მისი აღდგენა შეუძლებელი იქნება.`
+      `áƒœáƒáƒ›áƒ“áƒ•áƒ˜áƒšáƒáƒ“ áƒ’áƒ˜áƒœáƒ“áƒ áƒ¢áƒ£áƒ áƒ˜áƒ¡ â€ž${
+        tour.title || "áƒ£áƒ¡áƒáƒ®áƒ”áƒšáƒ áƒ¢áƒ£áƒ áƒ˜"
+      }â€œ áƒ¬áƒáƒ¨áƒšáƒ?\n\náƒ¬áƒáƒ¨áƒšáƒ˜áƒ¡ áƒ¨áƒ”áƒ›áƒ“áƒ”áƒ’ áƒ›áƒ˜áƒ¡áƒ˜ áƒáƒ¦áƒ“áƒ’áƒ”áƒœáƒ áƒ¨áƒ”áƒ£áƒ«áƒšáƒ”áƒ‘áƒ”áƒšáƒ˜ áƒ˜áƒ¥áƒœáƒ”áƒ‘áƒ.`
     );
 
     if (!confirmed) {
@@ -151,7 +151,7 @@ export default function MyToursPage() {
       console.error("Tour delete error:", error);
 
       setMessage(
-        `ტურის წაშლა ვერ მოხერხდა: ${error.message}`
+        `áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¬áƒáƒ¨áƒšáƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ: ${error.message}`
       );
 
       setMessageType("error");
@@ -161,7 +161,7 @@ export default function MyToursPage() {
 
     if (!data || data.length === 0) {
       setMessage(
-        "ტური არ წაიშალა. გადაამოწმე Supabase-ის DELETE პოლიტიკა."
+        "áƒ¢áƒ£áƒ áƒ˜ áƒáƒ  áƒ¬áƒáƒ˜áƒ¨áƒáƒšáƒ. áƒ’áƒáƒ“áƒáƒáƒ›áƒáƒ¬áƒ›áƒ” Supabase-áƒ˜áƒ¡ DELETE áƒžáƒáƒšáƒ˜áƒ¢áƒ˜áƒ™áƒ."
       );
 
       setMessageType("error");
@@ -211,7 +211,7 @@ export default function MyToursPage() {
       currentTours.filter((item) => item.id !== tour.id)
     );
 
-    setMessage("ტური წარმატებით წაიშალა.");
+    setMessage("áƒ¢áƒ£áƒ áƒ˜ áƒ¬áƒáƒ áƒ›áƒáƒ¢áƒ”áƒ‘áƒ˜áƒ— áƒ¬áƒáƒ˜áƒ¨áƒáƒšáƒ.");
     setMessageType("success");
     setDeletingId(null);
   }
@@ -220,10 +220,10 @@ export default function MyToursPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
-          <div className="text-6xl">⏳</div>
+          <div className="text-6xl">â³</div>
 
           <p className="mt-4 text-lg font-semibold">
-            ტურები იტვირთება...
+            áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ˜ áƒ˜áƒ¢áƒ•áƒ˜áƒ áƒ—áƒ”áƒ‘áƒ...
           </p>
         </div>
       </main>
@@ -236,18 +236,18 @@ export default function MyToursPage() {
         <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-cyan-300">
-              მომხმარებლის პანელი
+              áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒšáƒ˜áƒ¡ áƒžáƒáƒœáƒ”áƒšáƒ˜
             </p>
 
             <h1 className="mt-3 text-4xl font-black">
-              🏔️ ჩემი ტურები
+              ðŸ”ï¸ áƒ©áƒ”áƒ›áƒ˜ áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ˜
             </h1>
 
             <p className="mt-3 max-w-3xl text-white/60">
-              აქ შეგიძლია ნახო, შეცვალო ან წაშალო შენ მიერ
-              დამატებული ტურები. თითოეულ ტურს შეიძლება ჰქონდეს
-              განსხვავებული ორგანიზატორის სახელი და ტელეფონის
-              ნომერი.
+              áƒáƒ¥ áƒ¨áƒ”áƒ’áƒ˜áƒ«áƒšáƒ˜áƒ áƒœáƒáƒ®áƒ, áƒ¨áƒ”áƒªáƒ•áƒáƒšáƒ áƒáƒœ áƒ¬áƒáƒ¨áƒáƒšáƒ áƒ¨áƒ”áƒœ áƒ›áƒ˜áƒ”áƒ 
+              áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ£áƒšáƒ˜ áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ˜. áƒ—áƒ˜áƒ—áƒáƒ”áƒ£áƒš áƒ¢áƒ£áƒ áƒ¡ áƒ¨áƒ”áƒ˜áƒ«áƒšáƒ”áƒ‘áƒ áƒ°áƒ¥áƒáƒœáƒ“áƒ”áƒ¡
+              áƒ’áƒáƒœáƒ¡áƒ®áƒ•áƒáƒ•áƒ”áƒ‘áƒ£áƒšáƒ˜ áƒáƒ áƒ’áƒáƒœáƒ˜áƒ–áƒáƒ¢áƒáƒ áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ˜ áƒ“áƒ áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜áƒ¡
+              áƒœáƒáƒ›áƒ”áƒ áƒ˜.
             </p>
           </div>
 
@@ -256,14 +256,14 @@ export default function MyToursPage() {
               href="/dashboard"
               className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-bold transition hover:bg-white/10"
             >
-              ← Dashboard
+              â† Dashboard
             </Link>
 
             <Link
               href="/dashboard/add-tour"
               className="rounded-2xl bg-cyan-500 px-5 py-3 font-bold transition hover:bg-cyan-600"
             >
-              ➕ ტურის დამატება
+              âž• áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ
             </Link>
           </div>
         </header>
@@ -284,23 +284,23 @@ export default function MyToursPage() {
 
         {tours.length === 0 ? (
           <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-12 text-center shadow-2xl">
-            <div className="text-7xl">🏔️</div>
+            <div className="text-7xl">ðŸ”ï¸</div>
 
             <h2 className="mt-5 text-3xl font-bold">
-              ჯერ ტური არ გაქვს დამატებული
+              áƒ¯áƒ”áƒ  áƒ¢áƒ£áƒ áƒ˜ áƒáƒ  áƒ’áƒáƒ¥áƒ•áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ£áƒšáƒ˜
             </h2>
 
             <p className="mt-3 text-white/55">
-              დაამატე შენი პირველი ტური. ყოველ ახალ ტურზე
-              განსხვავებული ორგანიზატორის სახელისა და ნომრების
-              მითითებას შეძლებ.
+              áƒ“áƒáƒáƒ›áƒáƒ¢áƒ” áƒ¨áƒ”áƒœáƒ˜ áƒžáƒ˜áƒ áƒ•áƒ”áƒšáƒ˜ áƒ¢áƒ£áƒ áƒ˜. áƒ§áƒáƒ•áƒ”áƒš áƒáƒ®áƒáƒš áƒ¢áƒ£áƒ áƒ–áƒ”
+              áƒ’áƒáƒœáƒ¡áƒ®áƒ•áƒáƒ•áƒ”áƒ‘áƒ£áƒšáƒ˜ áƒáƒ áƒ’áƒáƒœáƒ˜áƒ–áƒáƒ¢áƒáƒ áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ˜áƒ¡áƒ áƒ“áƒ áƒœáƒáƒ›áƒ áƒ”áƒ‘áƒ˜áƒ¡
+              áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒáƒ¡ áƒ¨áƒ”áƒ«áƒšáƒ”áƒ‘.
             </p>
 
             <Link
               href="/dashboard/add-tour"
               className="mt-7 inline-flex rounded-2xl bg-cyan-500 px-7 py-4 font-bold transition hover:bg-cyan-600"
             >
-              ➕ ტურის დამატება
+              âž• áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ
             </Link>
           </section>
         ) : (
@@ -319,7 +319,7 @@ export default function MyToursPage() {
                     />
                   ) : (
                     <div className="flex h-64 items-center justify-center bg-white/5 text-8xl">
-                      🏔️
+                      ðŸ”ï¸
                     </div>
                   )}
 
@@ -342,56 +342,56 @@ export default function MyToursPage() {
                   </div>
 
                   <h2 className="mt-5 text-2xl font-extrabold">
-                    {tour.title || "უსახელო ტური"}
+                    {tour.title || "áƒ£áƒ¡áƒáƒ®áƒ”áƒšáƒ áƒ¢áƒ£áƒ áƒ˜"}
                   </h2>
 
                   <p className="mt-3 text-white/60">
-                    📍{" "}
+                    ðŸ“{" "}
                     {tour.location ||
-                      "მდებარეობა არ არის მითითებული"}
+                      "áƒ›áƒ“áƒ”áƒ‘áƒáƒ áƒ”áƒáƒ‘áƒ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"}
                   </p>
 
                   <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                     <InfoBox
-                      icon="💰"
+                      icon="ðŸ’°"
                       value={
                         tour.price !== null
                           ? `${Number(
                               tour.price
-                            ).toLocaleString()} ₾`
-                          : "შეთანხმებით"
+                            ).toLocaleString()} â‚¾`
+                          : "áƒ¨áƒ”áƒ—áƒáƒœáƒ®áƒ›áƒ”áƒ‘áƒ˜áƒ—"
                       }
                     />
 
                     <InfoBox
-                      icon="⏱️"
+                      icon="â±ï¸"
                       value={
                         tour.duration ||
-                        "ხანგრძლივობა უცნობია"
+                        "áƒ®áƒáƒœáƒ’áƒ áƒ«áƒšáƒ˜áƒ•áƒáƒ‘áƒ áƒ£áƒªáƒœáƒáƒ‘áƒ˜áƒ"
                       }
                     />
 
                     <InfoBox
-                      icon="👥"
+                      icon="ðŸ‘¥"
                       value={
                         tour.max_people
-                          ? `${tour.max_people} ადამიანი`
-                          : "რაოდენობა უცნობია"
+                          ? `${tour.max_people} áƒáƒ“áƒáƒ›áƒ˜áƒáƒœáƒ˜`
+                          : "áƒ áƒáƒáƒ“áƒ”áƒœáƒáƒ‘áƒ áƒ£áƒªáƒœáƒáƒ‘áƒ˜áƒ"
                       }
                     />
 
                     <InfoBox
-                      icon="🚙"
+                      icon="ðŸš™"
                       value={
                         tour.category ||
-                        "კატეგორია უცნობია"
+                        "áƒ™áƒáƒ¢áƒ”áƒ’áƒáƒ áƒ˜áƒ áƒ£áƒªáƒœáƒáƒ‘áƒ˜áƒ"
                       }
                     />
                   </div>
 
                   {tour.start_date && (
                     <div className="mt-4 rounded-xl bg-black/20 p-3 text-sm text-white/70">
-                      📅 დაწყება: {formatDate(tour.start_date)}
+                      ðŸ“… áƒ“áƒáƒ¬áƒ§áƒ”áƒ‘áƒ: {formatDate(tour.start_date)}
                     </div>
                   )}
 
@@ -403,91 +403,91 @@ export default function MyToursPage() {
 
                   <div className="mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
                     <p className="text-xs font-bold uppercase tracking-[0.15em] text-cyan-300">
-                      საჯარო საკონტაქტო ინფორმაცია
+                      áƒ¡áƒáƒ¯áƒáƒ áƒ áƒ¡áƒáƒ™áƒáƒœáƒ¢áƒáƒ¥áƒ¢áƒ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ
                     </p>
 
                     <div className="mt-3 space-y-2 text-sm">
                       <ContactRow
-                        icon="👤"
-                        label="ორგანიზატორი"
+                        icon="ðŸ‘¤"
+                        label="áƒáƒ áƒ’áƒáƒœáƒ˜áƒ–áƒáƒ¢áƒáƒ áƒ˜"
                         value={
                           tour.organizer_name ||
-                          "ორგანიზატორი არ არის მითითებული"
+                          "áƒáƒ áƒ’áƒáƒœáƒ˜áƒ–áƒáƒ¢áƒáƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"
                         }
                       />
 
                       <ContactRow
-                        icon="📞"
-                        label="ტელეფონი"
+                        icon="ðŸ“ž"
+                        label="áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜"
                         value={
                           tour.contact_phone ||
-                          "ნომერი არ არის მითითებული"
+                          "áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"
                         }
                       />
 
                       <ContactRow
-                        icon="🟢"
+                        icon="ðŸŸ¢"
                         label="WhatsApp"
                         value={
                           tour.has_whatsapp
                             ? tour.contact_phone ||
                               tour.whatsapp_phone ||
-                              "ნომერი არ არის მითითებული"
+                              "áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"
                             : tour.whatsapp_phone ||
-                              "ნომერი არ არის მითითებული"
+                              "áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"
                         }
                       />
 
                       <ContactRow
-                        icon="🟣"
+                        icon="ðŸŸ£"
                         label="Viber"
                         value={
                           tour.has_viber
                             ? tour.contact_phone ||
                               tour.viber_phone ||
-                              "ნომერი არ არის მითითებული"
+                              "áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"
                             : tour.viber_phone ||
-                              "ნომერი არ არის მითითებული"
+                              "áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜"
                         }
                       />
                     </div>
 
                     <p className="mt-3 text-xs leading-5 text-white/45">
-                      ეს ინფორმაცია ტურის საჯარო გვერდზე გამოჩნდება.
-                      შენი ანგარიშის სახელი და ელფოსტა საჯაროდ არ
-                      გამოჩნდება.
+                      áƒ”áƒ¡ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¡áƒáƒ¯áƒáƒ áƒ áƒ’áƒ•áƒ”áƒ áƒ“áƒ–áƒ” áƒ’áƒáƒ›áƒáƒ©áƒœáƒ“áƒ”áƒ‘áƒ.
+                      áƒ¨áƒ”áƒœáƒ˜ áƒáƒœáƒ’áƒáƒ áƒ˜áƒ¨áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ˜ áƒ“áƒ áƒ”áƒšáƒ¤áƒáƒ¡áƒ¢áƒ áƒ¡áƒáƒ¯áƒáƒ áƒáƒ“ áƒáƒ 
+                      áƒ’áƒáƒ›áƒáƒ©áƒœáƒ“áƒ”áƒ‘áƒ.
                     </p>
                   </div>
 
                   {tour.status === "rejected" && (
                     <div className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 p-4">
                       <p className="font-black text-red-200">
-                        ❌ უარყოფის მიზეზი
+                        âŒ áƒ£áƒáƒ áƒ§áƒáƒ¤áƒ˜áƒ¡ áƒ›áƒ˜áƒ–áƒ”áƒ–áƒ˜
                       </p>
 
                       <p className="mt-2 whitespace-pre-wrap break-words leading-7 text-red-100/90">
                         {tour.rejection_reason ||
-                          "ადმინისტრატორს უარყოფის მიზეზი არ მიუთითებია."}
+                          "áƒáƒ“áƒ›áƒ˜áƒœáƒ˜áƒ¡áƒ¢áƒ áƒáƒ¢áƒáƒ áƒ¡ áƒ£áƒáƒ áƒ§áƒáƒ¤áƒ˜áƒ¡ áƒ›áƒ˜áƒ–áƒ”áƒ–áƒ˜ áƒáƒ  áƒ›áƒ˜áƒ£áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ˜áƒ."}
                       </p>
 
                       <p className="mt-3 text-sm text-red-200/70">
-                        შეცვალე ტურის ინფორმაცია და ხელახლა
-                        გაგზავნე დასამტკიცებლად.
+                        áƒ¨áƒ”áƒªáƒ•áƒáƒšáƒ” áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ áƒ“áƒ áƒ®áƒ”áƒšáƒáƒ®áƒšáƒ
+                        áƒ’áƒáƒ’áƒ–áƒáƒ•áƒœáƒ” áƒ“áƒáƒ¡áƒáƒ›áƒ¢áƒ™áƒ˜áƒªáƒ”áƒ‘áƒšáƒáƒ“.
                       </p>
                     </div>
                   )}
 
                   {tour.status === "pending" && (
                     <div className="mt-5 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                      ⏳ ტური გაგზავნილია ადმინისტრატორთან და
-                      ელოდება დამტკიცებას.
+                      â³ áƒ¢áƒ£áƒ áƒ˜ áƒ’áƒáƒ’áƒ–áƒáƒ•áƒœáƒ˜áƒšáƒ˜áƒ áƒáƒ“áƒ›áƒ˜áƒœáƒ˜áƒ¡áƒ¢áƒ áƒáƒ¢áƒáƒ áƒ—áƒáƒœ áƒ“áƒ
+                      áƒ”áƒšáƒáƒ“áƒ”áƒ‘áƒ áƒ“áƒáƒ›áƒ¢áƒ™áƒ˜áƒªáƒ”áƒ‘áƒáƒ¡.
                     </div>
                   )}
 
                   {tour.status === "approved" && (
                     <div className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-                      ✅ ტური დამტკიცებულია და მომხმარებლებისთვის
-                      საჯაროდ ჩანს.
+                      âœ… áƒ¢áƒ£áƒ áƒ˜ áƒ“áƒáƒ›áƒ¢áƒ™áƒ˜áƒªáƒ”áƒ‘áƒ£áƒšáƒ˜áƒ áƒ“áƒ áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒšáƒ”áƒ‘áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡
+                      áƒ¡áƒáƒ¯áƒáƒ áƒáƒ“ áƒ©áƒáƒœáƒ¡.
                     </div>
                   )}
 
@@ -496,14 +496,14 @@ export default function MyToursPage() {
                       href={`/book-tour/${tour.id}`}
                       className="flex items-center justify-center rounded-2xl bg-cyan-500 px-4 py-3 text-center font-bold transition hover:bg-cyan-600"
                     >
-                      👁️ ნახვა
+                      ðŸ‘ï¸ áƒœáƒáƒ®áƒ•áƒ
                     </Link>
 
                     <Link
-                      href={`/dashboard/my-tours/${tour.id}/edit`}
+                      href={`/dashboard/edit-tour/${tour.id}`}
                       className="flex items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-center font-bold text-white transition hover:bg-amber-600"
                     >
-                      ✏️ შეცვლა
+                      âœï¸ áƒ¨áƒ”áƒªáƒ•áƒšáƒ
                     </Link>
 
                     <button
@@ -513,8 +513,8 @@ export default function MyToursPage() {
                       className="rounded-2xl bg-red-600 px-4 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {deletingId === tour.id
-                        ? "იშლება..."
-                        : "🗑️ წაშლა"}
+                        ? "áƒ˜áƒ¨áƒšáƒ”áƒ‘áƒ..."
+                        : "ðŸ—‘ï¸ áƒ¬áƒáƒ¨áƒšáƒ"}
                     </button>
                   </div>
                 </div>
@@ -535,7 +535,7 @@ function StatusBadge({
   if (status === "approved") {
     return (
       <span className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white shadow-lg">
-        ✅ დამტკიცებული
+        âœ… áƒ“áƒáƒ›áƒ¢áƒ™áƒ˜áƒªáƒ”áƒ‘áƒ£áƒšáƒ˜
       </span>
     );
   }
@@ -543,14 +543,14 @@ function StatusBadge({
   if (status === "rejected") {
     return (
       <span className="rounded-full bg-red-500 px-4 py-2 text-xs font-black text-white shadow-lg">
-        ❌ უარყოფილი
+        âŒ áƒ£áƒáƒ áƒ§áƒáƒ¤áƒ˜áƒšáƒ˜
       </span>
     );
   }
 
   return (
     <span className="rounded-full bg-amber-500 px-4 py-2 text-xs font-black text-white shadow-lg">
-      ⏳ დასამტკიცებელი
+      â³ áƒ“áƒáƒ¡áƒáƒ›áƒ¢áƒ™áƒ˜áƒªáƒ”áƒ‘áƒ”áƒšáƒ˜
     </span>
   );
 }
@@ -581,7 +581,7 @@ function ContactRow({
 }) {
   const isMissing =
     !value ||
-    value.includes("არ არის მითითებული");
+    value.includes("áƒáƒ  áƒáƒ áƒ˜áƒ¡ áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ£áƒšáƒ˜");
 
   const normalizedPhone = value.replace(/[^0-9]/g, "");
 
