@@ -1043,6 +1043,15 @@ export default function Home() {
           <div>
             <p>© 2026 Georgia Gateway Hub</p>
             <p className="mt-1">{t.madeInGeorgia}</p>
+            <p className="mt-3 font-semibold text-white/60">
+              Director: Nana Asatiani
+            </p>
+            <a
+              href="tel:+995558768006"
+              className="mt-1 inline-block font-semibold text-white/60 transition hover:text-white"
+            >
+              📞 +995 558 768 006
+            </a>
           </div>
           <LanguageSwitcher />
         </div>
