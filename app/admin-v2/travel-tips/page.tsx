@@ -542,7 +542,7 @@ export default function TravelTipsAdminPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">
-              სვანეთის ადგილები და რჩევები
+              ტურისტული ადგილები და რჩევები
             </h1>
 
             <p className="mt-3 max-w-2xl leading-7 text-white/55">

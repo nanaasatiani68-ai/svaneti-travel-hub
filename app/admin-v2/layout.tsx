@@ -69,6 +69,11 @@ const menuItems: MenuItem[] = [
   { name: "Hotels", href: "/admin-v2/hotels", icon: "🏨" },
   { name: "Guides", href: "/admin-v2/guides", icon: "🧑‍💼" },
   {
+    name: "Travel Tips",
+    href: "/admin-v2/travel-tips",
+    icon: "🧭",
+  },
+  {
     name: "Users",
     href: "/admin-v2/users",
     icon: "👥",
