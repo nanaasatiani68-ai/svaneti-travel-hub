@@ -43,6 +43,31 @@ export default function AddTourPage() {
   const [maxPeople, setMaxPeople] = useState("");
   const [category, setCategory] = useState("");
 
+  const [horseExperienceLevel, setHorseExperienceLevel] =
+    useState("");
+  const [horseDifficulty, setHorseDifficulty] =
+    useState("");
+  const [horseMinAge, setHorseMinAge] = useState("");
+  const [horseMaxAge, setHorseMaxAge] = useState("");
+  const [horseDurationHours, setHorseDurationHours] =
+    useState("");
+  const [horseRouteKm, setHorseRouteKm] = useState("");
+  const [horseHelmetIncluded, setHorseHelmetIncluded] =
+    useState(false);
+  const [horseBeginnerFriendly, setHorseBeginnerFriendly] =
+    useState(false);
+  const [horseGuideIncluded, setHorseGuideIncluded] =
+    useState(true);
+  const [horseChoiceAvailable, setHorseChoiceAvailable] =
+    useState(false);
+  const [horseMaxWeightKg, setHorseMaxWeightKg] =
+    useState("");
+  const [horseSafetyInfo, setHorseSafetyInfo] = useState("");
+  const [
+    horseGuestRequirements,
+    setHorseGuestRequirements,
+  ] = useState("");
+
   const [contactPhone, setContactPhone] = useState("");
   const [hasWhatsapp, setHasWhatsapp] = useState(false);
   const [hasViber, setHasViber] = useState(false);
@@ -51,6 +76,9 @@ export default function AddTourPage() {
   const [messageType, setMessageType] = useState<
     "success" | "error"
   >("success");
+
+  const isHorseRiding =
+    category === "Horse Riding";
 
   useEffect(() => {
     async function checkUser() {
@@ -365,6 +393,66 @@ export default function AddTourPage() {
       return;
     }
 
+    if (isHorseRiding) {
+      const minAge = horseMinAge
+        ? Number(horseMinAge)
+        : null;
+      const maxAge = horseMaxAge
+        ? Number(horseMaxAge)
+        : null;
+      const durationHours = horseDurationHours
+        ? Number(horseDurationHours)
+        : null;
+      const routeKm = horseRouteKm
+        ? Number(horseRouteKm)
+        : null;
+      const maxWeightKg = horseMaxWeightKg
+        ? Number(horseMaxWeightKg)
+        : null;
+
+      if (
+        minAge !== null &&
+        maxAge !== null &&
+        minAge > maxAge
+      ) {
+        setMessage(
+          "საცხენოსნო ტურზე მინიმალური ასაკი მაქსიმალურ ასაკზე მეტი ვერ იქნება."
+        );
+        setMessageType("error");
+        return;
+      }
+
+      if (
+        durationHours !== null &&
+        durationHours <= 0
+      ) {
+        setMessage(
+          "ცხენით გასეირნების ხანგრძლივობა უნდა იყოს 0-ზე მეტი."
+        );
+        setMessageType("error");
+        return;
+      }
+
+      if (routeKm !== null && routeKm <= 0) {
+        setMessage(
+          "საცხენოსნო მარშრუტის სიგრძე უნდა იყოს 0-ზე მეტი."
+        );
+        setMessageType("error");
+        return;
+      }
+
+      if (
+        maxWeightKg !== null &&
+        maxWeightKg <= 0
+      ) {
+        setMessage(
+          "მაქსიმალური წონა უნდა იყოს 0-ზე მეტი."
+        );
+        setMessageType("error");
+        return;
+      }
+    }
+
     if (imageFiles.length === 0) {
       setMessage(
         "აირჩიე მინიმუმ ერთი ფოტო."
@@ -403,6 +491,52 @@ export default function AddTourPage() {
             ? Number(maxPeople)
             : null,
           category: category || null,
+
+          horse_experience_level: isHorseRiding
+            ? horseExperienceLevel || null
+            : null,
+          horse_difficulty: isHorseRiding
+            ? horseDifficulty || null
+            : null,
+          horse_min_age:
+            isHorseRiding && horseMinAge
+              ? Number(horseMinAge)
+              : null,
+          horse_max_age:
+            isHorseRiding && horseMaxAge
+              ? Number(horseMaxAge)
+              : null,
+          horse_duration_hours:
+            isHorseRiding && horseDurationHours
+              ? Number(horseDurationHours)
+              : null,
+          horse_route_km:
+            isHorseRiding && horseRouteKm
+              ? Number(horseRouteKm)
+              : null,
+          horse_helmet_included: isHorseRiding
+            ? horseHelmetIncluded
+            : false,
+          horse_beginner_friendly: isHorseRiding
+            ? horseBeginnerFriendly
+            : false,
+          horse_guide_included: isHorseRiding
+            ? horseGuideIncluded
+            : false,
+          horse_choice_available: isHorseRiding
+            ? horseChoiceAvailable
+            : false,
+          horse_max_weight_kg:
+            isHorseRiding && horseMaxWeightKg
+              ? Number(horseMaxWeightKg)
+              : null,
+          horse_safety_info: isHorseRiding
+            ? horseSafetyInfo.trim() || null
+            : null,
+          horse_guest_requirements: isHorseRiding
+            ? horseGuestRequirements.trim() || null
+            : null,
+
           image_url: firstImage,
           image_urls:
             uploadedImages.publicUrls,
@@ -693,6 +827,307 @@ export default function AddTourPage() {
                 </select>
               </FormField>
             </div>
+
+            {isHorseRiding && (
+              <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50/70 p-5 sm:p-6">
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl">🐎</div>
+
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+                      Horse Riding Details
+                    </p>
+
+                    <h3 className="mt-1 text-2xl font-black text-slate-900">
+                      საცხენოსნო ტურის დეტალები
+                    </h3>
+
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                      ეს ინფორმაცია გამოჩნდება მხოლოდ Horse Riding კატეგორიის ტურებზე.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-5 md:grid-cols-2">
+                  <FormField label="გამოცდილების დონე">
+                    <select
+                      value={horseExperienceLevel}
+                      onChange={(event) =>
+                        setHorseExperienceLevel(
+                          event.target.value
+                        )
+                      }
+                      className="input"
+                    >
+                      <option value="">
+                        აირჩიე დონე
+                      </option>
+                      <option value="Any">
+                        ყველასთვის / Any
+                      </option>
+                      <option value="Beginner">
+                        დამწყები / Beginner
+                      </option>
+                      <option value="Intermediate">
+                        საშუალო / Intermediate
+                      </option>
+                      <option value="Experienced">
+                        გამოცდილი / Experienced
+                      </option>
+                    </select>
+                  </FormField>
+
+                  <FormField label="მარშრუტის სირთულე">
+                    <select
+                      value={horseDifficulty}
+                      onChange={(event) =>
+                        setHorseDifficulty(
+                          event.target.value
+                        )
+                      }
+                      className="input"
+                    >
+                      <option value="">
+                        აირჩიე სირთულე
+                      </option>
+                      <option value="Easy">
+                        მარტივი / Easy
+                      </option>
+                      <option value="Moderate">
+                        საშუალო / Moderate
+                      </option>
+                      <option value="Difficult">
+                        რთული / Difficult
+                      </option>
+                    </select>
+                  </FormField>
+
+                  <FormField label="მინიმალური ასაკი">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={horseMinAge}
+                      onChange={(event) =>
+                        setHorseMinAge(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: 8"
+                      className="input"
+                    />
+                  </FormField>
+
+                  <FormField label="მაქსიმალური ასაკი">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={horseMaxAge}
+                      onChange={(event) =>
+                        setHorseMaxAge(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: 65"
+                      className="input"
+                    />
+                  </FormField>
+
+                  <FormField label="ხანგრძლივობა საათებში">
+                    <input
+                      type="number"
+                      min="0.25"
+                      step="0.25"
+                      value={horseDurationHours}
+                      onChange={(event) =>
+                        setHorseDurationHours(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: 2.5"
+                      className="input"
+                    />
+                  </FormField>
+
+                  <FormField label="მარშრუტის სიგრძე (კმ)">
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={horseRouteKm}
+                      onChange={(event) =>
+                        setHorseRouteKm(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: 8"
+                      className="input"
+                    />
+                  </FormField>
+
+                  <FormField label="მაქსიმალური წონა (კგ)">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={horseMaxWeightKg}
+                      onChange={(event) =>
+                        setHorseMaxWeightKg(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: 100"
+                      className="input"
+                    />
+                  </FormField>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <label
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                      horseHelmetIncluded
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-emerald-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={horseHelmetIncluded}
+                      onChange={(event) =>
+                        setHorseHelmetIncluded(
+                          event.target.checked
+                        )
+                      }
+                      className="h-5 w-5 accent-emerald-600"
+                    />
+
+                    <div>
+                      <p className="font-black text-slate-900">
+                        🪖 ჩაფხუტი შედის
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        სტუმრისთვის ჩაფხუტი ხელმისაწვდომია
+                      </p>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                      horseBeginnerFriendly
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-emerald-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={horseBeginnerFriendly}
+                      onChange={(event) =>
+                        setHorseBeginnerFriendly(
+                          event.target.checked
+                        )
+                      }
+                      className="h-5 w-5 accent-emerald-600"
+                    />
+
+                    <div>
+                      <p className="font-black text-slate-900">
+                        🌱 დამწყებისთვის შესაფერისია
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        წინასწარი გამოცდილება აუცილებელი არ არის
+                      </p>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                      horseGuideIncluded
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-emerald-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={horseGuideIncluded}
+                      onChange={(event) =>
+                        setHorseGuideIncluded(
+                          event.target.checked
+                        )
+                      }
+                      className="h-5 w-5 accent-emerald-600"
+                    />
+
+                    <div>
+                      <p className="font-black text-slate-900">
+                        🧑‍🌾 გიდი მოყვება
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        ტურს თან ახლავს ადგილობრივი გიდი
+                      </p>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-5 transition ${
+                      horseChoiceAvailable
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-emerald-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={horseChoiceAvailable}
+                      onChange={(event) =>
+                        setHorseChoiceAvailable(
+                          event.target.checked
+                        )
+                      }
+                      className="h-5 w-5 accent-emerald-600"
+                    />
+
+                    <div>
+                      <p className="font-black text-slate-900">
+                        🐴 ცხენის არჩევა შესაძლებელია
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        სტუმარს შეუძლია ხელმისაწვდომი ცხენებიდან არჩევა
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="mt-6 grid gap-5">
+                  <FormField label="უსაფრთხოების ინსტრუქცია">
+                    <textarea
+                      value={horseSafetyInfo}
+                      onChange={(event) =>
+                        setHorseSafetyInfo(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: ტურის დაწყებამდე ტარდება მოკლე ინსტრუქტაჟი..."
+                      rows={4}
+                      className="input resize-none"
+                    />
+                  </FormField>
+
+                  <FormField label="რა უნდა იქონიოს სტუმარმა / სპეციალური პირობები">
+                    <textarea
+                      value={horseGuestRequirements}
+                      onChange={(event) =>
+                        setHorseGuestRequirements(
+                          event.target.value
+                        )
+                      }
+                      placeholder="მაგალითად: დახურული ფეხსაცმელი, გრძელი შარვალი, წყალი..."
+                      rows={4}
+                      className="input resize-none"
+                    />
+                  </FormField>
+                </div>
+              </div>
+            )}
 
             <div className="mt-5">
               <FormField
