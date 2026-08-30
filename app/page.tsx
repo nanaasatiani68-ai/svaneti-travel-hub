@@ -697,7 +697,11 @@ export default function Home() {
                         {title}
                       </h3>
 
-                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/55">
+                      <p
+                        className={`mt-2 text-xs leading-5 text-white/55 ${
+                          isOpen ? "" : "line-clamp-2"
+                        }`}
+                      >
                         {short}
                       </p>
 
