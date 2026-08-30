@@ -38,10 +38,9 @@ const menuItems: MenuItem[] = [
     directorOnly: true,
   },
   {
-    name: "➕ Director Tour",
+    name: "➕ Add Tour",
     href: "/admin-v2/add-tour",
-    icon: "➕",
-    directorOnly: true,
+    icon: "🐎",
   },
   { name: "Tour Bookings", href: "/admin-v2/bookings", icon: "📋" },
   { name: "Hotel Bookings", href: "/admin-v2/hotel-bookings", icon: "🛎️" },
@@ -99,7 +98,6 @@ const menuItems: MenuItem[] = [
 
 const directorOnlyPaths = [
   "/admin-v2/analytics",
-  "/admin-v2/add-tour",
   "/admin-v2/users",
   "/admin-v2/staff",
   "/admin-v2/payments",
