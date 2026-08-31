@@ -45,6 +45,7 @@ export async function resizeImageFile(
     );
 
     const canvas = document.createElement("canvas");
+
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
@@ -65,27 +66,33 @@ export async function resizeImageFile(
       targetHeight
     );
 
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (result) => {
-          if (result) {
-            resolve(result);
-          } else {
-            reject(
-              new Error("ფოტოს შეკუმშვა ვერ მოხერხდა.")
-            );
-          }
-        },
-        outputType,
-        quality
-      );
-    });
+    const blob = await new Promise<Blob>(
+      (resolve, reject) => {
+        canvas.toBlob(
+          (result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(
+                new Error(
+                  "ფოტოს შეკუმშვა ვერ მოხერხდა."
+                )
+              );
+            }
+          },
+          outputType,
+          quality
+        );
+      }
+    );
 
     const baseName =
       file.name.replace(/\.[^/.]+$/, "") || "image";
 
     const extension =
-      outputType === "image/webp" ? "webp" : "jpg";
+      outputType === "image/webp"
+        ? "webp"
+        : "jpg";
 
     return new File(
       [blob],
