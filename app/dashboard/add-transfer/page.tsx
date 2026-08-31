@@ -9,6 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { resizeImageFile } from "@/app/lib/image/resizeImage";
 
 type Profile = {
   role: string | null;
@@ -227,19 +228,26 @@ export default function AddTransferPage() {
       throw new Error("მომხმარებელი ვერ მოიძებნა.");
     }
 
-    const extension =
-      imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+    const resizedImage = await resizeImageFile(
+      imageFile,
+      {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.82,
+        outputType: "image/webp",
+      }
+    );
 
     const filePath =
-      `${userId}/transfer-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      `${userId}/transfer-${Date.now()}-${crypto.randomUUID()}.webp`;
 
     const { error: uploadError } =
       await supabase.storage
         .from("transfer-images")
-        .upload(filePath, imageFile, {
+        .upload(filePath, resizedImage, {
           cacheControl: "3600",
           upsert: false,
-          contentType: imageFile.type,
+          contentType: resizedImage.type,
         });
 
     if (uploadError) {
