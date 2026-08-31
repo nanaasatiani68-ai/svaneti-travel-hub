@@ -395,7 +395,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-[#16201b] text-white">
       {showBeta && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-slate-900/95 p-7 text-center shadow-2xl sm:p-9">

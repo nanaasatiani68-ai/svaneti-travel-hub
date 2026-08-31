@@ -100,7 +100,7 @@ export default function TransfersManagementPage() {
               <article key={transfer.id} className="grid overflow-hidden rounded-3xl border border-white/10 bg-black/15 lg:grid-cols-[260px_1fr]">
                 <div className="min-h-[200px]">
                   {transfer.image_url ? (
-                    <img src={transfer.image_url} alt={transfer.title || "Transfer"} className="h-full w-full object-cover" />
+                    <img src={transfer.image_url} alt={transfer.title || "Transfer"} className="h-[230px] w-full object-cover sm:h-[280px] lg:h-full" />
                   ) : (
                     <div className="flex h-full min-h-[200px] items-center justify-center text-7xl">🚐</div>
                   )}
