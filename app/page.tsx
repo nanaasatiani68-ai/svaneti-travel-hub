@@ -33,6 +33,8 @@ type Transfer = {
   price_type?: "fixed" | "negotiable" | "from" | null;
   price_currency?: "GEL" | "USD" | null;
   vehicle: string | null;
+  transfer_type?: string | null;
+  title?: string | null;
   image_url: string | null;
   created_at?: string | null;
 };
@@ -63,7 +65,7 @@ type Guide = {
   created_at?: string | null;
 };
 
-type SectionKey = "tours" | "transfers" | "hotels" | "guides";
+type SectionKey = "tours" | "transfers" | "luggage" | "hotels" | "guides";
 
 const translations = {
   ka: {
@@ -80,6 +82,8 @@ const translations = {
     addService: "სერვისის დამატება",
     tours: "ტურები",
     transfers: "ტრანსფერები",
+    luggageTransfer: "ბარგის გადატანა",
+    luggageTransferText: "ბარგის უსაფრთხო ტრანსპორტირება სვანეთის მარშრუტებზე.",
     hotels: "სასტუმროები",
     guides: "გიდები",
     viewAll: "ყველას ნახვა",
@@ -137,6 +141,8 @@ const translations = {
     addService: "Add Service",
     tours: "Tours",
     transfers: "Transfers",
+    luggageTransfer: "Luggage Transfer",
+    luggageTransferText: "Safe luggage transportation on Svaneti routes.",
     hotels: "Hotels",
     guides: "Guides",
     viewAll: "View All",
@@ -216,6 +222,7 @@ export default function Home() {
   const [pages, setPages] = useState<Record<SectionKey, number>>({
     tours: 0,
     transfers: 0,
+    luggage: 0,
     hotels: 0,
     guides: 0,
   });
@@ -308,7 +315,7 @@ export default function Home() {
   }, [supabase, t.loadError]);
 
   useEffect(() => {
-    setPages({ tours: 0, transfers: 0, hotels: 0, guides: 0 });
+    setPages({ tours: 0, transfers: 0, luggage: 0, hotels: 0, guides: 0 });
     setTravelTipsPage(0);
   }, [pageSize]);
 
@@ -366,6 +373,43 @@ export default function Home() {
     [tours]
   );
 
+  const regularTours = useMemo(
+    () =>
+      tours.filter((tour) => {
+        const category = (tour.category || "").trim().toLowerCase();
+        return !(
+          category === "horse riding" ||
+          category === "horseback tour" ||
+          category === "horse riding tour" ||
+          category.includes("horse")
+        );
+      }),
+    [tours]
+  );
+
+  const luggageTransfers = useMemo(
+    () =>
+      transfers.filter((transfer) => {
+        const transferType = (transfer.transfer_type || "").trim().toLowerCase();
+        const title = (transfer.title || "").trim().toLowerCase();
+        return (
+          transferType.includes("luggage") ||
+          transferType.includes("baggage") ||
+          transferType.includes("ბარგ") ||
+          title.includes("luggage") ||
+          title.includes("baggage") ||
+          title.includes("ბარგ")
+        );
+      }),
+    [transfers]
+  );
+
+  const regularTransfers = useMemo(
+    () =>
+      transfers.filter((transfer) => !luggageTransfers.some((item) => String(item.id) === String(transfer.id))),
+    [transfers, luggageTransfers]
+  );
+
   if (!languageReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
@@ -399,16 +443,13 @@ export default function Home() {
             </Link>
 
             <nav className="hidden items-center gap-6 lg:flex">
-              <a href="#travel-tips" className="font-semibold text-white/75 hover:text-cyan-300">
-                {language === "ka" ? "რჩევები" : "Local Tips"}
-              </a>
-              <a href="#horse-tours" className="font-semibold text-white/75 hover:text-cyan-300">
-                🐎 {t.horsebackTours}
-              </a>
               <a href="#tours" className="font-semibold text-white/75 hover:text-cyan-300">{t.tours}</a>
-              <a href="#transfers" className="font-semibold text-white/75 hover:text-cyan-300">{t.transfers}</a>
-              <a href="#hotels" className="font-semibold text-white/75 hover:text-cyan-300">{t.hotels}</a>
               <a href="#guides" className="font-semibold text-white/75 hover:text-cyan-300">{t.guides}</a>
+              <a href="#horse-tours" className="font-semibold text-white/75 hover:text-cyan-300">🐎 {t.horsebackTours}</a>
+              <a href="#transfers" className="font-semibold text-white/75 hover:text-cyan-300">{t.transfers}</a>
+              <a href="#luggage-transfer" className="font-semibold text-white/75 hover:text-cyan-300">🧳 {t.luggageTransfer}</a>
+              <a href="#hotels" className="font-semibold text-white/75 hover:text-cyan-300">{t.hotels}</a>
+              <a href="#travel-tips" className="font-semibold text-white/75 hover:text-cyan-300">{language === "ka" ? "რჩევები" : "Local Tips"}</a>
             </nav>
 
             <div className="hidden items-center gap-3 lg:flex">
@@ -450,12 +491,13 @@ export default function Home() {
 
               <div className="mt-8 space-y-3">
                 {[
-                  ["#travel-tips", language === "ka" ? "რჩევები" : "Local Tips"],
-                  ["#horse-tours", `🐎 ${t.horsebackTours}`],
                   ["#tours", t.tours],
-                  ["#transfers", t.transfers],
-                  ["#hotels", t.hotels],
                   ["#guides", t.guides],
+                  ["#horse-tours", `🐎 ${t.horsebackTours}`],
+                  ["#transfers", t.transfers],
+                  ["#luggage-transfer", `🧳 ${t.luggageTransfer}`],
+                  ["#hotels", t.hotels],
+                  ["#travel-tips", language === "ka" ? "რჩევები" : "Local Tips"],
                 ].map(([href, label]) => (
                   <a
                     key={href}
@@ -774,7 +816,7 @@ export default function Home() {
         id="tours"
         icon="🏔️"
         title={t.tours}
-        items={tours}
+        items={regularTours}
         page={pages.tours}
         pageSize={pageSize}
         loading={loading}
@@ -795,36 +837,6 @@ export default function Home() {
             subtitle={tour.location || t.georgia}
             meta={tour.duration || tour.category || t.notSpecified}
             price={formatPrice(tour.price, tour.price_type, tour.price_currency, language, t.negotiable)}
-            actionLabel={t.details}
-          />
-        )}
-      />
-
-      <ShowcaseSection
-        id="transfers"
-        icon="🚐"
-        title={t.transfers}
-        items={transfers}
-        page={pages.transfers}
-        pageSize={pageSize}
-        loading={loading}
-        viewAllHref="/transfers"
-        viewAllLabel={t.viewAll}
-        pageLabel={t.page}
-        ofLabel={t.of}
-        previousLabel={t.previous}
-        nextLabel={t.next}
-        emptyLabel={t.noItems}
-        onPageChange={(page) => setSectionPage("transfers", page)}
-        renderItem={(transfer) => (
-          <SmallCard
-            href={`/book-transfer/${transfer.id}`}
-            imageUrl={transfer.image_url}
-            fallback="🚐"
-            title={`${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
-            subtitle={transfer.vehicle || t.transfers}
-            meta={transfer.to_location || t.georgia}
-            price={formatTransferPrice(transfer, language)}
             actionLabel={t.details}
           />
         )}
@@ -929,6 +941,66 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <ShowcaseSection
+        id="transfers"
+        icon="🚐"
+        title={t.transfers}
+        items={regularTransfers}
+        page={pages.transfers}
+        pageSize={pageSize}
+        loading={loading}
+        viewAllHref="/transfers"
+        viewAllLabel={t.viewAll}
+        pageLabel={t.page}
+        ofLabel={t.of}
+        previousLabel={t.previous}
+        nextLabel={t.next}
+        emptyLabel={t.noItems}
+        onPageChange={(page) => setSectionPage("transfers", page)}
+        renderItem={(transfer) => (
+          <SmallCard
+            href={`/book-transfer/${transfer.id}`}
+            imageUrl={transfer.image_url}
+            fallback="🚐"
+            title={`${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
+            subtitle={transfer.vehicle || t.transfers}
+            meta={transfer.to_location || t.georgia}
+            price={formatTransferPrice(transfer, language)}
+            actionLabel={t.details}
+          />
+        )}
+      />
+
+      <ShowcaseSection
+        id="luggage-transfer"
+        icon="🧳"
+        title={t.luggageTransfer}
+        items={luggageTransfers}
+        page={pages.luggage}
+        pageSize={pageSize}
+        loading={loading}
+        viewAllHref="/transfers"
+        viewAllLabel={t.viewAll}
+        pageLabel={t.page}
+        ofLabel={t.of}
+        previousLabel={t.previous}
+        nextLabel={t.next}
+        emptyLabel={t.noItems}
+        onPageChange={(page) => setSectionPage("luggage", page)}
+        renderItem={(transfer) => (
+          <SmallCard
+            href={`/book-transfer/${transfer.id}`}
+            imageUrl={transfer.image_url}
+            fallback="🧳"
+            title={transfer.title || `${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
+            subtitle={t.luggageTransfer}
+            meta={`${transfer.from_location || "—"} → ${transfer.to_location || "—"}`}
+            price={formatTransferPrice(transfer, language)}
+            actionLabel={t.details}
+          />
+        )}
+      />
 
       <ShowcaseSection
         id="hotels"
