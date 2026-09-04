@@ -590,13 +590,34 @@ export default function BookTourPage() {
       return;
     }
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    let {
+      data: sessionData,
+      error: sessionError,
+    } = await supabase.auth.getSession();
 
-    if (userError || !user) {
-      router.push("/login");
+    if (sessionError) {
+      console.error("Review session loading error:", sessionError);
+    }
+
+    let user = sessionData.session?.user ?? null;
+
+    if (!user) {
+      const {
+        data: refreshData,
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error("Review session refresh error:", refreshError);
+      }
+
+      user = refreshData.user ?? null;
+    }
+
+    if (!user) {
+      router.push(
+        `/login?next=${encodeURIComponent(`/book-tour/${tour.id}#reviews`)}`
+      );
       return;
     }
 
