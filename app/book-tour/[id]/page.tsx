@@ -1003,6 +1003,45 @@ export default function BookTourPage() {
               </div>
             </section>
 
+            {tourLocation && (
+              <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-xl">
+                <div className="flex flex-col gap-3 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
+                      📍 {language === "ka" ? "მდებარეობა რუკაზე" : "Location on map"}
+                    </p>
+                    <h2 className="mt-2 text-2xl font-black">
+                      {tourLocation}
+                    </h2>
+                  </div>
+
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      `${tourLocation}, Georgia`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-cyan-500 px-4 py-3 text-center text-sm font-black transition hover:bg-cyan-600"
+                  >
+                    {language === "ka" ? "Google Maps-ში გახსნა" : "Open in Google Maps"}
+                  </a>
+                </div>
+
+                <div className="h-[300px] w-full sm:h-[380px]">
+                  <iframe
+                    title={`${tourTitle || "Tour"} - Google Maps`}
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(
+                      `${tourLocation}, Georgia`
+                    )}&output=embed`}
+                    className="h-full w-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+            )}
+
             <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl sm:p-8">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
                 {language === "ka" ? "ტურის აღწერა" : "Tour description"}
