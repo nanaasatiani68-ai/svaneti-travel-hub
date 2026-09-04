@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -66,10 +67,6 @@ type SectionKey = "tours" | "transfers" | "hotels" | "guides";
 
 const translations = {
   ka: {
-    betaTitle: "კეთილი იყოს თქვენი მობრძანება Public Beta-ზე",
-    betaText:
-      "Georgia Gateway Hub ყოველდღიურად ვითარდება. დაათვალიერე ტურები, ტრანსფერები, სასტუმროები და გიდები ერთ სივრცეში.",
-    exploreNow: "საიტის დათვალიერება",
     discoverGeorgia: "აღმოაჩინე საქართველო",
     menu: "მენიუ",
     closeMenu: "მენიუს დახურვა",
@@ -127,10 +124,6 @@ const translations = {
       "აღმოაჩინე სვანეთი ცხენით — მთის ბილიკები, ხეობები და ადგილობრივი მარშრუტები.",
   },
   en: {
-    betaTitle: "Welcome to Public Beta",
-    betaText:
-      "Georgia Gateway Hub is growing every day. Explore tours, transfers, hotels and guides in one place.",
-    exploreNow: "Explore Now",
     discoverGeorgia: "Discover Georgia",
     menu: "Menu",
     closeMenu: "Close menu",
@@ -208,7 +201,6 @@ export default function Home() {
   const supabase = useMemo(() => createClient(), []);
   const pageSize = useResponsivePageSize();
   const { language, languageReady } = useLanguage();
-  const [showBeta, setShowBeta] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openTravelTip, setOpenTravelTip] = useState<string | null>(null);
   const [travelTipsPage, setTravelTipsPage] = useState(0);
@@ -230,11 +222,6 @@ export default function Home() {
 
   const t = translations[language];
 
-  useEffect(() => {
-    if (sessionStorage.getItem("beta-closed") === "true") {
-      setShowBeta(false);
-    }
-  }, []);
 
   useEffect(() => {
     async function loadHomepageData() {
@@ -326,10 +313,6 @@ export default function Home() {
   }, [pageSize]);
 
 
-  function closeBetaModal() {
-    setShowBeta(false);
-    sessionStorage.setItem("beta-closed", "true");
-  }
 
   async function goToAddService(path: string) {
     const {
@@ -395,27 +378,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#16201b] text-white">
-      {showBeta && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-slate-900/95 p-7 text-center shadow-2xl sm:p-9">
-            <div className="mb-4 text-5xl">🚀</div>
-            <h2 className="text-2xl font-extrabold sm:text-3xl">{t.betaTitle}</h2>
-            <p className="mt-4 leading-7 text-white/70">{t.betaText}</p>
-            <div className="mt-6 flex justify-center">
-              <LanguageSwitcher />
-            </div>
-            <button
-              type="button"
-              onClick={closeBetaModal}
-              className="mt-7 rounded-2xl bg-cyan-500 px-6 py-3 font-bold text-white transition hover:bg-cyan-600"
-            >
-              {t.exploreNow}
-            </button>
-          </div>
-        </div>
-      )}
-
+    <main className="min-h-screen bg-slate-950 text-white">
       <section
         className="relative min-h-[620px] bg-cover bg-center bg-no-repeat sm:min-h-[660px]"
         style={{
@@ -697,11 +660,7 @@ export default function Home() {
                         {title}
                       </h3>
 
-                      <p
-                        className={`mt-2 text-xs leading-5 text-white/55 ${
-                          isOpen ? "" : "line-clamp-2"
-                        }`}
-                      >
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/55">
                         {short}
                       </p>
 
