@@ -11,7 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import { useLanguage } from "@/app/providers/LanguageProvider";
 
 type Tour = {
@@ -56,6 +56,7 @@ export default function BookTourPage() {
   const c = bookTourCopy[language];
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const tourId = params?.id;
 
   const [tour, setTour] = useState<Tour | null>(null);
@@ -267,7 +268,7 @@ export default function BookTourPage() {
     async function loadCurrentUser() {
       try {
         const {
-          data: { session },
+          data: sessionData,
           error: sessionError,
         } = await supabase.auth.getSession();
 
@@ -276,10 +277,25 @@ export default function BookTourPage() {
             "Session loading error:",
             sessionError
           );
-          return;
         }
 
-        const user = session?.user;
+        let user = sessionData.session?.user ?? null;
+
+        if (!user) {
+          const {
+            data: refreshData,
+            error: refreshError,
+          } = await supabase.auth.refreshSession();
+
+          if (refreshError) {
+            console.error(
+              "Session refresh error:",
+              refreshError
+            );
+          }
+
+          user = refreshData.user ?? null;
+        }
 
         if (!user) {
           setCurrentUserId("");
