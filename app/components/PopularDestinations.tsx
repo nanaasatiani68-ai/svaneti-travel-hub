@@ -131,7 +131,7 @@ export default function PopularDestinations() {
         </div>
 
         <Link
-          href="/search"
+          href="/destinations"
           className="text-sm font-black text-emerald-700 transition hover:text-emerald-600"
         >
           {isEnglish
@@ -212,3 +212,5 @@ export default function PopularDestinations() {
     </section>
   );
 }
+
+
