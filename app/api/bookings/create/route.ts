@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -320,6 +320,80 @@ export async function POST(request: NextRequest) {
           bookingUserId = userData.user.id;
         }
       }
+    }
+
+    // Check real availability for the selected date.
+    // Pending and confirmed bookings reserve places.
+    const {
+      data: existingBookings,
+      error: availabilityError,
+    } = await supabaseAdmin
+      .from("bookings")
+      .select("people, status")
+      .eq("tour_id", tour.id)
+      .eq("booking_date", bookingDate)
+      .in("status", ["pending", "confirmed"]);
+
+    if (availabilityError) {
+      console.error(
+        "Booking availability check error:",
+        availabilityError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "არჩეული თარიღის ხელმისაწვდომობის შემოწმება ვერ მოხერხდა.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const alreadyBookedPeople = (existingBookings ?? []).reduce(
+      (total, existingBooking) =>
+        total + Math.max(0, Number(existingBooking.people) || 0),
+      0
+    );
+
+    const maxPeople = Math.max(
+      0,
+      Number(tour.max_people) || 0
+    );
+
+    const remainingPlaces = Math.max(
+      0,
+      maxPeople - alreadyBookedPeople
+    );
+
+    if (remainingPlaces <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი.",
+          remainingPlaces: 0,
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    if (people > remainingPlaces) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`,
+          remainingPlaces,
+        },
+        {
+          status: 409,
+        }
+      );
     }
 
     const totalPrice =

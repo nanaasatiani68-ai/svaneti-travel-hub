@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -51,6 +51,12 @@ type Review = {
   updated_at: string;
 };
 
+type AvailabilityBooking = {
+  booking_date: string;
+  people: number | null;
+  status: string | null;
+};
+
 export default function BookTourPage() {
   const { language } = useLanguage();
   const c = bookTourCopy[language];
@@ -62,6 +68,9 @@ export default function BookTourPage() {
   const [tour, setTour] = useState<Tour | null>(null);
   const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [availabilityBookings, setAvailabilityBookings] =
+    useState<AvailabilityBooking[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [selectedImage, setSelectedImage] = useState("");
   const [showMobileGallery, setShowMobileGallery] = useState(false);
 
@@ -92,6 +101,34 @@ export default function BookTourPage() {
 
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+
+  const loadAvailability = useCallback(async () => {
+    if (!tourId) {
+      setAvailabilityBookings([]);
+      setLoadingAvailability(false);
+      return;
+    }
+
+    setLoadingAvailability(true);
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("booking_date, people, status")
+      .eq("tour_id", tourId)
+      .in("status", ["pending", "confirmed"]);
+
+    if (error) {
+      console.error("Availability loading error:", error);
+      setAvailabilityBookings([]);
+      setLoadingAvailability(false);
+      return;
+    }
+
+    setAvailabilityBookings(
+      (data as AvailabilityBooking[] | null) ?? []
+    );
+    setLoadingAvailability(false);
+  }, [tourId, supabase]);
 
   const loadReviews = useCallback(async () => {
     if (!tourId) {
@@ -393,6 +430,33 @@ export default function BookTourPage() {
     }
   }, [myReview]);
 
+  const bookedPeopleByDate = useMemo(() => {
+    const totals: Record<string, number> = {};
+
+    for (const booking of availabilityBookings) {
+      const date = String(booking.booking_date || "").slice(0, 10);
+
+      if (!date) {
+        continue;
+      }
+
+      totals[date] =
+        (totals[date] || 0) + Math.max(0, Number(booking.people) || 0);
+    }
+
+    return totals;
+  }, [availabilityBookings]);
+
+  const getRemainingPlaces = useCallback(
+    (date: string) => {
+      const maxPeople = Math.max(0, Number(tour?.max_people) || 0);
+      const bookedPeople = bookedPeopleByDate[date] || 0;
+
+      return Math.max(0, maxPeople - bookedPeople);
+    },
+    [tour?.max_people, bookedPeopleByDate]
+  );
+
   const averageRating = useMemo(() => {
     if (reviews.length === 0) {
       return 0;
@@ -493,6 +557,26 @@ export default function BookTourPage() {
     if (tour.max_people && people > tour.max_people) {
       setErrorMessage(
         `${c.maxPeoplePrefix} ${tour.max_people} ${c.peopleWord}.`
+      );
+      return;
+    }
+
+    const remainingPlaces = getRemainingPlaces(bookingDate);
+
+    if (remainingPlaces <= 0) {
+      setErrorMessage(
+        language === "ka"
+          ? "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი."
+          : "This date is fully booked. Please choose another date."
+      );
+      return;
+    }
+
+    if (people > remainingPlaces) {
+      setErrorMessage(
+        language === "ka"
+          ? `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`
+          : `Only ${remainingPlaces} places are left on the selected date.`
       );
       return;
     }
@@ -1572,7 +1656,11 @@ export default function BookTourPage() {
                   <input
                     type="number"
                     min={1}
-                    max={tour.max_people || undefined}
+                    max={
+                      bookingDate
+                        ? Math.max(1, getRemainingPlaces(bookingDate))
+                        : tour.max_people || undefined
+                    }
                     value={people}
                     onChange={(event) => {
                       const value = Number(event.target.value);
@@ -2196,3 +2284,8 @@ function formatDate(value: string, language: "ka" | "en") {
     minute: "2-digit",
   }).format(date);
 }
+
+
+
+
+
