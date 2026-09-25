@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -14,10 +14,21 @@ type Tour = {
   price: number | null;
   image_url: string | null;
   duration: string | null;
+  start_date: string | null;
   max_people: number | null;
   category: string | null;
   status: string | null;
   created_at: string | null;
+};
+
+type ReviewRow = {
+  tour_id: string | number;
+  rating: number;
+};
+
+type TourRating = {
+  average: number;
+  count: number;
 };
 
 type FavoriteRow = {
@@ -82,6 +93,7 @@ export default function PublicToursPage() {
             price,
             image_url,
             duration,
+            start_date,
             max_people,
             category,
             status,
@@ -230,6 +242,38 @@ export default function PublicToursPage() {
 
       if (category) {
         values.add(category);
+      }
+    });
+
+    return Array.from(values).sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }, [tours]);
+
+  const destinations = useMemo(() => {
+    const values = new Set<string>();
+
+    tours.forEach((tour) => {
+      const location = tour.location?.trim();
+
+      if (location) {
+        values.add(location);
+      }
+    });
+
+    return Array.from(values).sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }, [tours]);
+
+  const durations = useMemo(() => {
+    const values = new Set<string>();
+
+    tours.forEach((tour) => {
+      const duration = tour.duration?.trim();
+
+      if (duration) {
+        values.add(duration);
       }
     });
 
@@ -984,3 +1028,7 @@ function EmptyState({
     </div>
   );
 }
+
+
+
+
