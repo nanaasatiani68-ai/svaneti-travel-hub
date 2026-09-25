@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 
+import HomeSearch from "@/app/components/HomeSearch";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -545,6 +546,8 @@ export default function Home() {
               + {t.addService}
             </button>
           </div>
+
+                    <HomeSearch language={language === "ka" ? "ka" : "en"} />
 
           <div className="mt-8">
             <WeatherCard />
