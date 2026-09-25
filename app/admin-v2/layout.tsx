@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useCallback,
@@ -68,6 +68,11 @@ const menuItems: MenuItem[] = [
   { name: "Transfers", href: "/admin-v2/transfers", icon: "🚐" },
   { name: "Hotels", href: "/admin-v2/hotels", icon: "🏨" },
   { name: "Guides", href: "/admin-v2/guides", icon: "🧑‍💼" },
+  {
+    name: "📍 Popular Destinations",
+    href: "/admin-v2/travel-tips",
+    icon: "📍",
+  },
   {
     name: "Travel Tips",
     href: "/admin-v2/travel-tips",
