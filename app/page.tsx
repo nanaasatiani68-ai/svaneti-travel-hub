@@ -550,7 +550,7 @@ export default function Home() {
 
                     <HomeSearch language={language === "ka" ? "ka" : "en"} />
 
-          <PopularDestinations language={language === "ka" ? "ka" : "en"} />
+          <PopularDestinations />
 
           <div className="mt-8">
             <WeatherCard />
@@ -1360,4 +1360,5 @@ function formatTransferPrice(transfer: Transfer, language: Language) {
     ? `${amount} ₾ მანქანაზე`
     : `${amount} ₾ per vehicle`;
 }
+
 
