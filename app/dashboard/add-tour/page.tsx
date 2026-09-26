@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   ChangeEvent,
@@ -42,6 +42,18 @@ export default function AddTourPage() {
   const [startDate, setStartDate] = useState("");
   const [maxPeople, setMaxPeople] = useState("");
   const [category, setCategory] = useState("");
+
+  const [cancellationPolicy, setCancellationPolicy] =
+    useState<"24_hours" | "3_days" | "7_days" | "14_days">("24_hours");
+
+  const cancellationFeePercent =
+    cancellationPolicy === "24_hours"
+      ? 100
+      : cancellationPolicy === "3_days"
+        ? 50
+        : cancellationPolicy === "7_days"
+          ? 30
+          : 20;
 
   const [horseExperienceLevel, setHorseExperienceLevel] =
     useState("");
@@ -169,7 +181,7 @@ export default function AddTourPage() {
     for (const file of selectedFiles) {
       if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
         setMessage(
-          "შეგიძლია ატვირთო მხოლოდ JPG, PNG ან WEBP ფოტოები."
+          "áƒ¨áƒ”áƒ’áƒ˜áƒ«áƒšáƒ˜áƒ áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ áƒ›áƒ®áƒáƒšáƒáƒ“ JPG, PNG áƒáƒœ WEBP áƒ¤áƒáƒ¢áƒáƒ”áƒ‘áƒ˜."
         );
         setMessageType("error");
         event.target.value = "";
@@ -178,7 +190,7 @@ export default function AddTourPage() {
 
       if (file.size > MAX_IMAGE_SIZE) {
         setMessage(
-          `ფოტო "${file.name}" 10 MB-ზე მეტია.`
+          `áƒ¤áƒáƒ¢áƒ "${file.name}" 10 MB-áƒ–áƒ” áƒ›áƒ”áƒ¢áƒ˜áƒ.`
         );
         setMessageType("error");
         event.target.value = "";
@@ -213,7 +225,7 @@ export default function AddTourPage() {
       MAX_IMAGES
     ) {
       setMessage(
-        `ერთ ტურზე მაქსიმუმ ${MAX_IMAGES} ფოტოს ატვირთვა შეგიძლია.`
+        `áƒ”áƒ áƒ— áƒ¢áƒ£áƒ áƒ–áƒ” áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒ£áƒ› ${MAX_IMAGES} áƒ¤áƒáƒ¢áƒáƒ¡ áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ•áƒ áƒ¨áƒ”áƒ’áƒ˜áƒ«áƒšáƒ˜áƒ.`
       );
       setMessageType("error");
     }
@@ -240,7 +252,7 @@ export default function AddTourPage() {
     }
 
     if (!userId) {
-      throw new Error("მომხმარებელი ვერ მოიძებნა.");
+      throw new Error("áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒ”áƒšáƒ˜ áƒ•áƒ”áƒ  áƒ›áƒáƒ˜áƒ«áƒ”áƒ‘áƒœáƒ.");
     }
 
     const publicUrls: string[] = [];
@@ -276,7 +288,7 @@ export default function AddTourPage() {
 
         if (uploadError) {
           throw new Error(
-            `ფოტოს ატვირთვა ვერ მოხერხდა: ${uploadError.message}`
+            `áƒ¤áƒáƒ¢áƒáƒ¡ áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ•áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ: ${uploadError.message}`
           );
         }
 
@@ -314,25 +326,25 @@ export default function AddTourPage() {
     setMessage("");
 
     if (!userId) {
-      setMessage("მომხმარებელი ვერ მოიძებნა.");
+      setMessage("áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒ”áƒšáƒ˜ áƒ•áƒ”áƒ  áƒ›áƒáƒ˜áƒ«áƒ”áƒ‘áƒœáƒ.");
       setMessageType("error");
       return;
     }
 
     if (!title.trim()) {
-      setMessage("ჩაწერე ტურის სახელი.");
+      setMessage("áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ˜.");
       setMessageType("error");
       return;
     }
 
     if (!description.trim()) {
-      setMessage("ჩაწერე ტურის აღწერა.");
+      setMessage("áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒáƒ¦áƒ¬áƒ”áƒ áƒ.");
       setMessageType("error");
       return;
     }
 
     if (!location.trim()) {
-      setMessage("ჩაწერე ტურის მდებარეობა.");
+      setMessage("áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ›áƒ“áƒ”áƒ‘áƒáƒ áƒ”áƒáƒ‘áƒ.");
       setMessageType("error");
       return;
     }
@@ -351,7 +363,7 @@ export default function AddTourPage() {
         Number.isNaN(numericPrice) ||
         numericPrice < 0)
     ) {
-      setMessage("ჩაწერე სწორი ფასი.");
+      setMessage("áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¡áƒ¬áƒáƒ áƒ˜ áƒ¤áƒáƒ¡áƒ˜.");
       setMessageType("error");
       return;
     }
@@ -364,7 +376,7 @@ export default function AddTourPage() {
         numericMaxPeople < 1
       ) {
         setMessage(
-          "ადამიანების მაქსიმალური რაოდენობა უნდა იყოს მინიმუმ 1."
+          "áƒáƒ“áƒáƒ›áƒ˜áƒáƒœáƒ”áƒ‘áƒ˜áƒ¡ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒ áƒáƒáƒ“áƒ”áƒœáƒáƒ‘áƒ áƒ£áƒœáƒ“áƒ áƒ˜áƒ§áƒáƒ¡ áƒ›áƒ˜áƒœáƒ˜áƒ›áƒ£áƒ› 1."
         );
         setMessageType("error");
         return;
@@ -372,14 +384,14 @@ export default function AddTourPage() {
     }
 
     if (startDate && startDate < getLocalToday()) {
-      setMessage("გასული თარიღის არჩევა შეუძლებელია.");
+      setMessage("áƒ’áƒáƒ¡áƒ£áƒšáƒ˜ áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜áƒ¡ áƒáƒ áƒ©áƒ”áƒ•áƒ áƒ¨áƒ”áƒ£áƒ«áƒšáƒ”áƒ‘áƒ”áƒšáƒ˜áƒ.");
       setMessageType("error");
       return;
     }
 
     if (!contactPhone.trim()) {
       setMessage(
-        "ჩაწერე ტურის ორგანიზატორის ტელეფონის ნომერი."
+        "áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒáƒ áƒ’áƒáƒœáƒ˜áƒ–áƒáƒ¢áƒáƒ áƒ˜áƒ¡ áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜áƒ¡ áƒœáƒáƒ›áƒ”áƒ áƒ˜."
       );
       setMessageType("error");
       return;
@@ -387,7 +399,7 @@ export default function AddTourPage() {
 
     if (!isValidPhone(contactPhone)) {
       setMessage(
-        "ტელეფონის ნომერი ჩაწერე საერთაშორისო ფორმატში, მაგალითად: +995555123456"
+        "áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜áƒ¡ áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¡áƒáƒ”áƒ áƒ—áƒáƒ¨áƒáƒ áƒ˜áƒ¡áƒ áƒ¤áƒáƒ áƒ›áƒáƒ¢áƒ¨áƒ˜, áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: +995555123456"
       );
       setMessageType("error");
       return;
@@ -416,7 +428,7 @@ export default function AddTourPage() {
         minAge > maxAge
       ) {
         setMessage(
-          "საცხენოსნო ტურზე მინიმალური ასაკი მაქსიმალურ ასაკზე მეტი ვერ იქნება."
+          "áƒ¡áƒáƒªáƒ®áƒ”áƒœáƒáƒ¡áƒœáƒ áƒ¢áƒ£áƒ áƒ–áƒ” áƒ›áƒ˜áƒœáƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒáƒ¡áƒáƒ™áƒ˜ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ  áƒáƒ¡áƒáƒ™áƒ–áƒ” áƒ›áƒ”áƒ¢áƒ˜ áƒ•áƒ”áƒ  áƒ˜áƒ¥áƒœáƒ”áƒ‘áƒ."
         );
         setMessageType("error");
         return;
@@ -427,7 +439,7 @@ export default function AddTourPage() {
         durationHours <= 0
       ) {
         setMessage(
-          "ცხენით გასეირნების ხანგრძლივობა უნდა იყოს 0-ზე მეტი."
+          "áƒªáƒ®áƒ”áƒœáƒ˜áƒ— áƒ’áƒáƒ¡áƒ”áƒ˜áƒ áƒœáƒ”áƒ‘áƒ˜áƒ¡ áƒ®áƒáƒœáƒ’áƒ áƒ«áƒšáƒ˜áƒ•áƒáƒ‘áƒ áƒ£áƒœáƒ“áƒ áƒ˜áƒ§áƒáƒ¡ 0-áƒ–áƒ” áƒ›áƒ”áƒ¢áƒ˜."
         );
         setMessageType("error");
         return;
@@ -435,7 +447,7 @@ export default function AddTourPage() {
 
       if (routeKm !== null && routeKm <= 0) {
         setMessage(
-          "საცხენოსნო მარშრუტის სიგრძე უნდა იყოს 0-ზე მეტი."
+          "áƒ¡áƒáƒªáƒ®áƒ”áƒœáƒáƒ¡áƒœáƒ áƒ›áƒáƒ áƒ¨áƒ áƒ£áƒ¢áƒ˜áƒ¡ áƒ¡áƒ˜áƒ’áƒ áƒ«áƒ” áƒ£áƒœáƒ“áƒ áƒ˜áƒ§áƒáƒ¡ 0-áƒ–áƒ” áƒ›áƒ”áƒ¢áƒ˜."
         );
         setMessageType("error");
         return;
@@ -446,7 +458,7 @@ export default function AddTourPage() {
         maxWeightKg <= 0
       ) {
         setMessage(
-          "მაქსიმალური წონა უნდა იყოს 0-ზე მეტი."
+          "áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒ¬áƒáƒœáƒ áƒ£áƒœáƒ“áƒ áƒ˜áƒ§áƒáƒ¡ 0-áƒ–áƒ” áƒ›áƒ”áƒ¢áƒ˜."
         );
         setMessageType("error");
         return;
@@ -455,7 +467,7 @@ export default function AddTourPage() {
 
     if (imageFiles.length === 0) {
       setMessage(
-        "აირჩიე მინიმუმ ერთი ფოტო."
+        "áƒáƒ˜áƒ áƒ©áƒ˜áƒ” áƒ›áƒ˜áƒœáƒ˜áƒ›áƒ£áƒ› áƒ”áƒ áƒ—áƒ˜ áƒ¤áƒáƒ¢áƒ."
       );
       setMessageType("error");
       return;
@@ -491,6 +503,8 @@ export default function AddTourPage() {
             ? Number(maxPeople)
             : null,
           category: category || null,
+          cancellation_policy: cancellationPolicy,
+          cancellation_fee_percent: cancellationFeePercent,
 
           horse_experience_level: isHorseRiding
             ? horseExperienceLevel || null
@@ -555,12 +569,12 @@ export default function AddTourPage() {
         }
 
         throw new Error(
-          `ტურის შენახვა ვერ მოხერხდა: ${insertError.message}`
+          `áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¨áƒ”áƒœáƒáƒ®áƒ•áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ: ${insertError.message}`
         );
       }
 
       setMessage(
-        "ტური წარმატებით დაემატა და ელოდება ადმინისტრატორის დადასტურებას."
+        "áƒ¢áƒ£áƒ áƒ˜ áƒ¬áƒáƒ áƒ›áƒáƒ¢áƒ”áƒ‘áƒ˜áƒ— áƒ“áƒáƒ”áƒ›áƒáƒ¢áƒ áƒ“áƒ áƒ”áƒšáƒáƒ“áƒ”áƒ‘áƒ áƒáƒ“áƒ›áƒ˜áƒœáƒ˜áƒ¡áƒ¢áƒ áƒáƒ¢áƒáƒ áƒ˜áƒ¡ áƒ“áƒáƒ“áƒáƒ¡áƒ¢áƒ£áƒ áƒ”áƒ‘áƒáƒ¡."
       );
       setMessageType("success");
 
@@ -572,7 +586,7 @@ export default function AddTourPage() {
       const errorText =
         error instanceof Error
           ? error.message
-          : "უცნობი შეცდომა მოხდა.";
+          : "áƒ£áƒªáƒœáƒáƒ‘áƒ˜ áƒ¨áƒ”áƒªáƒ“áƒáƒ›áƒ áƒ›áƒáƒ®áƒ“áƒ.";
 
       setMessage(errorText);
       setMessageType("error");
@@ -584,10 +598,10 @@ export default function AddTourPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="text-center">
-          <div className="text-6xl">🏔️</div>
+          <div className="text-6xl">ðŸ”ï¸</div>
 
           <p className="mt-4 text-lg font-semibold">
-            გვერდი იტვირთება...
+            áƒ’áƒ•áƒ”áƒ áƒ“áƒ˜ áƒ˜áƒ¢áƒ•áƒ˜áƒ áƒ—áƒ”áƒ‘áƒ...
           </p>
         </div>
       </main>
@@ -600,17 +614,17 @@ export default function AddTourPage() {
         <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.2em] text-cyan-300">
-              მომხმარებლის პანელი
+              áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒšáƒ˜áƒ¡ áƒžáƒáƒœáƒ”áƒšáƒ˜
             </p>
 
             <h1 className="mt-3 text-4xl font-black sm:text-5xl">
-              ➕ ახალი ტურის დამატება
+              âž• áƒáƒ®áƒáƒšáƒ˜ áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ
             </h1>
 
             <p className="mt-3 max-w-2xl leading-7 text-white/60">
-              შეავსე ტურის ინფორმაცია და ატვირთე მაქსიმუმ 5 ფოტო.
-              ტური გამოქვეყნდება ადმინისტრატორის დადასტურების
-              შემდეგ.
+              áƒ¨áƒ”áƒáƒ•áƒ¡áƒ” áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ áƒ“áƒ áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ” áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒ£áƒ› 5 áƒ¤áƒáƒ¢áƒ.
+              áƒ¢áƒ£áƒ áƒ˜ áƒ’áƒáƒ›áƒáƒ¥áƒ•áƒ”áƒ§áƒœáƒ“áƒ”áƒ‘áƒ áƒáƒ“áƒ›áƒ˜áƒœáƒ˜áƒ¡áƒ¢áƒ áƒáƒ¢áƒáƒ áƒ˜áƒ¡ áƒ“áƒáƒ“áƒáƒ¡áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ˜áƒ¡
+              áƒ¨áƒ”áƒ›áƒ“áƒ”áƒ’.
             </p>
           </div>
 
@@ -618,7 +632,7 @@ export default function AddTourPage() {
             href="/dashboard"
             className="w-fit rounded-2xl border border-white/10 bg-white/10 px-6 py-3 font-bold transition hover:bg-white/20"
           >
-            ← Dashboard
+            â† Dashboard
           </Link>
         </header>
 
@@ -630,7 +644,7 @@ export default function AddTourPage() {
                 : "border-red-400/30 bg-red-500/10 text-red-200"
             }`}
           >
-            {messageType === "success" ? "✅ " : "❌ "}
+            {messageType === "success" ? "âœ… " : "âŒ "}
             {message}
           </div>
         )}
@@ -645,12 +659,49 @@ export default function AddTourPage() {
             </p>
 
             <h2 className="mt-2 text-3xl font-black">
-              ტურის ინფორმაცია
+              áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ
             </h2>
 
             <div className="mt-7 grid gap-5 md:grid-cols-2">
-              <FormField
-                label="ტურის სახელი"
+                            <FormField label="გაუქმების პოლიტიკა" required>
+                <select
+                  value={cancellationPolicy}
+                  onChange={(event) =>
+                    setCancellationPolicy(
+                      event.target.value as
+                        | "24_hours"
+                        | "3_days"
+                        | "7_days"
+                        | "14_days"
+                    )
+                  }
+                  className="input"
+                  required
+                >
+                  <option value="24_hours">
+                    24 საათი — ვადის შემდეგ 100% ჯარიმა
+                  </option>
+
+                  <option value="3_days">
+                    3 დღე — ვადის შემდეგ 50% ჯარიმა
+                  </option>
+
+                  <option value="7_days">
+                    7 დღე — ვადის შემდეგ 30% ჯარიმა
+                  </option>
+
+                  <option value="14_days">
+                    14 დღე — ვადის შემდეგ 20% ჯარიმა
+                  </option>
+                </select>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  უფასო გაუქმება შესაძლებელია არჩეულ ვადამდე.
+                  ვადის გასვლის შემდეგ მოქმედებს {cancellationFeePercent}% ჯარიმა.
+                </p>
+              </FormField>
+<FormField
+                label="áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ˜"
                 required
               >
                 <input
@@ -659,14 +710,14 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setTitle(event.target.value)
                   }
-                  placeholder="მაგალითად: უშგულის ერთდღიანი ტური"
+                  placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: áƒ£áƒ¨áƒ’áƒ£áƒšáƒ˜áƒ¡ áƒ”áƒ áƒ—áƒ“áƒ¦áƒ˜áƒáƒœáƒ˜ áƒ¢áƒ£áƒ áƒ˜"
                   required
                   className="input"
                 />
               </FormField>
 
               <FormField
-                label="მდებარეობა"
+                label="áƒ›áƒ“áƒ”áƒ‘áƒáƒ áƒ”áƒáƒ‘áƒ"
                 required
               >
                 <input
@@ -675,14 +726,14 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setLocation(event.target.value)
                   }
-                  placeholder="მაგალითად: უშგული, სვანეთი"
+                  placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: áƒ£áƒ¨áƒ’áƒ£áƒšáƒ˜, áƒ¡áƒ•áƒáƒœáƒ”áƒ—áƒ˜"
                   required
                   className="input"
                 />
               </FormField>
 
               <FormField
-                label="ფასის ტიპი"
+                label="áƒ¤áƒáƒ¡áƒ˜áƒ¡ áƒ¢áƒ˜áƒžáƒ˜"
                 required
               >
                 <select
@@ -702,13 +753,13 @@ export default function AddTourPage() {
                   className="input"
                 >
                   <option value="negotiable">
-                    🤝 ფასი შეთანხმებით
+                    ðŸ¤ áƒ¤áƒáƒ¡áƒ˜ áƒ¨áƒ”áƒ—áƒáƒœáƒ®áƒ›áƒ”áƒ‘áƒ˜áƒ—
                   </option>
                   <option value="GEL">
-                    ₾ ფასი ლარში
+                    â‚¾ áƒ¤áƒáƒ¡áƒ˜ áƒšáƒáƒ áƒ¨áƒ˜
                   </option>
                   <option value="USD">
-                    $ ფასი დოლარში
+                    $ áƒ¤áƒáƒ¡áƒ˜ áƒ“áƒáƒšáƒáƒ áƒ¨áƒ˜
                   </option>
                 </select>
               </FormField>
@@ -717,8 +768,8 @@ export default function AddTourPage() {
                 <FormField
                   label={
                     priceOption === "USD"
-                      ? "ფასი დოლარში ($)"
-                      : "ფასი ლარში (₾)"
+                      ? "áƒ¤áƒáƒ¡áƒ˜ áƒ“áƒáƒšáƒáƒ áƒ¨áƒ˜ ($)"
+                      : "áƒ¤áƒáƒ¡áƒ˜ áƒšáƒáƒ áƒ¨áƒ˜ (â‚¾)"
                   }
                   required
                 >
@@ -731,35 +782,35 @@ export default function AddTourPage() {
                       onChange={(event) =>
                         setPrice(event.target.value)
                       }
-                      placeholder="მაგალითად: 150"
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 150"
                       required
                       className="input pr-14"
                     />
 
                     <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">
-                      {priceOption === "USD" ? "$" : "₾"}
+                      {priceOption === "USD" ? "$" : "â‚¾"}
                     </span>
                   </div>
                 </FormField>
               ) : (
                 <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm font-semibold leading-6 text-cyan-800">
-                  🤝 საიტზე გამოჩნდება: <strong>ფასი შეთანხმებით</strong>
+                  ðŸ¤ áƒ¡áƒáƒ˜áƒ¢áƒ–áƒ” áƒ’áƒáƒ›áƒáƒ©áƒœáƒ“áƒ”áƒ‘áƒ: <strong>áƒ¤áƒáƒ¡áƒ˜ áƒ¨áƒ”áƒ—áƒáƒœáƒ®áƒ›áƒ”áƒ‘áƒ˜áƒ—</strong>
                 </div>
               )}
 
-              <FormField label="ხანგრძლივობა">
+              <FormField label="áƒ®áƒáƒœáƒ’áƒ áƒ«áƒšáƒ˜áƒ•áƒáƒ‘áƒ">
                 <input
                   type="text"
                   value={duration}
                   onChange={(event) =>
                     setDuration(event.target.value)
                   }
-                  placeholder="მაგალითად: 1 დღე"
+                  placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 1 áƒ“áƒ¦áƒ”"
                   className="input"
                 />
               </FormField>
 
-              <FormField label="ტურის დაწყების თარიღი">
+              <FormField label="áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ“áƒáƒ¬áƒ§áƒ”áƒ‘áƒ˜áƒ¡ áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜">
                 <input
                   type="date"
                   value={startDate}
@@ -771,7 +822,7 @@ export default function AddTourPage() {
                 />
               </FormField>
 
-              <FormField label="ადამიანების მაქსიმალური რაოდენობა">
+              <FormField label="áƒáƒ“áƒáƒ›áƒ˜áƒáƒœáƒ”áƒ‘áƒ˜áƒ¡ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒ áƒáƒáƒ“áƒ”áƒœáƒáƒ‘áƒ">
                 <input
                   type="number"
                   min="1"
@@ -780,12 +831,12 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setMaxPeople(event.target.value)
                   }
-                  placeholder="მაგალითად: 12"
+                  placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 12"
                   className="input"
                 />
               </FormField>
 
-              <FormField label="კატეგორია">
+              <FormField label="áƒ™áƒáƒ¢áƒ”áƒ’áƒáƒ áƒ˜áƒ">
                 <select
                   value={category}
                   onChange={(event) =>
@@ -794,35 +845,35 @@ export default function AddTourPage() {
                   className="input"
                 >
                   <option value="">
-                    აირჩიე კატეგორია
+                    áƒáƒ˜áƒ áƒ©áƒ˜áƒ” áƒ™áƒáƒ¢áƒ”áƒ’áƒáƒ áƒ˜áƒ
                   </option>
 
                   <option value="Hiking">
-                    🥾 ლაშქრობა
+                    ðŸ¥¾ áƒšáƒáƒ¨áƒ¥áƒ áƒáƒ‘áƒ
                   </option>
 
                   <option value="Jeep Tour">
-                    🚙 ჯიპ ტური
+                    ðŸš™ áƒ¯áƒ˜áƒž áƒ¢áƒ£áƒ áƒ˜
                   </option>
 
                   <option value="Horse Riding">
-                    🐎 ცხენით გასეირნება
+                    ðŸŽ áƒªáƒ®áƒ”áƒœáƒ˜áƒ— áƒ’áƒáƒ¡áƒ”áƒ˜áƒ áƒœáƒ”áƒ‘áƒ
                   </option>
 
                   <option value="Cultural Tour">
-                    🏛️ კულტურული ტური
+                    ðŸ›ï¸ áƒ™áƒ£áƒšáƒ¢áƒ£áƒ áƒ£áƒšáƒ˜ áƒ¢áƒ£áƒ áƒ˜
                   </option>
 
                   <option value="Adventure">
-                    🧗 სათავგადასავლო ტური
+                    ðŸ§— áƒ¡áƒáƒ—áƒáƒ•áƒ’áƒáƒ“áƒáƒ¡áƒáƒ•áƒšáƒ áƒ¢áƒ£áƒ áƒ˜
                   </option>
 
                   <option value="Sightseeing">
-                    📸 ღირსშესანიშნაობები
+                    ðŸ“¸ áƒ¦áƒ˜áƒ áƒ¡áƒ¨áƒ”áƒ¡áƒáƒœáƒ˜áƒ¨áƒœáƒáƒáƒ‘áƒ”áƒ‘áƒ˜
                   </option>
 
                   <option value="Winter Tour">
-                    ❄️ ზამთრის ტური
+                    â„ï¸ áƒ–áƒáƒ›áƒ—áƒ áƒ˜áƒ¡ áƒ¢áƒ£áƒ áƒ˜
                   </option>
                 </select>
               </FormField>
@@ -831,7 +882,7 @@ export default function AddTourPage() {
             {isHorseRiding && (
               <div className="mt-8 rounded-3xl border border-amber-200 bg-amber-50/70 p-5 sm:p-6">
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">🐎</div>
+                  <div className="text-4xl">ðŸŽ</div>
 
                   <div>
                     <p className="text-sm font-black uppercase tracking-[0.2em] text-amber-700">
@@ -839,17 +890,17 @@ export default function AddTourPage() {
                     </p>
 
                     <h3 className="mt-1 text-2xl font-black text-slate-900">
-                      საცხენოსნო ტურის დეტალები
+                      áƒ¡áƒáƒªáƒ®áƒ”áƒœáƒáƒ¡áƒœáƒ áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ“áƒ”áƒ¢áƒáƒšáƒ”áƒ‘áƒ˜
                     </h3>
 
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                      ეს ინფორმაცია გამოჩნდება მხოლოდ Horse Riding კატეგორიის ტურებზე.
+                      áƒ”áƒ¡ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ áƒ’áƒáƒ›áƒáƒ©áƒœáƒ“áƒ”áƒ‘áƒ áƒ›áƒ®áƒáƒšáƒáƒ“ Horse Riding áƒ™áƒáƒ¢áƒ”áƒ’áƒáƒ áƒ˜áƒ˜áƒ¡ áƒ¢áƒ£áƒ áƒ”áƒ‘áƒ–áƒ”.
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-6 grid gap-5 md:grid-cols-2">
-                  <FormField label="გამოცდილების დონე">
+                  <FormField label="áƒ’áƒáƒ›áƒáƒªáƒ“áƒ˜áƒšáƒ”áƒ‘áƒ˜áƒ¡ áƒ“áƒáƒœáƒ”">
                     <select
                       value={horseExperienceLevel}
                       onChange={(event) =>
@@ -860,24 +911,24 @@ export default function AddTourPage() {
                       className="input"
                     >
                       <option value="">
-                        აირჩიე დონე
+                        áƒáƒ˜áƒ áƒ©áƒ˜áƒ” áƒ“áƒáƒœáƒ”
                       </option>
                       <option value="Any">
-                        ყველასთვის / Any
+                        áƒ§áƒ•áƒ”áƒšáƒáƒ¡áƒ—áƒ•áƒ˜áƒ¡ / Any
                       </option>
                       <option value="Beginner">
-                        დამწყები / Beginner
+                        áƒ“áƒáƒ›áƒ¬áƒ§áƒ”áƒ‘áƒ˜ / Beginner
                       </option>
                       <option value="Intermediate">
-                        საშუალო / Intermediate
+                        áƒ¡áƒáƒ¨áƒ£áƒáƒšáƒ / Intermediate
                       </option>
                       <option value="Experienced">
-                        გამოცდილი / Experienced
+                        áƒ’áƒáƒ›áƒáƒªáƒ“áƒ˜áƒšáƒ˜ / Experienced
                       </option>
                     </select>
                   </FormField>
 
-                  <FormField label="მარშრუტის სირთულე">
+                  <FormField label="áƒ›áƒáƒ áƒ¨áƒ áƒ£áƒ¢áƒ˜áƒ¡ áƒ¡áƒ˜áƒ áƒ—áƒ£áƒšáƒ”">
                     <select
                       value={horseDifficulty}
                       onChange={(event) =>
@@ -888,21 +939,21 @@ export default function AddTourPage() {
                       className="input"
                     >
                       <option value="">
-                        აირჩიე სირთულე
+                        áƒáƒ˜áƒ áƒ©áƒ˜áƒ” áƒ¡áƒ˜áƒ áƒ—áƒ£áƒšáƒ”
                       </option>
                       <option value="Easy">
-                        მარტივი / Easy
+                        áƒ›áƒáƒ áƒ¢áƒ˜áƒ•áƒ˜ / Easy
                       </option>
                       <option value="Moderate">
-                        საშუალო / Moderate
+                        áƒ¡áƒáƒ¨áƒ£áƒáƒšáƒ / Moderate
                       </option>
                       <option value="Difficult">
-                        რთული / Difficult
+                        áƒ áƒ—áƒ£áƒšáƒ˜ / Difficult
                       </option>
                     </select>
                   </FormField>
 
-                  <FormField label="მინიმალური ასაკი">
+                  <FormField label="áƒ›áƒ˜áƒœáƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒáƒ¡áƒáƒ™áƒ˜">
                     <input
                       type="number"
                       min="1"
@@ -913,12 +964,12 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: 8"
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 8"
                       className="input"
                     />
                   </FormField>
 
-                  <FormField label="მაქსიმალური ასაკი">
+                  <FormField label="áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒáƒ¡áƒáƒ™áƒ˜">
                     <input
                       type="number"
                       min="1"
@@ -929,12 +980,12 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: 65"
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 65"
                       className="input"
                     />
                   </FormField>
 
-                  <FormField label="ხანგრძლივობა საათებში">
+                  <FormField label="áƒ®áƒáƒœáƒ’áƒ áƒ«áƒšáƒ˜áƒ•áƒáƒ‘áƒ áƒ¡áƒáƒáƒ—áƒ”áƒ‘áƒ¨áƒ˜">
                     <input
                       type="number"
                       min="0.25"
@@ -945,12 +996,12 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: 2.5"
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 2.5"
                       className="input"
                     />
                   </FormField>
 
-                  <FormField label="მარშრუტის სიგრძე (კმ)">
+                  <FormField label="áƒ›áƒáƒ áƒ¨áƒ áƒ£áƒ¢áƒ˜áƒ¡ áƒ¡áƒ˜áƒ’áƒ áƒ«áƒ” (áƒ™áƒ›)">
                     <input
                       type="number"
                       min="0.1"
@@ -961,12 +1012,12 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: 8"
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 8"
                       className="input"
                     />
                   </FormField>
 
-                  <FormField label="მაქსიმალური წონა (კგ)">
+                  <FormField label="áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒ¬áƒáƒœáƒ (áƒ™áƒ’)">
                     <input
                       type="number"
                       min="1"
@@ -977,7 +1028,7 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: 100"
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: 100"
                       className="input"
                     />
                   </FormField>
@@ -1004,10 +1055,10 @@ export default function AddTourPage() {
 
                     <div>
                       <p className="font-black text-slate-900">
-                        🪖 ჩაფხუტი შედის
+                        ðŸª– áƒ©áƒáƒ¤áƒ®áƒ£áƒ¢áƒ˜ áƒ¨áƒ”áƒ“áƒ˜áƒ¡
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        სტუმრისთვის ჩაფხუტი ხელმისაწვდომია
+                        áƒ¡áƒ¢áƒ£áƒ›áƒ áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡ áƒ©áƒáƒ¤áƒ®áƒ£áƒ¢áƒ˜ áƒ®áƒ”áƒšáƒ›áƒ˜áƒ¡áƒáƒ¬áƒ•áƒ“áƒáƒ›áƒ˜áƒ
                       </p>
                     </div>
                   </label>
@@ -1032,10 +1083,10 @@ export default function AddTourPage() {
 
                     <div>
                       <p className="font-black text-slate-900">
-                        🌱 დამწყებისთვის შესაფერისია
+                        ðŸŒ± áƒ“áƒáƒ›áƒ¬áƒ§áƒ”áƒ‘áƒ˜áƒ¡áƒ—áƒ•áƒ˜áƒ¡ áƒ¨áƒ”áƒ¡áƒáƒ¤áƒ”áƒ áƒ˜áƒ¡áƒ˜áƒ
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        წინასწარი გამოცდილება აუცილებელი არ არის
+                        áƒ¬áƒ˜áƒœáƒáƒ¡áƒ¬áƒáƒ áƒ˜ áƒ’áƒáƒ›áƒáƒªáƒ“áƒ˜áƒšáƒ”áƒ‘áƒ áƒáƒ£áƒªáƒ˜áƒšáƒ”áƒ‘áƒ”áƒšáƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡
                       </p>
                     </div>
                   </label>
@@ -1060,10 +1111,10 @@ export default function AddTourPage() {
 
                     <div>
                       <p className="font-black text-slate-900">
-                        🧑‍🌾 გიდი მოყვება
+                        ðŸ§‘â€ðŸŒ¾ áƒ’áƒ˜áƒ“áƒ˜ áƒ›áƒáƒ§áƒ•áƒ”áƒ‘áƒ
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        ტურს თან ახლავს ადგილობრივი გიდი
+                        áƒ¢áƒ£áƒ áƒ¡ áƒ—áƒáƒœ áƒáƒ®áƒšáƒáƒ•áƒ¡ áƒáƒ“áƒ’áƒ˜áƒšáƒáƒ‘áƒ áƒ˜áƒ•áƒ˜ áƒ’áƒ˜áƒ“áƒ˜
                       </p>
                     </div>
                   </label>
@@ -1088,17 +1139,17 @@ export default function AddTourPage() {
 
                     <div>
                       <p className="font-black text-slate-900">
-                        🐴 ცხენის არჩევა შესაძლებელია
+                        ðŸ´ áƒªáƒ®áƒ”áƒœáƒ˜áƒ¡ áƒáƒ áƒ©áƒ”áƒ•áƒ áƒ¨áƒ”áƒ¡áƒáƒ«áƒšáƒ”áƒ‘áƒ”áƒšáƒ˜áƒ
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        სტუმარს შეუძლია ხელმისაწვდომი ცხენებიდან არჩევა
+                        áƒ¡áƒ¢áƒ£áƒ›áƒáƒ áƒ¡ áƒ¨áƒ”áƒ£áƒ«áƒšáƒ˜áƒ áƒ®áƒ”áƒšáƒ›áƒ˜áƒ¡áƒáƒ¬áƒ•áƒ“áƒáƒ›áƒ˜ áƒªáƒ®áƒ”áƒœáƒ”áƒ‘áƒ˜áƒ“áƒáƒœ áƒáƒ áƒ©áƒ”áƒ•áƒ
                       </p>
                     </div>
                   </label>
                 </div>
 
                 <div className="mt-6 grid gap-5">
-                  <FormField label="უსაფრთხოების ინსტრუქცია">
+                  <FormField label="áƒ£áƒ¡áƒáƒ¤áƒ áƒ—áƒ®áƒáƒ”áƒ‘áƒ˜áƒ¡ áƒ˜áƒœáƒ¡áƒ¢áƒ áƒ£áƒ¥áƒªáƒ˜áƒ">
                     <textarea
                       value={horseSafetyInfo}
                       onChange={(event) =>
@@ -1106,13 +1157,13 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: ტურის დაწყებამდე ტარდება მოკლე ინსტრუქტაჟი..."
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ“áƒáƒ¬áƒ§áƒ”áƒ‘áƒáƒ›áƒ“áƒ” áƒ¢áƒáƒ áƒ“áƒ”áƒ‘áƒ áƒ›áƒáƒ™áƒšáƒ” áƒ˜áƒœáƒ¡áƒ¢áƒ áƒ£áƒ¥áƒ¢áƒáƒŸáƒ˜..."
                       rows={4}
                       className="input resize-none"
                     />
                   </FormField>
 
-                  <FormField label="რა უნდა იქონიოს სტუმარმა / სპეციალური პირობები">
+                  <FormField label="áƒ áƒ áƒ£áƒœáƒ“áƒ áƒ˜áƒ¥áƒáƒœáƒ˜áƒáƒ¡ áƒ¡áƒ¢áƒ£áƒ›áƒáƒ áƒ›áƒ / áƒ¡áƒžáƒ”áƒªáƒ˜áƒáƒšáƒ£áƒ áƒ˜ áƒžáƒ˜áƒ áƒáƒ‘áƒ”áƒ‘áƒ˜">
                     <textarea
                       value={horseGuestRequirements}
                       onChange={(event) =>
@@ -1120,7 +1171,7 @@ export default function AddTourPage() {
                           event.target.value
                         )
                       }
-                      placeholder="მაგალითად: დახურული ფეხსაცმელი, გრძელი შარვალი, წყალი..."
+                      placeholder="áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“: áƒ“áƒáƒ®áƒ£áƒ áƒ£áƒšáƒ˜ áƒ¤áƒ”áƒ®áƒ¡áƒáƒªáƒ›áƒ”áƒšáƒ˜, áƒ’áƒ áƒ«áƒ”áƒšáƒ˜ áƒ¨áƒáƒ áƒ•áƒáƒšáƒ˜, áƒ¬áƒ§áƒáƒšáƒ˜..."
                       rows={4}
                       className="input resize-none"
                     />
@@ -1131,7 +1182,7 @@ export default function AddTourPage() {
 
             <div className="mt-5">
               <FormField
-                label="ტურის სრული აღწერა"
+                label="áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¡áƒ áƒ£áƒšáƒ˜ áƒáƒ¦áƒ¬áƒ”áƒ áƒ"
                 required
               >
                 <textarea
@@ -1139,7 +1190,7 @@ export default function AddTourPage() {
                   onChange={(event) =>
                     setDescription(event.target.value)
                   }
-                  placeholder="აღწერე მარშრუტი, მომსახურება, შეხვედრის ადგილი და მნიშვნელოვანი პირობები..."
+                  placeholder="áƒáƒ¦áƒ¬áƒ”áƒ áƒ” áƒ›áƒáƒ áƒ¨áƒ áƒ£áƒ¢áƒ˜, áƒ›áƒáƒ›áƒ¡áƒáƒ®áƒ£áƒ áƒ”áƒ‘áƒ, áƒ¨áƒ”áƒ®áƒ•áƒ”áƒ“áƒ áƒ˜áƒ¡ áƒáƒ“áƒ’áƒ˜áƒšáƒ˜ áƒ“áƒ áƒ›áƒœáƒ˜áƒ¨áƒ•áƒœáƒ”áƒšáƒáƒ•áƒáƒœáƒ˜ áƒžáƒ˜áƒ áƒáƒ‘áƒ”áƒ‘áƒ˜..."
                   rows={7}
                   required
                   className="input resize-none"
@@ -1154,18 +1205,18 @@ export default function AddTourPage() {
             </p>
 
             <h2 className="mt-2 text-3xl font-black">
-              საკონტაქტო ინფორმაცია
+              áƒ¡áƒáƒ™áƒáƒœáƒ¢áƒáƒ¥áƒ¢áƒ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ
             </h2>
 
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-              ჩაწერე საერთაშორისო ფორმატის ნომერი. უცხოელი
-              ტურისტი ამ ნომრით შეძლებს WhatsApp-ზე ან Viber-ზე
-              დაკავშირებას.
+              áƒ©áƒáƒ¬áƒ”áƒ áƒ” áƒ¡áƒáƒ”áƒ áƒ—áƒáƒ¨áƒáƒ áƒ˜áƒ¡áƒ áƒ¤áƒáƒ áƒ›áƒáƒ¢áƒ˜áƒ¡ áƒœáƒáƒ›áƒ”áƒ áƒ˜. áƒ£áƒªáƒ®áƒáƒ”áƒšáƒ˜
+              áƒ¢áƒ£áƒ áƒ˜áƒ¡áƒ¢áƒ˜ áƒáƒ› áƒœáƒáƒ›áƒ áƒ˜áƒ— áƒ¨áƒ”áƒ«áƒšáƒ”áƒ‘áƒ¡ WhatsApp-áƒ–áƒ” áƒáƒœ Viber-áƒ–áƒ”
+              áƒ“áƒáƒ™áƒáƒ•áƒ¨áƒ˜áƒ áƒ”áƒ‘áƒáƒ¡.
             </p>
 
             <div className="mt-7">
               <FormField
-                label="ტურის ორგანიზატორის ტელეფონის ნომერი"
+                label="áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒáƒ áƒ’áƒáƒœáƒ˜áƒ–áƒáƒ¢áƒáƒ áƒ˜áƒ¡ áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜áƒ¡ áƒœáƒáƒ›áƒ”áƒ áƒ˜"
                 required
               >
                 <input
@@ -1180,7 +1231,7 @@ export default function AddTourPage() {
                 />
 
                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                  გამოიყენე ქვეყნის კოდი, მაგალითად:
+                  áƒ’áƒáƒ›áƒáƒ˜áƒ§áƒ”áƒœáƒ” áƒ¥áƒ•áƒ”áƒ§áƒœáƒ˜áƒ¡ áƒ™áƒáƒ“áƒ˜, áƒ›áƒáƒ’áƒáƒšáƒ˜áƒ—áƒáƒ“:
                   +995555123456
                 </p>
               </FormField>
@@ -1204,7 +1255,7 @@ export default function AddTourPage() {
                 />
 
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-2xl text-white">
-                  ☎
+                  â˜Ž
                 </div>
 
                 <div>
@@ -1213,7 +1264,7 @@ export default function AddTourPage() {
                   </p>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    ამ ნომერზე WhatsApp ხელმისაწვდომია
+                    áƒáƒ› áƒœáƒáƒ›áƒ”áƒ áƒ–áƒ” WhatsApp áƒ®áƒ”áƒšáƒ›áƒ˜áƒ¡áƒáƒ¬áƒ•áƒ“áƒáƒ›áƒ˜áƒ
                   </p>
                 </div>
               </label>
@@ -1235,7 +1286,7 @@ export default function AddTourPage() {
                 />
 
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500 text-2xl text-white">
-                  📞
+                  ðŸ“ž
                 </div>
 
                 <div>
@@ -1244,7 +1295,7 @@ export default function AddTourPage() {
                   </p>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    ამ ნომერზე Viber ხელმისაწვდომია
+                    áƒáƒ› áƒœáƒáƒ›áƒ”áƒ áƒ–áƒ” Viber áƒ®áƒ”áƒšáƒ›áƒ˜áƒ¡áƒáƒ¬áƒ•áƒ“áƒáƒ›áƒ˜áƒ
                   </p>
                 </div>
               </label>
@@ -1252,9 +1303,9 @@ export default function AddTourPage() {
 
             {!hasWhatsapp && !hasViber && (
               <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800">
-                ℹ️ WhatsApp ან Viber მონიშნული არ არის.
-                მომხმარებელი მხოლოდ ჩვეულებრივი ზარით შეძლებს
-                დაკავშირებას.
+                â„¹ï¸ WhatsApp áƒáƒœ Viber áƒ›áƒáƒœáƒ˜áƒ¨áƒœáƒ£áƒšáƒ˜ áƒáƒ  áƒáƒ áƒ˜áƒ¡.
+                áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒ”áƒšáƒ˜ áƒ›áƒ®áƒáƒšáƒáƒ“ áƒ©áƒ•áƒ”áƒ£áƒšáƒ”áƒ‘áƒ áƒ˜áƒ•áƒ˜ áƒ–áƒáƒ áƒ˜áƒ— áƒ¨áƒ”áƒ«áƒšáƒ”áƒ‘áƒ¡
+                áƒ“áƒáƒ™áƒáƒ•áƒ¨áƒ˜áƒ áƒ”áƒ‘áƒáƒ¡.
               </div>
             )}
           </section>
@@ -1265,24 +1316,24 @@ export default function AddTourPage() {
             </p>
 
             <h2 className="mt-2 text-3xl font-black">
-              📸 ტურის ფოტოები
+              ðŸ“¸ áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¤áƒáƒ¢áƒáƒ”áƒ‘áƒ˜
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-slate-500">
-              შეგიძლია ატვირთო მაქსიმუმ 5 ფოტო.
-              პირველი ფოტო იქნება ტურის მთავარი ფოტო.
-              თითოეული ფოტოს მაქსიმალური ზომაა 10 MB.
+              áƒ¨áƒ”áƒ’áƒ˜áƒ«áƒšáƒ˜áƒ áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒ£áƒ› 5 áƒ¤áƒáƒ¢áƒ.
+              áƒžáƒ˜áƒ áƒ•áƒ”áƒšáƒ˜ áƒ¤áƒáƒ¢áƒ áƒ˜áƒ¥áƒœáƒ”áƒ‘áƒ áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ›áƒ—áƒáƒ•áƒáƒ áƒ˜ áƒ¤áƒáƒ¢áƒ.
+              áƒ—áƒ˜áƒ—áƒáƒ”áƒ£áƒšáƒ˜ áƒ¤áƒáƒ¢áƒáƒ¡ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒ–áƒáƒ›áƒáƒ 10 MB.
             </p>
 
             <div className="mt-6 rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-5 sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-lg font-black text-slate-900">
-                    📷 დაამატე ფოტო
+                    ðŸ“· áƒ“áƒáƒáƒ›áƒáƒ¢áƒ” áƒ¤áƒáƒ¢áƒ
                   </p>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    არჩეულია {imageFiles.length} / {MAX_IMAGES} ფოტო
+                    áƒáƒ áƒ©áƒ”áƒ£áƒšáƒ˜áƒ {imageFiles.length} / {MAX_IMAGES} áƒ¤áƒáƒ¢áƒ
                   </p>
                 </div>
 
@@ -1307,16 +1358,16 @@ export default function AddTourPage() {
                   />
 
                   {imageFiles.length === 0
-                    ? "➕ ფოტოს დამატება"
+                    ? "âž• áƒ¤áƒáƒ¢áƒáƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ"
                     : imageFiles.length >= MAX_IMAGES
-                      ? "✅ 5 ფოტო დამატებულია"
-                      : "➕ კიდევ ფოტოს დამატება"}
+                      ? "âœ… 5 áƒ¤áƒáƒ¢áƒ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ£áƒšáƒ˜áƒ"
+                      : "âž• áƒ™áƒ˜áƒ“áƒ”áƒ• áƒ¤áƒáƒ¢áƒáƒ¡ áƒ“áƒáƒ›áƒáƒ¢áƒ”áƒ‘áƒ"}
                 </label>
               </div>
 
               <p className="mt-4 text-xs leading-5 text-slate-500">
-                ტელეფონიდან შეგიძლია ფოტოები მონიშნო ერთდროულად
-                ან ღილაკს რამდენჯერმე დააჭირო.
+                áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜áƒ“áƒáƒœ áƒ¨áƒ”áƒ’áƒ˜áƒ«áƒšáƒ˜áƒ áƒ¤áƒáƒ¢áƒáƒ”áƒ‘áƒ˜ áƒ›áƒáƒœáƒ˜áƒ¨áƒœáƒ áƒ”áƒ áƒ—áƒ“áƒ áƒáƒ£áƒšáƒáƒ“
+                áƒáƒœ áƒ¦áƒ˜áƒšáƒáƒ™áƒ¡ áƒ áƒáƒ›áƒ“áƒ”áƒœáƒ¯áƒ”áƒ áƒ›áƒ” áƒ“áƒáƒáƒ­áƒ˜áƒ áƒ.
               </p>
             </div>
 
@@ -1331,7 +1382,7 @@ export default function AddTourPage() {
                       <div className="relative">
                         <img
                           src={url}
-                          alt={`ტურის ფოტო ${
+                          alt={`áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¤áƒáƒ¢áƒ ${
                             index + 1
                           }`}
                           className="h-48 w-full object-cover"
@@ -1339,7 +1390,7 @@ export default function AddTourPage() {
 
                         {index === 0 && (
                           <div className="absolute left-3 top-3 rounded-full bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-lg">
-                            ⭐ მთავარი ფოტო
+                            â­ áƒ›áƒ—áƒáƒ•áƒáƒ áƒ˜ áƒ¤áƒáƒ¢áƒ
                           </div>
                         )}
 
@@ -1366,7 +1417,7 @@ export default function AddTourPage() {
                           disabled={saving}
                           className="mt-3 w-full rounded-xl bg-red-100 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-200 disabled:opacity-50"
                         >
-                          🗑️ ფოტოს მოცილება
+                          ðŸ—‘ï¸ áƒ¤áƒáƒ¢áƒáƒ¡ áƒ›áƒáƒªáƒ˜áƒšáƒ”áƒ‘áƒ
                         </button>
                       </div>
                     </div>
@@ -1377,7 +1428,7 @@ export default function AddTourPage() {
 
             {imageFiles.length >= MAX_IMAGES && (
               <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
-                ✅ 5 ფოტო უკვე არჩეულია.
+                âœ… 5 áƒ¤áƒáƒ¢áƒ áƒ£áƒ™áƒ•áƒ” áƒáƒ áƒ©áƒ”áƒ£áƒšáƒ˜áƒ.
               </div>
             )}
           </section>
@@ -1389,7 +1440,7 @@ export default function AddTourPage() {
               disabled={saving}
               className="rounded-2xl bg-slate-200 px-7 py-4 font-bold text-slate-700 transition hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              გაუქმება
+              áƒ’áƒáƒ£áƒ¥áƒ›áƒ”áƒ‘áƒ
             </button>
 
             <button
@@ -1398,8 +1449,8 @@ export default function AddTourPage() {
               className="rounded-2xl bg-cyan-600 px-8 py-4 text-lg font-black text-white shadow-lg transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               {saving
-                ? `ტური და ${imageFiles.length} ფოტო ინახება...`
-                : "🏔️ ტურის გაგზავნა"}
+                ? `áƒ¢áƒ£áƒ áƒ˜ áƒ“áƒ ${imageFiles.length} áƒ¤áƒáƒ¢áƒ áƒ˜áƒœáƒáƒ®áƒ”áƒ‘áƒ...`
+                : "ðŸ”ï¸ áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ’áƒáƒ’áƒ–áƒáƒ•áƒœáƒ"}
             </button>
           </div>
         </form>
@@ -1480,3 +1531,5 @@ function isValidPhone(phone: string) {
 
   return /^\+\d{8,15}$/.test(normalizedPhone);
 }
+
+

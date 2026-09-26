@@ -33,6 +33,8 @@ type Tour = {
   max_people: number | null;
   category: string | null;
   category_en: string | null;
+  cancellation_policy: "24_hours" | "3_days" | "7_days" | "14_days" | null;
+  cancellation_fee_percent: number | null;
   status: string | null;
   created_at: string | null;
   organizer_name: string | null;
@@ -197,6 +199,8 @@ export default function BookTourPage() {
             max_people,
             category,
             category_en,
+            cancellation_policy,
+            cancellation_fee_percent,
             status,
             created_at,
             organizer_name,
@@ -258,6 +262,8 @@ export default function BookTourPage() {
             max_people,
             category,
             category_en,
+            cancellation_policy,
+            cancellation_fee_percent,
             status,
             created_at,
             organizer_name,
@@ -1466,6 +1472,30 @@ export default function BookTourPage() {
                   title={c.confirmation}
                   text={c.confirmationText}
                 />
+
+                <NoticeCard
+                  icon="🛡️"
+                  title={language === "ka" ? "გაუქმების პოლიტიკა" : "Cancellation policy"}
+                  text={
+                    tour.cancellation_policy === "24_hours"
+                      ? language === "ka"
+                        ? "უფასო გაუქმება შესაძლებელია ტურის დაწყებამდე მინიმუმ 24 საათით ადრე. ვადის გასვლის შემდეგ მოქმედებს ღირებულების 100%-იანი ჯარიმა."
+                        : "Free cancellation is available at least 24 hours before the tour starts. After the deadline, a 100% cancellation penalty applies."
+                      : tour.cancellation_policy === "3_days"
+                        ? language === "ka"
+                          ? "უფასო გაუქმება შესაძლებელია ტურის დაწყებამდე მინიმუმ 3 დღით ადრე. ვადის გასვლის შემდეგ მოქმედებს ღირებულების 50%-იანი ჯარიმა."
+                          : "Free cancellation is available at least 3 days before the tour starts. After the deadline, a 50% cancellation penalty applies."
+                        : tour.cancellation_policy === "7_days"
+                          ? language === "ka"
+                            ? "უფასო გაუქმება შესაძლებელია ტურის დაწყებამდე მინიმუმ 7 დღით ადრე. ვადის გასვლის შემდეგ მოქმედებს ღირებულების 30%-იანი ჯარიმა."
+                            : "Free cancellation is available at least 7 days before the tour starts. After the deadline, a 30% cancellation penalty applies."
+                          : tour.cancellation_policy === "14_days"
+                            ? language === "ka"
+                              ? "უფასო გაუქმება შესაძლებელია ტურის დაწყებამდე მინიმუმ 14 დღით ადრე. ვადის გასვლის შემდეგ მოქმედებს ღირებულების 20%-იანი ჯარიმა."
+                              : "Free cancellation is available at least 14 days before the tour starts. After the deadline, a 20% cancellation penalty applies."
+                            : c.notSpecified
+                  }
+                />
               </div>
             </section>
 
@@ -2284,6 +2314,9 @@ function formatDate(value: string, language: "ka" | "en") {
     minute: "2-digit",
   }).format(date);
 }
+
+
+
 
 
 
