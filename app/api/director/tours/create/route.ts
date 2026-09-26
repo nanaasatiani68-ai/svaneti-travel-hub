@@ -15,6 +15,8 @@ type CreateTourBody = {
   start_date?: string | null;
   max_people?: number | null;
   category?: string | null;
+  cancellation_policy?: "24_hours" | "3_days" | "7_days" | "14_days";
+  cancellation_fee_percent?: number;
   image_url?: string | null;
   image_urls?: string[] | null;
   organizer_name?: string | null;
@@ -206,6 +208,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const cancellationFees = {
+      "24_hours": 100,
+      "3_days": 50,
+      "7_days": 30,
+      "14_days": 20,
+    } as const;
+
+    const cancellationPolicy =
+      body.cancellation_policy || "24_hours";
+
+    if (!(cancellationPolicy in cancellationFees)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "???????? ????????? ????????.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const cancellationFeePercent =
+      cancellationFees[
+        cancellationPolicy as keyof typeof cancellationFees
+      ];
+
     const maxPeople =
       body.max_people === null ||
       body.max_people === undefined
@@ -242,6 +269,8 @@ export async function POST(request: NextRequest) {
         start_date: body.start_date || null,
         max_people: maxPeople,
         category: body.category || null,
+        cancellation_policy: cancellationPolicy,
+        cancellation_fee_percent: cancellationFeePercent,
 
         horse_experience_level:
           body.horse_experience_level || null,
