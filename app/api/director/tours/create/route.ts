@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -15,8 +15,6 @@ type CreateTourBody = {
   start_date?: string | null;
   max_people?: number | null;
   category?: string | null;
-  cancellation_policy?: "24_hours" | "3_days" | "7_days" | "14_days";
-  cancellation_fee_percent?: number;
   image_url?: string | null;
   image_urls?: string[] | null;
   organizer_name?: string | null;
@@ -50,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "áƒ¡áƒ”áƒ áƒ•áƒ”áƒ áƒ˜áƒ¡ áƒ™áƒáƒœáƒ¤áƒ˜áƒ’áƒ£áƒ áƒáƒªáƒ˜áƒ áƒáƒ áƒáƒ¡áƒ áƒ£áƒšáƒ˜áƒ.",
+          error: "სერვერის კონფიგურაცია არასრულია.",
         },
         { status: 500 }
       );
@@ -63,7 +61,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "áƒáƒ•áƒ¢áƒáƒ áƒ˜áƒ–áƒáƒªáƒ˜áƒ áƒáƒ£áƒªáƒ˜áƒšáƒ”áƒ‘áƒ”áƒšáƒ˜áƒ.",
+          error: "ავტორიზაცია აუცილებელია.",
         },
         { status: 401 }
       );
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Director-áƒ˜áƒ¡ áƒáƒ•áƒ¢áƒáƒ áƒ˜áƒ–áƒáƒªáƒ˜áƒ áƒ•áƒ”áƒ  áƒ“áƒáƒ“áƒáƒ¡áƒ¢áƒ£áƒ áƒ“áƒ.",
+          error: "Director-ის ავტორიზაცია ვერ დადასტურდა.",
         },
         { status: 401 }
       );
@@ -112,7 +110,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Director-áƒ˜áƒ¡ áƒ áƒáƒšáƒ˜áƒ¡ áƒ¨áƒ”áƒ›áƒáƒ¬áƒ›áƒ”áƒ‘áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ.",
+          error: "Director-ის როლის შემოწმება ვერ მოხერხდა.",
         },
         { status: 500 }
       );
@@ -130,7 +128,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error:
-            "áƒáƒ› áƒ¤áƒ£áƒœáƒ¥áƒªáƒ˜áƒ˜áƒ¡ áƒ’áƒáƒ›áƒáƒ§áƒ”áƒœáƒ”áƒ‘áƒ áƒ›áƒ®áƒáƒšáƒáƒ“ Director-áƒ¡ áƒ¨áƒ”áƒ£áƒ«áƒšáƒ˜áƒ.",
+            "ამ ფუნქციის გამოყენება მხოლოდ Director-ს შეუძლია.",
         },
         { status: 403 }
       );
@@ -144,7 +142,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "áƒ›áƒáƒ—áƒ®áƒáƒ•áƒœáƒ˜áƒ¡ áƒ›áƒáƒœáƒáƒªáƒ”áƒ›áƒ”áƒ‘áƒ˜ áƒáƒ áƒáƒ¡áƒ¬áƒáƒ áƒ˜áƒ.",
+          error: "მოთხოვნის მონაცემები არასწორია.",
         },
         { status: 400 }
       );
@@ -171,37 +169,12 @@ export async function POST(request: NextRequest) {
         ? null
         : Number(body.price);
 
-    const cancellationFees = {
-      "24_hours": 100,
-      "3_days": 50,
-      "7_days": 30,
-      "14_days": 20,
-    } as const;
-
-    const cancellationPolicy =
-      body.cancellation_policy || "24_hours";
-
-    if (!(cancellationPolicy in cancellationFees)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "არასწორი გაუქმების პოლიტიკა.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const cancellationFeePercent =
-      cancellationFees[
-        cancellationPolicy as keyof typeof cancellationFees
-      ];
-
     if (!title || !description || !location || !contactPhone) {
       return NextResponse.json(
         {
           success: false,
           error:
-            "áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ˜, áƒáƒ¦áƒ¬áƒ”áƒ áƒ, áƒ›áƒ“áƒ”áƒ‘áƒáƒ áƒ”áƒáƒ‘áƒ áƒ“áƒ áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜ áƒáƒ£áƒªáƒ˜áƒšáƒ”áƒ‘áƒ”áƒšáƒ˜áƒ.",
+            "ტურის სახელი, აღწერა, მდებარეობა და ტელეფონი აუცილებელია.",
         },
         { status: 400 }
       );
@@ -216,7 +189,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¤áƒáƒ¡áƒ˜ áƒáƒ áƒáƒ¡áƒ¬áƒáƒ áƒ˜áƒ.",
+          error: "ტურის ფასი არასწორია.",
         },
         { status: 400 }
       );
@@ -227,7 +200,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error:
-            "áƒ¢áƒ”áƒšáƒ”áƒ¤áƒáƒœáƒ˜áƒ¡ áƒœáƒáƒ›áƒ”áƒ áƒ˜ áƒ¡áƒáƒ”áƒ áƒ—áƒáƒ¨áƒáƒ áƒ˜áƒ¡áƒ áƒ¤áƒáƒ áƒ›áƒáƒ¢áƒ¨áƒ˜ áƒ©áƒáƒ¬áƒ”áƒ áƒ”.",
+            "ტელეფონის ნომერი საერთაშორისო ფორმატში ჩაწერე.",
         },
         { status: 400 }
       );
@@ -247,7 +220,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error:
-            "áƒáƒ“áƒáƒ›áƒ˜áƒáƒœáƒ”áƒ‘áƒ˜áƒ¡ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒáƒšáƒ£áƒ áƒ˜ áƒ áƒáƒáƒ“áƒ”áƒœáƒáƒ‘áƒ áƒáƒ áƒáƒ¡áƒ¬áƒáƒ áƒ˜áƒ.",
+            "ადამიანების მაქსიმალური რაოდენობა არასწორია.",
         },
         { status: 400 }
       );
@@ -269,8 +242,6 @@ export async function POST(request: NextRequest) {
         start_date: body.start_date || null,
         max_people: maxPeople,
         category: body.category || null,
-        cancellation_policy: cancellationPolicy,
-        cancellation_fee_percent: cancellationFeePercent,
 
         horse_experience_level:
           body.horse_experience_level || null,
@@ -325,7 +296,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `áƒ¢áƒ£áƒ áƒ˜áƒ¡ áƒ¨áƒ”áƒœáƒáƒ®áƒ•áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ®áƒ”áƒ áƒ®áƒ“áƒ: ${insertError.message}`,
+          error: `ტურის შენახვა ვერ მოხერხდა: ${insertError.message}`,
         },
         { status: 500 }
       );
@@ -335,7 +306,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         tourId: tour.id,
-        message: "áƒ¢áƒ£áƒ áƒ˜ áƒ“áƒáƒ”áƒ›áƒáƒ¢áƒ áƒ“áƒ áƒ’áƒáƒ›áƒáƒ¥áƒ•áƒ”áƒ§áƒœáƒ“áƒ.",
+        message: "ტური დაემატა და გამოქვეყნდა.",
       },
       { status: 201 }
     );
@@ -348,12 +319,9 @@ export async function POST(request: NextRequest) {
         error:
           error instanceof Error
             ? error.message
-            : "áƒ£áƒªáƒœáƒáƒ‘áƒ˜ áƒ¨áƒ”áƒªáƒ“áƒáƒ›áƒ áƒ“áƒáƒ¤áƒ˜áƒ¥áƒ¡áƒ˜áƒ áƒ“áƒ.",
+            : "უცნობი შეცდომა დაფიქსირდა.",
       },
       { status: 500 }
     );
   }
 }
-
-
-
