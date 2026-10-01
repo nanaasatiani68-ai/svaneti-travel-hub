@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -71,6 +71,9 @@ export default function PublicToursPage() {
 
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedDestination, setSelectedDestination] = useState("all");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDuration, setSelectedDuration] = useState("all");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [people, setPeople] = useState("");
@@ -321,6 +324,18 @@ export default function PublicToursPage() {
         selectedCategory === "all" ||
         tour.category === selectedCategory;
 
+      const matchesDestination =
+        selectedDestination === "all" ||
+        tour.location?.trim() === selectedDestination;
+
+      const matchesDate =
+        selectedDate === "" ||
+        tour.start_date?.slice(0, 10) === selectedDate;
+
+      const matchesDuration =
+        selectedDuration === "all" ||
+        tour.duration?.trim() === selectedDuration;
+
       const numericPrice =
         tour.price === null ? null : Number(tour.price);
 
@@ -342,6 +357,9 @@ export default function PublicToursPage() {
       return (
         matchesSearch &&
         matchesCategory &&
+        matchesDestination &&
+        matchesDate &&
+        matchesDuration &&
         matchesMinPrice &&
         matchesMaxPrice &&
         matchesPeople
@@ -397,6 +415,9 @@ export default function PublicToursPage() {
     tours,
     search,
     selectedCategory,
+    selectedDestination,
+    selectedDate,
+    selectedDuration,
     minPrice,
     maxPrice,
     people,
@@ -407,6 +428,9 @@ export default function PublicToursPage() {
   const hasActiveFilters =
     search.trim() !== "" ||
     selectedCategory !== "all" ||
+    selectedDestination !== "all" ||
+    selectedDate !== "" ||
+    selectedDuration !== "all" ||
     minPrice.trim() !== "" ||
     maxPrice.trim() !== "" ||
     people.trim() !== "" ||
@@ -415,6 +439,9 @@ export default function PublicToursPage() {
   function clearFilters() {
     setSearch("");
     setSelectedCategory("all");
+    setSelectedDestination("all");
+    setSelectedDate("");
+    setSelectedDuration("all");
     setMinPrice("");
     setMaxPrice("");
     setPeople("");
@@ -605,6 +632,53 @@ export default function PublicToursPage() {
                 placeholder="ტური, ადგილი, აღწერა..."
                 className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500"
               />
+            </FilterField>
+
+            <FilterField label="მდებარეობა">
+              <select
+                value={selectedDestination}
+                onChange={(event) =>
+                  setSelectedDestination(event.target.value)
+                }
+                className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none focus:border-cyan-500"
+              >
+                <option value="all">
+                  ყველა მდებარეობა
+                </option>
+
+                {destinations.map((destination) => (
+                  <option
+                    key={destination}
+                    value={destination}
+                  >
+                    {destination}
+                  </option>
+                ))}
+              </select>
+            </FilterField>
+
+            <FilterField label="თარიღი">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none focus:border-cyan-500"
+              />
+            </FilterField>
+
+            <FilterField label="ხანგრძლივობა">
+              <select
+                value={selectedDuration}
+                onChange={(event) => setSelectedDuration(event.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 font-medium text-slate-900 outline-none focus:border-cyan-500"
+              >
+                <option value="all">ყველა ხანგრძლივობა</option>
+                {durations.map((duration) => (
+                  <option key={duration} value={duration}>
+                    {duration}
+                  </option>
+                ))}
+              </select>
             </FilterField>
 
             <FilterField label="კატეგორია">
@@ -1028,6 +1102,12 @@ function EmptyState({
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
