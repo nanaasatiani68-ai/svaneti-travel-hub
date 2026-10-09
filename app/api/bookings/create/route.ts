@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -442,6 +442,7 @@ export async function POST(request: NextRequest) {
 
     let ownerEmail: string | null = null;
     let ownerName: string | null = null;
+    let ownerPhone: string | null = null;
 
     if (tour.user_id) {
       const [
@@ -454,7 +455,7 @@ export async function POST(request: NextRequest) {
 
         supabaseAdmin
           .from("profiles")
-          .select("full_name")
+          .select("*")
           .eq("id", tour.user_id)
           .maybeSingle(),
       ]);
@@ -480,7 +481,42 @@ export async function POST(request: NextRequest) {
         ownerName =
           ownerProfileResult.data?.full_name
             ?.trim() || null;
+        ownerPhone = normalizeGeorgianMobile(ownerProfileResult.data?.phone);
       }
+    }
+
+    // Notification failures must never turn a saved booking into a failed request.
+    let smsWarning: string | null = null;
+    let smsAccepted = false;
+    try {
+      if (!ownerPhone) {
+        // Read optional contact fields separately so older tours schemas still work.
+        const { data: contactTour, error: contactError } = await supabaseAdmin
+          .from("tours").select("*").eq("id", tour.id).maybeSingle();
+        if (!contactError) {
+          ownerPhone = normalizeGeorgianMobile(contactTour?.contact_phone);
+        }
+      }
+      if (!ownerPhone) {
+        smsWarning = "ჯავშანი შეიქმნა, მაგრამ ავტორის ქართული მობილურის ნომერი არ არის მითითებული ან არასწორია.";
+      } else {
+        await sendOwnerBookingSms({
+          phone: ownerPhone,
+          bookingId: String(booking.id),
+          tourTitle: tour.title?.trim() || "ტური",
+          bookingDate,
+          people,
+          guestName,
+          guestPhone,
+        });
+        smsAccepted = true;
+      }
+    } catch (smsError: unknown) {
+      // Do not log API keys, phone numbers or the provider's raw response.
+      smsWarning = smsError instanceof Error
+        ? smsError.message
+        : "ჯავშანი შეიქმნა, მაგრამ SMS-ის გაგზავნა ვერ მოხერხდა.";
+      console.error("Booking SMS notification failed:", smsWarning);
     }
 
     let emailWarning: string | null = null;
@@ -616,6 +652,8 @@ export async function POST(request: NextRequest) {
         success: true,
         bookingId: booking.id,
         emailWarning,
+        smsWarning,
+        smsAccepted,
       },
       {
         status: 201,
@@ -1279,4 +1317,76 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+
+function normalizeGeorgianMobile(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  // Reject lists, extensions and letters rather than merging recipients.
+  if (!/^[+\d\s().-]+$/.test(trimmed)) return null;
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (/^5\d{8}$/.test(digits)) digits = `995${digits}`;
+  return /^9955\d{8}$/.test(digits) ? digits : null;
+}
+
+async function sendOwnerBookingSms(details: {
+  phone: string;
+  bookingId: string;
+  tourTitle: string;
+  bookingDate: string;
+  people: number;
+  guestName: string;
+  guestPhone: string;
+}) {
+  const key = process.env.SMSOFFICE_API_KEY?.trim();
+  const sender = process.env.SMSOFFICE_SENDER?.trim();
+  if (!key || !sender) {
+    throw new Error("ჯავშანი შეიქმნა, მაგრამ SMSOFFICE_API_KEY ან SMSOFFICE_SENDER არ არის დაყენებული.");
+  }
+  const oneLine = (value: string, limit: number) =>
+    Array.from(value.replace(/\s+/g, " ").trim()).slice(0, limit).join("");
+  const content = [
+    "Georgia Gateway Hub — ახალი ჯავშნის მოთხოვნა",
+    `ჯავშანი: ${oneLine(details.bookingId, 40)}`,
+    `ტური: ${oneLine(details.tourTitle, 80)}`,
+    `თარიღი: ${details.bookingDate}; სტუმრები: ${details.people}`,
+    `სტუმარი: ${oneLine(details.guestName, 60)}`,
+    `ტელეფონი: ${oneLine(details.guestPhone, 60)}`,
+  ].join("\n");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch("https://smsoffice.ge/api/v2/send/", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        key,
+        destination: details.phone,
+        sender,
+        content,
+        urgent: "true",
+        reference: `b${details.bookingId}`.slice(0, 20),
+      }).toString(),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    const result = await response.json() as {
+      Success?: boolean;
+      ErrorCode?: number;
+    };
+    if (!response.ok || result.Success !== true ||
+        (result.ErrorCode !== undefined && result.ErrorCode !== 0)) {
+      const code = Number(result.ErrorCode);
+      if (code === 20) throw new Error("ჯავშანი შეიქმნა, მაგრამ SMS Office-ის ბალანსი არასაკმარისია.");
+      throw new Error(`ჯავშანი შეიქმნა, მაგრამ SMS Office-მა მოთხოვნა ვერ მიიღო (HTTP ${response.status}, კოდი ${Number.isFinite(code) ? code : "უცნობი"}).`);
+    }
+    // Acceptance means queued by the provider, not confirmed delivery.
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith("ჯავშანი შეიქმნა")) throw error;
+    throw new Error("ჯავშანი შეიქმნა, მაგრამ SMS სერვისთან დაკავშირება ვერ მოხერხდა. ავტომატური განმეორებითი გაგზავნა არ შესრულებულა.");
+  } finally {
+    clearTimeout(timeout);
+  }
 }

@@ -3018,6 +3018,6 @@ function isValidPhone(phone: string) {
 
 
 
-  return /^**\\+**\d{8,15}$/.test(normalizedPhone);
+  return /^\+?\d{8,15}$/.test(normalizedPhone);
 
 }
