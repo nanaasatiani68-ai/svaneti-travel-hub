@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -322,117 +322,117 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check real availability for the selected date.
-    // Pending and confirmed bookings reserve places.
-    const {
-      data: existingBookings,
-      error: availabilityError,
-    } = await supabaseAdmin
-      .from("bookings")
-      .select("people, status")
-      .eq("tour_id", tour.id)
-      .eq("booking_date", bookingDate)
-      .in("status", ["pending", "confirmed"]);
-
-    if (availabilityError) {
-      console.error(
-        "Booking availability check error:",
-        availabilityError
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "არჩეული თარიღის ხელმისაწვდომობის შემოწმება ვერ მოხერხდა.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    const alreadyBookedPeople = (existingBookings ?? []).reduce(
-      (total, existingBooking) =>
-        total + Math.max(0, Number(existingBooking.people) || 0),
-      0
-    );
-
-    const maxPeople = Math.max(
-      0,
-      Number(tour.max_people) || 0
-    );
-
-    const remainingPlaces = Math.max(
-      0,
-      maxPeople - alreadyBookedPeople
-    );
-
-    if (remainingPlaces <= 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი.",
-          remainingPlaces: 0,
-        },
-        {
-          status: 409,
-        }
-      );
-    }
-
-    if (people > remainingPlaces) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`,
-          remainingPlaces,
-        },
-        {
-          status: 409,
-        }
-      );
-    }
-
     const totalPrice =
       tour.price === null ||
       tour.price === undefined
         ? null
         : Number(tour.price);
 
+    // Atomically validate availability, create booking and reserve places.
     const {
-      data: booking,
+      data: bookingRpcResult,
       error: bookingError,
-    } = await supabaseAdmin
-      .from("bookings")
-      .insert({
-        tour_id: tour.id,
-        user_id: bookingUserId,
-        guest_name: guestName,
-        guest_email: guestEmail,
-        guest_phone: guestPhone,
-        booking_date: bookingDate,
-        people,
-        total_price: totalPrice,
-        notes,
-        status: "pending",
-      })
-      .select("id, created_at")
-      .single();
+    } = await supabaseAdmin.rpc(
+      "create_tour_booking_with_availability",
+      {
+        p_tour_id: Number(tour.id),
+        p_user_id: bookingUserId,
+        p_guest_name: guestName,
+        p_guest_email: guestEmail,
+        p_guest_phone: guestPhone,
+        p_booking_date: bookingDate,
+        p_people: people,
+        p_total_price: totalPrice,
+        p_notes: notes,
+      }
+    );
 
     if (bookingError) {
       console.error(
-        "Booking insert error:",
+        "Atomic booking creation error:",
         bookingError
       );
+
+      const databaseMessage =
+        bookingError.message || "";
+
+      if (
+        databaseMessage.includes(
+          "DATE_NOT_AVAILABLE"
+        )
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "არჩეული თარიღი ხელმისაწვდომი აღარ არის. გთხოვ აირჩიო სხვა თარიღი.",
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      if (
+        databaseMessage.includes("SOLD_OUT")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი.",
+            remainingPlaces: 0,
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      const remainingMatch =
+        databaseMessage.match(
+          /NOT_ENOUGH_SPOTS:(\d+)/
+        );
+
+      if (remainingMatch) {
+        const remainingPlaces =
+          Number(remainingMatch[1]);
+
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`,
+            remainingPlaces,
+          },
+          {
+            status: 409,
+          }
+        );
+      }
+
+      if (
+        databaseMessage.includes(
+          "INVALID_PEOPLE"
+        )
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "ადამიანების რაოდენობა არასწორია.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
 
       return NextResponse.json(
         {
           success: false,
           error:
-            `ჯავშნის შენახვა ვერ მოხერხდა: ${bookingError.message}`,
+            "ჯავშნის შენახვა ვერ მოხერხდა. გთხოვ სცადო თავიდან.",
         },
         {
           status: 500,
@@ -440,6 +440,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const bookingResult =
+      Array.isArray(bookingRpcResult)
+        ? bookingRpcResult[0]
+        : bookingRpcResult;
+
+    if (!bookingResult?.booking_id) {
+      console.error(
+        "Atomic booking RPC returned no booking id:",
+        bookingRpcResult
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ჯავშნის შექმნა ვერ დადასტურდა. გთხოვ სცადო თავიდან.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const booking = {
+      id: bookingResult.booking_id,
+      created_at:
+        bookingResult.booking_created_at ??
+        null,
+    };
     let ownerEmail: string | null = null;
     let ownerName: string | null = null;
     let ownerPhone: string | null = null;
@@ -1390,3 +1419,4 @@ async function sendOwnerBookingSms(details: {
     clearTimeout(timeout);
   }
 }
+
