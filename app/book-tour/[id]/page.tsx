@@ -53,10 +53,11 @@ type Review = {
   updated_at: string;
 };
 
-type AvailabilityBooking = {
-  booking_date: string;
-  people: number | null;
-  status: string | null;
+type TourAvailability = {
+  id: number | string;
+  tour_id: number | string;
+  available_date: string;
+  is_available: boolean;
 };
 
 export default function BookTourPage() {
@@ -70,8 +71,8 @@ export default function BookTourPage() {
   const [tour, setTour] = useState<Tour | null>(null);
   const [ownerTours, setOwnerTours] = useState<Tour[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [availabilityBookings, setAvailabilityBookings] =
-    useState<AvailabilityBooking[]>([]);
+  const [tourAvailability, setTourAvailability] =
+    useState<TourAvailability[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [selectedImage, setSelectedImage] = useState("");
   const [showMobileGallery, setShowMobileGallery] = useState(false);
@@ -106,29 +107,31 @@ export default function BookTourPage() {
 
   const loadAvailability = useCallback(async () => {
     if (!tourId) {
-      setAvailabilityBookings([]);
+      setTourAvailability([]);
       setLoadingAvailability(false);
       return;
     }
 
     setLoadingAvailability(true);
 
+    const today = getLocalToday();
+
     const { data, error } = await supabase
-      .from("bookings")
-      .select("booking_date, people, status")
+      .from("tour_availability")
+      .select("id, tour_id, available_date, is_available")
       .eq("tour_id", tourId)
-      .in("status", ["pending", "confirmed"]);
+      .eq("is_available", true)
+      .gte("available_date", today)
+      .order("available_date", { ascending: true });
 
     if (error) {
       console.error("Availability loading error:", error);
-      setAvailabilityBookings([]);
+      setTourAvailability([]);
       setLoadingAvailability(false);
       return;
     }
 
-    setAvailabilityBookings(
-      (data as AvailabilityBooking[] | null) ?? []
-    );
+    setTourAvailability((data as TourAvailability[] | null) ?? []);
     setLoadingAvailability(false);
   }, [tourId, supabase]);
 
@@ -417,6 +420,10 @@ export default function BookTourPage() {
     loadReviews();
   }, [loadReviews]);
 
+  useEffect(() => {
+    void loadAvailability();
+  }, [loadAvailability]);
+
   const myReview = useMemo(() => {
     if (!currentUserId) {
       return null;
@@ -436,31 +443,12 @@ export default function BookTourPage() {
     }
   }, [myReview]);
 
-  const bookedPeopleByDate = useMemo(() => {
-    const totals: Record<string, number> = {};
-
-    for (const booking of availabilityBookings) {
-      const date = String(booking.booking_date || "").slice(0, 10);
-
-      if (!date) {
-        continue;
-      }
-
-      totals[date] =
-        (totals[date] || 0) + Math.max(0, Number(booking.people) || 0);
-    }
-
-    return totals;
-  }, [availabilityBookings]);
-
-  const getRemainingPlaces = useCallback(
-    (date: string) => {
-      const maxPeople = Math.max(0, Number(tour?.max_people) || 0);
-      const bookedPeople = bookedPeopleByDate[date] || 0;
-
-      return Math.max(0, maxPeople - bookedPeople);
-    },
-    [tour?.max_people, bookedPeopleByDate]
+  const getAvailabilityForDate = useCallback(
+    (date: string) =>
+      tourAvailability.find(
+        (row) => String(row.available_date).slice(0, 10) === date
+      ) ?? null,
+    [tourAvailability]
   );
 
   const averageRating = useMemo(() => {
@@ -560,30 +548,16 @@ export default function BookTourPage() {
       return;
     }
 
-    if (tour.max_people && people > tour.max_people) {
-      setErrorMessage(
-        `${c.maxPeoplePrefix} ${tour.max_people} ${c.peopleWord}.`
-      );
-      return;
-    }
+    const selectedAvailability = getAvailabilityForDate(bookingDate);
 
-    const remainingPlaces = getRemainingPlaces(bookingDate);
-
-    if (remainingPlaces <= 0) {
+    if (!selectedAvailability) {
       setErrorMessage(
         language === "ka"
-          ? "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი."
-          : "This date is fully booked. Please choose another date."
+          ? "არჩეული თარიღი ხელმისაწვდომი აღარ არის. გთხოვ აირჩიო სხვა თარიღი."
+          : "The selected date is no longer available. Please choose another date."
       );
-      return;
-    }
-
-    if (people > remainingPlaces) {
-      setErrorMessage(
-        language === "ka"
-          ? `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`
-          : `Only ${remainingPlaces} places are left on the selected date.`
-      );
+      await loadAvailability();
+      setBookingDate("");
       return;
     }
 
@@ -651,6 +625,7 @@ export default function BookTourPage() {
       setBookingDate("");
       setPeople(1);
       setNotes("");
+      await loadAvailability();
 
       window.scrollTo({
         top: 0,
@@ -1670,27 +1645,46 @@ export default function BookTourPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label={c.tourDate}>
-                  <input
-                    type="date"
+                  <select
                     value={bookingDate}
-                    min={today}
-                    onChange={(event) =>
-                      setBookingDate(event.target.value)
-                    }
+                    onChange={(event) => {
+                      setBookingDate(event.target.value);
+                      setPeople(1);
+                    }}
                     required
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
-                  />
+                    disabled={loadingAvailability || tourAvailability.length === 0}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    <option value="">
+                      {loadingAvailability
+                        ? language === "ka"
+                          ? "თარიღები იტვირთება..."
+                          : "Loading dates..."
+                        : tourAvailability.length === 0
+                          ? language === "ka"
+                            ? "ხელმისაწვდომი თარიღები არ არის"
+                            : "No available dates"
+                          : language === "ka"
+                            ? "აირჩიე თარიღი"
+                            : "Choose a date"}
+                    </option>
+
+                    {tourAvailability.map((availability) => {
+                      const date = String(availability.available_date).slice(0, 10);
+
+                      return (
+                        <option key={availability.id} value={date}>
+                          {formatAvailabilityDate(date, language)}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </FormField>
 
                 <FormField label={c.peopleCount}>
                   <input
                     type="number"
                     min={1}
-                    max={
-                      bookingDate
-                        ? Math.max(1, getRemainingPlaces(bookingDate))
-                        : tour.max_people || undefined
-                    }
                     value={people}
                     onChange={(event) => {
                       const value = Number(event.target.value);
@@ -2297,6 +2291,26 @@ function getLocalToday() {
   return new Date(now.getTime() - timezoneOffset)
     .toISOString()
     .split("T")[0];
+}
+
+function formatAvailabilityDate(
+  value: string,
+  language: "ka" | "en"
+) {
+  const date = new Date(`${value}T12:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    language === "ka" ? "ka-GE" : "en-US",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  ).format(date);
 }
 
 function formatDate(value: string, language: "ka" | "en") {

@@ -278,22 +278,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      tour.max_people &&
-      people > Number(tour.max_people)
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            `ამ ტურზე მაქსიმალური რაოდენობაა ${tour.max_people} ადამიანი.`,
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
     let bookingUserId: string | null = null;
 
     const authorization =
@@ -322,117 +306,81 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // The organizer controls only whether this date is open or closed.
+    // We intentionally do not limit the number of bookings or guests per date.
+    const { data: availabilityRow, error: availabilityError } =
+      await supabaseAdmin
+        .from("tour_availability")
+        .select("id, is_available")
+        .eq("tour_id", tour.id)
+        .eq("available_date", bookingDate)
+        .eq("is_available", true)
+        .maybeSingle();
+
+    if (availabilityError) {
+      console.error(
+        "Booking availability check error:",
+        availabilityError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "არჩეული თარიღის ხელმისაწვდომობის შემოწმება ვერ მოხერხდა.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!availabilityRow) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "არჩეული თარიღი ხელმისაწვდომი აღარ არის. გთხოვ აირჩიო სხვა თარიღი.",
+        },
+        { status: 409 }
+      );
+    }
+
     const totalPrice =
       tour.price === null ||
       tour.price === undefined
         ? null
         : Number(tour.price);
 
-    // Atomically validate availability, create booking and reserve places.
     const {
-      data: bookingRpcResult,
+      data: booking,
       error: bookingError,
-    } = await supabaseAdmin.rpc(
-      "create_tour_booking_with_availability",
-      {
-        p_tour_id: Number(tour.id),
-        p_user_id: bookingUserId,
-        p_guest_name: guestName,
-        p_guest_email: guestEmail,
-        p_guest_phone: guestPhone,
-        p_booking_date: bookingDate,
-        p_people: people,
-        p_total_price: totalPrice,
-        p_notes: notes,
-      }
-    );
+    } = await supabaseAdmin
+      .from("bookings")
+      .insert({
+        tour_id: tour.id,
+        user_id: bookingUserId,
+        guest_name: guestName,
+        guest_email: guestEmail,
+        guest_phone: guestPhone,
+        booking_date: bookingDate,
+        people,
+        total_price: totalPrice,
+        notes,
+        status: "pending",
+      })
+      .select("id, created_at")
+      .single();
 
     if (bookingError) {
       console.error(
-        "Atomic booking creation error:",
+        "Booking insert error:",
         bookingError
       );
 
-      const databaseMessage =
-        bookingError.message || "";
-
-      if (
-        databaseMessage.includes(
-          "DATE_NOT_AVAILABLE"
-        )
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "არჩეული თარიღი ხელმისაწვდომი აღარ არის. გთხოვ აირჩიო სხვა თარიღი.",
-          },
-          {
-            status: 409,
-          }
-        );
-      }
-
-      if (
-        databaseMessage.includes("SOLD_OUT")
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი.",
-            remainingPlaces: 0,
-          },
-          {
-            status: 409,
-          }
-        );
-      }
-
-      const remainingMatch =
-        databaseMessage.match(
-          /NOT_ENOUGH_SPOTS:(\d+)/
-        );
-
-      if (remainingMatch) {
-        const remainingPlaces =
-          Number(remainingMatch[1]);
-
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`,
-            remainingPlaces,
-          },
-          {
-            status: 409,
-          }
-        );
-      }
-
-      if (
-        databaseMessage.includes(
-          "INVALID_PEOPLE"
-        )
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            error:
-              "ადამიანების რაოდენობა არასწორია.",
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
       return NextResponse.json(
         {
           success: false,
           error:
-            "ჯავშნის შენახვა ვერ მოხერხდა. გთხოვ სცადო თავიდან.",
+            `ჯავშნის შენახვა ვერ მოხერხდა: ${bookingError.message}`,
         },
         {
           status: 500,
@@ -440,35 +388,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const bookingResult =
-      Array.isArray(bookingRpcResult)
-        ? bookingRpcResult[0]
-        : bookingRpcResult;
-
-    if (!bookingResult?.booking_id) {
-      console.error(
-        "Atomic booking RPC returned no booking id:",
-        bookingRpcResult
-      );
-
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "ჯავშნის შექმნა ვერ დადასტურდა. გთხოვ სცადო თავიდან.",
-        },
-        {
-          status: 500,
-        }
-      );
-    }
-
-    const booking = {
-      id: bookingResult.booking_id,
-      created_at:
-        bookingResult.booking_created_at ??
-        null,
-    };
     let ownerEmail: string | null = null;
     let ownerName: string | null = null;
     let ownerPhone: string | null = null;
@@ -1419,4 +1338,3 @@ async function sendOwnerBookingSms(details: {
     clearTimeout(timeout);
   }
 }
-
