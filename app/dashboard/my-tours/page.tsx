@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -491,7 +491,7 @@ export default function MyToursPage() {
                     </div>
                   )}
 
-                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-7 grid gap-3 sm:grid-cols-2">
                     <Link
                       href={`/book-tour/${tour.id}`}
                       className="flex items-center justify-center rounded-2xl bg-cyan-500 px-4 py-3 text-center font-bold transition hover:bg-cyan-600"
@@ -506,7 +506,15 @@ export default function MyToursPage() {
                       ✏️ შეცვლა
                     </Link>
 
-                    <button
+                    <Link
+                      href={`/dashboard/my-tours/${tour.id}/availability`}
+                      className="flex items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-center font-bold text-white transition hover:bg-emerald-700"
+                    >
+                      📅 ხელმისაწვდომობა
+                    </Link>
+
+                      <button
+
                       type="button"
                       onClick={() => deleteTour(tour)}
                       disabled={deletingId === tour.id}
@@ -676,3 +684,7 @@ function getStoragePathFromPublicUrl(
     return encodedPath;
   }
 }
+
+
+
+
