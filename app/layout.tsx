@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "./providers/LanguageProvider";
 import SiteLanguageSwitcher from "./components/SiteLanguageSwitcher";
+import VisitorTracker from "./components/VisitorTracker";
 
 export const metadata: Metadata = {
   title: "Georgia Gateway Hub",
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="ka">
       <body>
         <LanguageProvider>
+          <VisitorTracker />
           {children}
           <SiteLanguageSwitcher />
         </LanguageProvider>
