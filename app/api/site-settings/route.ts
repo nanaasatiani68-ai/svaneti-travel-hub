@@ -15,6 +15,7 @@ const FALLBACK_SETTINGS = {
   tiktok_url: null,
   whatsapp_url: null,
 
+  logo_url: null,
   hero_background_url: null,
   site_background_color: "#020617",
   header_background_color: "#0f172a",
@@ -39,6 +40,7 @@ export async function GET() {
         instagram_url,
         tiktok_url,
         whatsapp_url,
+        logo_url,
         hero_background_url,
         site_background_color,
         header_background_color,

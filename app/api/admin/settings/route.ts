@@ -141,6 +141,7 @@ export async function PUT(request: NextRequest) {
       "whatsapp_url",
 
       "hero_background_url",
+    "logo_url",
       "site_background_color",
       "header_background_color",
       "footer_background_color",

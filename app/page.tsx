@@ -69,6 +69,7 @@ type Guide = {
 
 type PublicSiteSettings = {
   site_name: string;
+  logo_url: string | null;
   support_email: string | null;
   phone: string | null;
   whatsapp: string | null;
@@ -239,6 +240,7 @@ export default function Home() {
   const [travelTips, setTravelTips] = useState<TravelTip[]>([]);
   const [siteSettings, setSiteSettings] = useState<PublicSiteSettings>({
     site_name: "Georgia Gateway Hub",
+    logo_url: null,
     support_email: null,
     phone: null,
     whatsapp: null,
@@ -507,9 +509,19 @@ export default function Home() {
         >
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-2xl shadow-lg">
-                🏔️
-              </div>
+              {siteSettings.logo_url ? (
+                <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/10 p-1 shadow-lg">
+                  <img
+                    src={siteSettings.logo_url}
+                    alt={`${siteSettings.site_name} logo`}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-2xl shadow-lg">
+                  🏔️
+                </div>
+              )}
               <div>
                 <h1 className="text-lg font-extrabold sm:text-xl">{siteSettings.site_name}</h1>
                 <p className="text-xs text-white/60">{t.discoverGeorgia}</p>

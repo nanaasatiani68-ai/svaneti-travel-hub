@@ -43,6 +43,7 @@ type Settings = {
   tiktok_url: string | null;
   whatsapp_url: string | null;
 
+  logo_url: string | null;
   hero_background_url: string | null;
   site_background_color: string;
   header_background_color: string;
@@ -196,6 +197,9 @@ export default function SettingsPage() {
   const [saving, setSaving] =
     useState(false);
 
+  const [uploadingLogo, setUploadingLogo] =
+    useState(false);
+
   const [uploadingHero, setUploadingHero] =
     useState(false);
 
@@ -205,6 +209,82 @@ export default function SettingsPage() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
+  async function uploadLogoImage(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("გთხოვ აირჩიე ლოგოს ფოტო.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage("ლოგოს მაქსიმალური ზომაა 5 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadingLogo(true);
+      setErrorMessage("");
+      setNotice("");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("ავტორიზაცია აუცილებელია.");
+      }
+
+      const extension =
+        file.name.split(".").pop()?.toLowerCase() || "png";
+
+      const filePath =
+        `${user.id}/logo-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("site-assets")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } =
+        supabase.storage
+          .from("site-assets")
+          .getPublicUrl(filePath);
+
+      updateSetting(
+        "logo_url",
+        publicUrlData.publicUrl
+      );
+
+      setNotice(
+        "ლოგო აიტვირთა. ცვლილების დასასრულებლად დააჭირე Save Settings."
+      );
+    } catch (error) {
+      console.error("Logo upload error:", error);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "ლოგოს ატვირთვა ვერ მოხერხდა."
+      );
+    } finally {
+      setUploadingLogo(false);
+      event.target.value = "";
+    }
+  }
   async function uploadHeroImage(
     event: React.ChangeEvent<HTMLInputElement>
   ) {
@@ -1130,6 +1210,56 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-8">
+              <div>
+                <FieldLabel>
+                  Site Logo
+                </FieldLabel>
+
+                <div className="mt-3 flex min-h-40 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-6">
+                  {settings.logo_url ? (
+                    <img
+                      src={settings.logo_url}
+                      alt="Site logo preview"
+                      className="max-h-28 max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-white/40">
+                      Logo არ არის არჩეული
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <label className="inline-flex cursor-pointer items-center rounded-xl bg-cyan-500 px-5 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400">
+                    {uploadingLogo
+                      ? "Uploading..."
+                      : "Choose Logo"}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingLogo}
+                      onChange={uploadLogoImage}
+                    />
+                  </label>
+
+                  {settings.logo_url ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateSetting(
+                          "logo_url",
+                          null
+                        )
+                      }
+                      className="rounded-xl border border-red-400/30 px-5 py-3 font-semibold text-red-300 transition hover:bg-red-500/10"
+                    >
+                      Remove Logo
+                    </button>
+                  ) : null}
+                </div>
+              </div>
               <div>
                 <FieldLabel>
                   Hero Background Photo
