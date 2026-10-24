@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 
 import HomeSearch from "@/app/components/HomeSearch";
@@ -65,6 +65,19 @@ type Guide = {
   price_currency?: "GEL" | "USD" | null;
   image_url: string | null;
   created_at?: string | null;
+};
+
+type PublicSiteSettings = {
+  site_name: string;
+  support_email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  address: string | null;
+  default_currency: string;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  whatsapp_url: string | null;
 };
 
 type SectionKey = "tours" | "transfers" | "luggage" | "hotels" | "guides";
@@ -218,6 +231,18 @@ export default function Home() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [travelTips, setTravelTips] = useState<TravelTip[]>([]);
+  const [siteSettings, setSiteSettings] = useState<PublicSiteSettings>({
+    site_name: "Georgia Gateway Hub",
+    support_email: null,
+    phone: null,
+    whatsapp: null,
+    address: null,
+    default_currency: "GEL",
+    facebook_url: null,
+    instagram_url: null,
+    tiktok_url: null,
+    whatsapp_url: null,
+  });
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -323,6 +348,31 @@ export default function Home() {
 
 
 
+  useEffect(() => {
+    async function loadSiteSettings() {
+      try {
+        const response = await fetch("/api/site-settings", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as Partial<PublicSiteSettings>;
+
+        setSiteSettings((current) => ({
+          ...current,
+          ...data,
+        }));
+      } catch (error) {
+        console.error("Site settings loading error:", error);
+      }
+    }
+
+    void loadSiteSettings();
+  }, []);
+
   async function goToAddService(path: string) {
     const {
       data: { user },
@@ -417,7 +467,7 @@ export default function Home() {
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
         <div className="text-center">
           <div className="text-6xl">🏔️</div>
-          <p className="mt-4 font-semibold">Georgia Gateway Hub</p>
+          <p className="mt-4 font-semibold">{siteSettings.site_name}</p>
         </div>
       </main>
     );
@@ -439,7 +489,7 @@ export default function Home() {
                 🏔️
               </div>
               <div>
-                <h1 className="text-lg font-extrabold sm:text-xl">Georgia Gateway Hub</h1>
+                <h1 className="text-lg font-extrabold sm:text-xl">{siteSettings.site_name}</h1>
                 <p className="text-xs text-white/60">{t.discoverGeorgia}</p>
               </div>
             </Link>
@@ -481,7 +531,7 @@ export default function Home() {
             />
             <aside className="fixed bottom-0 right-0 top-0 z-[9999] w-[300px] max-w-[85vw] border-l border-white/10 bg-slate-950 p-5 shadow-2xl lg:hidden">
               <div className="flex items-center justify-between">
-                <p className="font-extrabold">Georgia Gateway Hub</p>
+                <p className="font-extrabold">{siteSettings.site_name}</p>
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
@@ -1056,7 +1106,7 @@ export default function Home() {
       <footer className="border-t border-white/10 bg-black px-4 py-10 sm:px-6">
         <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
           <div>
-            <h3 className="text-xl font-extrabold">🏔️ Georgia Gateway Hub</h3>
+            <h3 className="text-xl font-extrabold">🏔️ {siteSettings.site_name}</h3>
             <p className="mt-3 max-w-sm leading-7 text-white/50">{t.footerDescription}</p>
           </div>
 
@@ -1082,17 +1132,47 @@ export default function Home() {
 
         <div className="mx-auto mt-10 flex max-w-7xl flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-sm text-white/40 sm:flex-row">
           <div>
-            <p>© 2026 Georgia Gateway Hub</p>
+            <p>© 2026 {siteSettings.site_name}</p>
             <p className="mt-1">{t.madeInGeorgia}</p>
             <p className="mt-3 font-semibold text-white/60">
               Director: Nana Asatiani
             </p>
-            <a
-              href="tel:+995558768006"
-              className="mt-1 inline-block font-semibold text-white/60 transition hover:text-white"
-            >
-              📞 +995 558 768 006
-            </a>
+            <div className="mt-3 space-y-1.5 text-sm text-white/60">
+              {siteSettings.support_email && (
+                <a
+                  href={`mailto:${siteSettings.support_email}`}
+                  className="block font-semibold transition hover:text-white"
+                >
+                  ✉️ {siteSettings.support_email}
+                </a>
+              )}
+
+              {siteSettings.phone && (
+                <a
+                  href={`tel:${siteSettings.phone.replace(/\s+/g, "")}`}
+                  className="block font-semibold transition hover:text-white"
+                >
+                  📞 {siteSettings.phone}
+                </a>
+              )}
+
+              {siteSettings.whatsapp && (
+                <a
+                  href={`https://wa.me/${siteSettings.whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block font-semibold transition hover:text-white"
+                >
+                  💬 WhatsApp: {siteSettings.whatsapp}
+                </a>
+              )}
+
+              {siteSettings.address && (
+                <p className="font-semibold">
+                  📍 {siteSettings.address}
+                </p>
+              )}
+            </div>
           </div>
           <LanguageSwitcher />
         </div>

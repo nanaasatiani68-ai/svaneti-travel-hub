@@ -272,6 +272,39 @@ export async function PATCH(
       );
     }
 
+    /*
+     * SITE SETTINGS
+     * Cancellation notification is controlled from Admin Settings.
+     */
+    const {
+      data: siteSettings,
+      error: settingsError,
+    } = await supabaseAdmin
+      .from("site_settings")
+      .select("notify_booking_cancellation")
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error(
+        "Booking notification settings loading error:",
+        settingsError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "საიტის პარამეტრების ჩატვირთვა ვერ მოხერხდა.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const shouldSendStatusEmail =
+      newStatus !== "cancelled" ||
+      siteSettings?.notify_booking_cancellation !== false;
+
     const updatePayload = {
       status: newStatus,
       completed_at:
@@ -341,7 +374,11 @@ export async function PATCH(
     const resendApiKey =
       process.env.RESEND_API_KEY?.trim();
 
-    if (guestEmail && isValidEmail(guestEmail)) {
+    if (
+      guestEmail &&
+      isValidEmail(guestEmail) &&
+      shouldSendStatusEmail
+    ) {
       if (!resendApiKey) {
         emailWarning =
           "RESEND_API_KEY ვერ მოიძებნა და მომხმარებლისთვის წერილი არ გაგზავნილა.";

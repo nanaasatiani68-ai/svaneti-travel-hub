@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -225,6 +225,68 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    /*
+     * SITE SETTINGS
+     *
+     * Bookings Enabled და Default Booking Status
+     * ახლა Admin Settings-იდან იმართება.
+     */
+    const {
+      data: siteSettings,
+      error: settingsError,
+    } = await supabaseAdmin
+      .from("site_settings")
+      .select(
+        `
+          bookings_enabled,
+          default_booking_status,
+          notify_tour_booking,
+          send_customer_confirmation
+        `
+      )
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.error(
+        "Booking site settings loading error:",
+        settingsError
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "საიტის პარამეტრების ჩატვირთვა ვერ მოხერხდა.",
+        },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    if (
+      siteSettings &&
+      siteSettings.bookings_enabled === false
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "ახალი ჯავშნების მიღება ამჟამად გამორთულია.",
+        },
+        {
+          status: 403,
+        }
+      );
+    }
+
+    const defaultBookingStatus =
+      siteSettings?.default_booking_status ===
+      "confirmed"
+        ? "confirmed"
+        : "pending";
+
     const {
       data: tourResult,
       error: tourError,
@@ -365,7 +427,7 @@ export async function POST(request: NextRequest) {
         people,
         total_price: totalPrice,
         notes,
-        status: "pending",
+        status: defaultBookingStatus,
       })
       .select("id, created_at")
       .single();
@@ -509,10 +571,15 @@ export async function POST(request: NextRequest) {
         const staffBcc =
           staffRecipients.slice(1);
 
-        const staffEmailResult =
-          await sendResendEmail(
-            resendApiKey,
-            {
+        let staffEmailResult: ResendResponse | null = null;
+
+        if (
+          siteSettings?.notify_tour_booking !== false
+        ) {
+          staffEmailResult =
+            await sendResendEmail(
+              resendApiKey,
+              {
               from: EMAIL_FROM,
               to: [primaryStaffRecipient],
 
@@ -541,23 +608,33 @@ export async function POST(request: NextRequest) {
                 notes,
                 bookingDetailsUrl,
               }),
-            }
-          );
+              }
+            );
 
-        console.log(
-          "Staff booking email sent:",
-          staffEmailResult.id
-        );
+          console.log(
+            "Staff booking email sent:",
+            staffEmailResult.id
+          );
+        } else {
+          console.log(
+            "Staff booking email skipped by Settings."
+          );
+        }
 
         const guestReplyEmail =
           isValidEmail(DIRECTOR_EMAIL)
             ? DIRECTOR_EMAIL
             : primaryStaffRecipient;
 
-        const guestEmailResult =
-          await sendResendEmail(
-            resendApiKey,
-            {
+        let guestEmailResult: ResendResponse | null = null;
+
+        if (
+          siteSettings?.send_customer_confirmation !== false
+        ) {
+          guestEmailResult =
+            await sendResendEmail(
+              resendApiKey,
+              {
               from: EMAIL_FROM,
               to: [guestEmail],
               reply_to: guestReplyEmail,
@@ -575,13 +652,18 @@ export async function POST(request: NextRequest) {
                 totalPrice,
                 notes,
               }),
-            }
-          );
+              }
+            );
 
-        console.log(
-          "Guest booking email sent:",
-          guestEmailResult.id
-        );
+          console.log(
+            "Guest booking email sent:",
+            guestEmailResult.id
+          );
+        } else {
+          console.log(
+            "Guest confirmation email skipped by Settings."
+          );
+        }
       } catch (emailError: unknown) {
         console.error(
           "Booking email sending error:",
