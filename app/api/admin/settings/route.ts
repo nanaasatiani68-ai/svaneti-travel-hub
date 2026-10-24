@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -139,6 +139,12 @@ export async function PUT(request: NextRequest) {
       "instagram_url",
       "tiktok_url",
       "whatsapp_url",
+
+      "hero_background_url",
+      "site_background_color",
+      "header_background_color",
+      "footer_background_color",
+      "primary_color",
     ] as const;
 
     const updates: Record<string, unknown> = {};

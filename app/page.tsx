@@ -78,6 +78,12 @@ type PublicSiteSettings = {
   instagram_url: string | null;
   tiktok_url: string | null;
   whatsapp_url: string | null;
+
+  hero_background_url: string | null;
+  site_background_color: string;
+  header_background_color: string;
+  footer_background_color: string;
+  primary_color: string;
 };
 
 type SectionKey = "tours" | "transfers" | "luggage" | "hotels" | "guides";
@@ -242,6 +248,12 @@ export default function Home() {
     instagram_url: null,
     tiktok_url: null,
     whatsapp_url: null,
+
+    hero_background_url: null,
+    site_background_color: "#020617",
+    header_background_color: "#0f172a",
+    footer_background_color: "#020617",
+    primary_color: "#06b6d4",
   });
 
   const [loading, setLoading] = useState(true);
@@ -474,15 +486,25 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main
+      className="min-h-screen text-white"
+      style={{
+        backgroundColor:
+          siteSettings.site_background_color || "#020617",
+      }}
+    >
       <section
         className="relative min-h-[620px] bg-cover bg-center bg-no-repeat sm:min-h-[660px]"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(2,6,23,.58), rgba(2,6,23,.9)), url('/hero.jpg')",
+          backgroundImage: `linear-gradient(rgba(2,6,23,.58), rgba(2,6,23,.9)), url("${siteSettings.hero_background_url || "/hero.jpg"}")`,
         }}
       >
-        <header className="relative z-50 border-b border-white/10 bg-slate-950/30 backdrop-blur-xl">
+        <header
+          className="relative z-50 border-b border-white/10 backdrop-blur-xl"
+          style={{
+            backgroundColor: `${siteSettings.header_background_color || "#0f172a"}CC`,
+          }}
+        >
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
             <Link href="/" className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-emerald-400 text-2xl shadow-lg">
@@ -586,7 +608,14 @@ export default function Home() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#tours" className="rounded-2xl bg-cyan-500 px-7 py-4 text-center font-black hover:bg-cyan-600">
+            <a
+              href="#tours"
+              className="rounded-2xl px-7 py-4 text-center font-black transition hover:brightness-110"
+              style={{
+                backgroundColor:
+                  siteSettings.primary_color || "#06b6d4",
+              }}
+            >
               {t.browseServices}
             </a>
             <button
@@ -1103,7 +1132,13 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-black px-4 py-10 sm:px-6">
+      <footer
+        className="border-t border-white/10 px-4 py-10 sm:px-6"
+        style={{
+          backgroundColor:
+            siteSettings.footer_background_color || "#020617",
+        }}
+      >
         <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
           <div>
             <h3 className="text-xl font-extrabold">🏔️ {siteSettings.site_name}</h3>

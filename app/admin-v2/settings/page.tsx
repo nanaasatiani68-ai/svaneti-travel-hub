@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -43,6 +43,12 @@ type Settings = {
   tiktok_url: string | null;
   whatsapp_url: string | null;
 
+  hero_background_url: string | null;
+  site_background_color: string;
+  header_background_color: string;
+  footer_background_color: string;
+  primary_color: string;
+
   created_at?: string;
   updated_at?: string;
 };
@@ -53,7 +59,8 @@ type Tab =
   | "bookings"
   | "providers"
   | "payments"
-  | "seo";
+  | "seo"
+  | "appearance";
 
 const tabs: {
   id: Tab;
@@ -84,6 +91,11 @@ const tabs: {
     id: "payments",
     label: "Payments",
     icon: "💳",
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: "🎨",
   },
   {
     id: "seo",
@@ -184,12 +196,91 @@ export default function SettingsPage() {
   const [saving, setSaving] =
     useState(false);
 
+  const [uploadingHero, setUploadingHero] =
+    useState(false);
+
   const [notice, setNotice] =
     useState("");
 
   const [errorMessage, setErrorMessage] =
     useState("");
 
+  async function uploadHeroImage(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("გთხოვ აირჩიე ფოტო.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMessage("ფოტოს მაქსიმალური ზომაა 10 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadingHero(true);
+      setErrorMessage("");
+      setNotice("");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("ავტორიზაცია აუცილებელია.");
+      }
+
+      const extension =
+        file.name.split(".").pop()?.toLowerCase() || "jpg";
+
+      const filePath =
+        `${user.id}/hero-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("site-assets")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicUrlData } =
+        supabase.storage
+          .from("site-assets")
+          .getPublicUrl(filePath);
+
+      updateSetting(
+        "hero_background_url",
+        publicUrlData.publicUrl
+      );
+
+      setNotice(
+        "ფოტო აიტვირთა. ცვლილების დასასრულებლად დააჭირე Save Settings."
+      );
+    } catch (error) {
+      console.error("Hero upload error:", error);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "ფოტოს ატვირთვა ვერ მოხერხდა."
+      );
+    } finally {
+      setUploadingHero(false);
+      event.target.value = "";
+    }
+  }
   async function getAccessToken() {
     const {
       data: { session },
@@ -1026,6 +1117,158 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
+        {activeTab === "appearance" ? (
+          <div>
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-white">
+                🎨 Appearance
+              </h2>
+
+              <p className="mt-2 text-white/55">
+                შეცვალე საიტის მთავარი ფოტო და ძირითადი ფერები.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              <div>
+                <FieldLabel>
+                  Hero Background Photo
+                </FieldLabel>
+
+                <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                  {settings.hero_background_url ? (
+                    <img
+                      src={settings.hero_background_url}
+                      alt="Hero preview"
+                      className="h-64 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-64 items-center justify-center text-white/40">
+                      Hero ფოტო ჯერ არ არის არჩეული
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <label className="inline-flex cursor-pointer items-center rounded-xl bg-cyan-500 px-5 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400">
+                    {uploadingHero
+                      ? "Uploading..."
+                      : "📷 Choose Photo"}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingHero}
+                      onChange={uploadHeroImage}
+                    />
+                  </label>
+
+                  {settings.hero_background_url ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateSetting(
+                          "hero_background_url",
+                          null
+                        )
+                      }
+                      className="rounded-xl border border-red-400/30 px-5 py-3 font-semibold text-red-300 transition hover:bg-red-500/10"
+                    >
+                      Remove Photo
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {[
+                {
+                  key: "site_background_color",
+                  label: "Site Background Color",
+                  description:
+                    "საიტის მთავარი ფონის ფერი",
+                  fallback: "#020617",
+                },
+                {
+                  key: "header_background_color",
+                  label: "Header Background Color",
+                  description:
+                    "ზედა მენიუს ფონის ფერი",
+                  fallback: "#0f172a",
+                },
+                {
+                  key: "footer_background_color",
+                  label: "Footer Background Color",
+                  description:
+                    "Footer-ის ფონის ფერი",
+                  fallback: "#020617",
+                },
+                {
+                  key: "primary_color",
+                  label: "Primary / Button Color",
+                  description:
+                    "ღილაკებისა და მთავარი აქცენტების ფერი",
+                  fallback: "#06b6d4",
+                },
+              ].map((item) => {
+                const value =
+                  (settings[
+                    item.key as keyof Settings
+                  ] as string | null) ||
+                  item.fallback;
+
+                return (
+                  <div
+                    key={item.key}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                  >
+                    <FieldLabel>
+                      {item.label}
+                    </FieldLabel>
+
+                    <p className="mt-1 text-sm text-white/45">
+                      {item.description}
+                    </p>
+
+                    <div className="mt-4 flex items-center gap-4">
+                      <input
+                        type="color"
+                        value={value}
+                        onChange={(event) =>
+                          updateSetting(
+                            item.key as keyof Settings,
+                            event.target.value
+                          )
+                        }
+                        className="h-14 w-20 cursor-pointer rounded-lg border border-white/10 bg-transparent p-1"
+                      />
+
+                      <input
+                        type="text"
+                        value={value}
+                        onChange={(event) =>
+                          updateSetting(
+                            item.key as keyof Settings,
+                            event.target.value
+                          )
+                        }
+                        className={inputClass}
+                        placeholder={item.fallback}
+                      />
+
+                      <div
+                        className="h-14 w-14 shrink-0 rounded-xl border border-white/15"
+                        style={{
+                          backgroundColor: value,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         {activeTab === "seo" ? (
           <div>
             <div className="mb-8">
