@@ -14,6 +14,12 @@ const FALLBACK_SETTINGS = {
   instagram_url: null,
   tiktok_url: null,
   whatsapp_url: null,
+
+  hero_background_url: null,
+  site_background_color: "#020617",
+  header_background_color: "#0f172a",
+  footer_background_color: "#020617",
+  primary_color: "#06b6d4",
 };
 
 export async function GET() {
@@ -32,7 +38,12 @@ export async function GET() {
         facebook_url,
         instagram_url,
         tiktok_url,
-        whatsapp_url
+        whatsapp_url,
+        hero_background_url,
+        site_background_color,
+        header_background_color,
+        footer_background_color,
+        primary_color
       `)
       .eq("id", 1)
       .maybeSingle();
