@@ -57,6 +57,8 @@ type TourAvailability = {
   id: number | string;
   tour_id: number | string;
   available_date: string;
+  total_spots: number;
+  booked_spots: number;
   is_available: boolean;
 };
 
@@ -118,7 +120,9 @@ export default function BookTourPage() {
 
     const { data, error } = await supabase
       .from("tour_availability")
-      .select("id, tour_id, available_date, is_available")
+      .select(
+        "id, tour_id, available_date, total_spots, booked_spots, is_available"
+      )
       .eq("tour_id", tourId)
       .eq("is_available", true)
       .gte("available_date", today)
@@ -131,7 +135,11 @@ export default function BookTourPage() {
       return;
     }
 
-    setTourAvailability((data as TourAvailability[] | null) ?? []);
+    setTourAvailability(
+      ((data as TourAvailability[] | null) ?? []).filter(
+        (row) => Number(row.booked_spots) < Number(row.total_spots)
+      )
+    );
     setLoadingAvailability(false);
   }, [tourId, supabase]);
 
@@ -451,6 +459,22 @@ export default function BookTourPage() {
     [tourAvailability]
   );
 
+  const getRemainingPlaces = useCallback(
+    (date: string) => {
+      const availability = getAvailabilityForDate(date);
+
+      if (!availability || !availability.is_available) {
+        return 0;
+      }
+
+      return Math.max(
+        0,
+        Number(availability.total_spots) - Number(availability.booked_spots)
+      );
+    },
+    [getAvailabilityForDate]
+  );
+
   const averageRating = useMemo(() => {
     if (reviews.length === 0) {
       return 0;
@@ -548,6 +572,13 @@ export default function BookTourPage() {
       return;
     }
 
+    if (tour.max_people && people > tour.max_people) {
+      setErrorMessage(
+        `${c.maxPeoplePrefix} ${tour.max_people} ${c.peopleWord}.`
+      );
+      return;
+    }
+
     const selectedAvailability = getAvailabilityForDate(bookingDate);
 
     if (!selectedAvailability) {
@@ -558,6 +589,26 @@ export default function BookTourPage() {
       );
       await loadAvailability();
       setBookingDate("");
+      return;
+    }
+
+    const remainingPlaces = getRemainingPlaces(bookingDate);
+
+    if (remainingPlaces <= 0) {
+      setErrorMessage(
+        language === "ka"
+          ? "ეს თარიღი სრულად დაჯავშნილია. გთხოვ აირჩიო სხვა თარიღი."
+          : "This date is fully booked. Please choose another date."
+      );
+      return;
+    }
+
+    if (people > remainingPlaces) {
+      setErrorMessage(
+        language === "ka"
+          ? `არჩეულ თარიღზე დარჩენილია მხოლოდ ${remainingPlaces} ადგილი.`
+          : `Only ${remainingPlaces} places are left on the selected date.`
+      );
       return;
     }
 
@@ -1671,10 +1722,16 @@ export default function BookTourPage() {
 
                     {tourAvailability.map((availability) => {
                       const date = String(availability.available_date).slice(0, 10);
+                      const remaining = Math.max(
+                        0,
+                        Number(availability.total_spots) -
+                          Number(availability.booked_spots)
+                      );
 
                       return (
                         <option key={availability.id} value={date}>
-                          {formatAvailabilityDate(date, language)}
+                          {formatAvailabilityDate(date, language)} — {remaining}{" "}
+                          {language === "ka" ? "ადგილი დარჩა" : "spots left"}
                         </option>
                       );
                     })}
@@ -1685,6 +1742,11 @@ export default function BookTourPage() {
                   <input
                     type="number"
                     min={1}
+                    max={
+                      bookingDate
+                        ? Math.max(1, getRemainingPlaces(bookingDate))
+                        : tour.max_people || undefined
+                    }
                     value={people}
                     onChange={(event) => {
                       const value = Number(event.target.value);
