@@ -1652,7 +1652,7 @@ export default function BookTourPage() {
                       setPeople(1);
                     }}
                     required
-                    disabled={loadingAvailability || tourAvailability.length === 0}
+                    disabled={loadingAvailability}
                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <option value="">
@@ -1662,8 +1662,8 @@ export default function BookTourPage() {
                           : "Loading dates..."
                         : tourAvailability.length === 0
                           ? language === "ka"
-                            ? "ხელმისაწვდომი თარიღები არ არის"
-                            : "No available dates"
+                            ? "აირჩიე თარიღი"
+                            : "Choose a date"
                           : language === "ka"
                             ? "აირჩიე თარიღი"
                             : "Choose a date"}
@@ -1679,6 +1679,20 @@ export default function BookTourPage() {
                       );
                     })}
                   </select>
+
+                  {!loadingAvailability && tourAvailability.length === 0 && (
+                    <input
+                      type="date"
+                      value={bookingDate}
+                      min={today}
+                      onChange={(event) => {
+                        setBookingDate(event.target.value);
+                        setPeople(1);
+                      }}
+                      required
+                      className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100"
+                    />
+                  )}
                 </FormField>
 
                 <FormField label={c.peopleCount}>
